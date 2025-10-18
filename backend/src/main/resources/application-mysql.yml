@@ -1,0 +1,38 @@
+# 数据源配置
+spring:
+  redis:
+    host: 127.0.0.1
+    password:
+    database: 0
+  flyway:
+    enabled: false
+    locations: classpath:db/mysql
+    baselineOnMigrate: true
+  datasource:
+    type: com.alibaba.druid.pool.DruidDataSource
+    driverClassName: com.mysql.cj.jdbc.Driver
+    druid:
+      url: jdbc:mysql://${DB_HOST:60.204.199.245}:${DB_PORT:3306}/${DB_NAME:demo_test}?allowMultiQueries=true&useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&connectTimeout=10000&socketTimeout=60000&autoReconnect=true&tcpKeepAlive=true&serverTimezone=GMT%2B8
+      username: ${DB_USER:root}
+      password: ${DB_PASSWD:g7p@q2xb!j9}
+      # 初始连接数
+      initialSize: 20
+      # 最小连接池数量
+      minIdle: 20
+      # 最大连接池数量
+      maxActive: 50
+      # 配置获取连接等待超时的时间
+      maxWait: 60000
+      # 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒
+      timeBetweenEvictionRunsMillis: 60000
+      # 配置一个连接在池中最小生存的时间，单位是毫秒
+      minEvictableIdleTimeMillis: 300000
+      # 配置一个连接在池中最大生存的时间，单位是毫秒
+      maxEvictableIdleTimeMillis: 900000
+      # 配置检测连接是否有效
+      validationQuery: SELECT 1 FROM DUAL
+      validationQueryTimeout: 5
+      keepAlive: true
+      testWhileIdle: true
+      testOnBorrow: false
+      testOnReturn: false

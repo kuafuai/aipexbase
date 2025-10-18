@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="zh-cn">
+<head>
+    <meta charset="UTF-8"/>
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=0" name="viewport"/>
+    <title>%VITE_APP_NAME%</title>
+    <link rel="stylesheet" href="/src/styles/index.css">
+    <style>
+        @keyframes spin-slow {
+            0% {
+                transform: rotate(0deg);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin-slow {
+            animation: spin-slow 3s linear infinite;
+        }
+
+        @keyframes pulse-glow {
+            0%, 100% {
+                opacity: 0.3;
+            }
+            50% {
+                opacity: 1;
+            }
+        }
+
+        .pulse-glow {
+            animation: pulse-glow 1.5s ease-in-out infinite;
+        }
+    </style>
+</head>
+
+<body>
+<div id="app">
+
+    <div id="loader-wrapper" class="fixed inset-0 z-50 flex items-center justify-center">
+        <!-- 旋转环 -->
+        <div class="relative w-32 h-32">
+            <div class="absolute inset-0 border-4 border-t-indigo-400 border-gray-800 rounded-full spin-slow"></div>
+            <div class="absolute inset-6 border-4 border-t-indigo-600 border-gray-800 rounded-full animate-spin"></div>
+            <div class="absolute inset-12 border-4 border-t-indigo-500 border-gray-800 rounded-full spin-slow"></div>
+        </div>
+
+        <!-- 发光线条 -->
+        <div class="absolute top-1/2 left-1/2 w-96 h-0.5 bg-indigo-400 opacity-50 blur-xl pulse-glow transform -translate-x-1/2 -translate-y-1/2 rotate-45"></div>
+        <div class="absolute top-1/2 left-1/2 w-96 h-0.5 bg-indigo-500 opacity-50 blur-xl pulse-glow transform -translate-x-1/2 -translate-y-1/2 -rotate-45"></div>
+
+        <!-- 加载文字 -->
+        <div class="absolute bottom-32 text-center">
+            <div class="text-xl font-semibold tracking-widest">系统加载中…</div>
+            <div class="text-sm opacity-50 mt-2">请耐心等待</div>
+        </div>
+    </div>
+
+</div>
+
+<script type="module" src="/src/main.js"></script>
+
+</body>
+</html>

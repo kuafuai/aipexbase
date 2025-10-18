@@ -1,0 +1,37 @@
+package com.kuafuai.wx;
+
+import com.google.gson.annotations.Expose;
+import com.google.gson.annotations.SerializedName;
+import com.kuafuai.common.http.AbstractModel;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.util.HashMap;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class WxAppAccessTokenRequest extends AbstractModel {
+
+    @Expose
+    @SerializedName("grant_type")
+    private String grantType = "client_credential";
+
+    @Expose
+    @SerializedName("appid")
+    private String appId;
+
+    @Expose
+    @SerializedName("secret")
+    private String appSecret;
+
+    @Override
+    protected void toMap(HashMap<String, String> map, String prefix) {
+        this.setParamSimple(map, prefix + "appid", this.appId);
+        this.setParamSimple(map, prefix + "secret", this.appSecret);
+        this.setParamSimple(map, prefix + "grant_type", this.grantType);
+    }
+}
