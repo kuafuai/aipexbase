@@ -1,0 +1,91 @@
+server:
+  port: ${PORT:8080}
+
+# MyBatis配置
+mybatis:
+  # 配置mapper的扫描，找到所有的mapper.xml映射文件
+  mapperLocations: classpath*:mapper/*.xml
+  # 加载全局的配置文件
+  configLocation: classpath:mybatis/mybatis-config.xml
+
+app:
+  # 文件路径 示例（ Windows配置D:/kuafu/uploadPath，Linux配置 /home/kuafu/uploadPath）
+  profile: ${UPLOAD_PATH:../uploadPath}
+  version: ${VERSION:1.0.0}
+  channel: ${CHANNEL:source}
+
+knife4j:
+  enable: true
+
+# MCP服务器配置
+mcp:
+  server:
+    name: ${MCP_SERVER_NAME:baas-mcp-server}
+    version: ${MCP_SERVER_VERSION:1.0.0}
+    message-endpoint: ${MCP_MESSAGE_ENDPOINT:/mcp/message}
+    sse-endpoint: ${MCP_SSE_ENDPOINT:/mcp/sse}
+
+#mysql
+spring:
+  profiles:
+    active: ${DB_TYPE:mysql}
+  jackson:
+    date-format: "yyyy-MM-dd HH:mm:ss"
+    time-zone: GMT+8
+  servlet:
+    multipart:
+      max-request-size: 100MB
+      max-file-size: 50MB
+      enabled: true
+  web:
+    resources:
+      static-locations: file:${FRONTEND_DIR:/data/frontend/test/} , classpath:/dist/
+
+# 在控制台输出sql
+mybatis-plus:
+  configuration:
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
+    call-setters-on-nulls: true
+
+logging:
+  level:
+    org:
+      springframework:
+        boot:
+          autoconfigure:
+            logging: info
+        security: debug
+    com:
+      kuafuai:
+        manage:
+          mcp: debug
+
+token:
+  expireTime: 43200
+
+cache:
+  #缓存可选择redis还是local
+  type: ${CACHE_TYPE:local}
+
+
+message:
+  enable: ${MESSAGE_ENABLE:false}
+  notifyUrl: ${MESSAGE_BASE_URL:xxx}
+
+
+storage:
+  type: ${STORAGE_TYPE:local}
+  s3:
+    access_key: ${S3_ACCESS_KEY:access_key}
+    secret_key: ${S3_SECRET_KEY:secret_key}
+    endpoint: ${S3_ENDPOINT:endpoint}
+    domain: ${S3_DOMAIN:domain}
+    region: ${S3_REGION:cn-east-3}
+    bucket_name: ${S3_BUCKET_NAME:aipexbase}
+
+delayTaskWorkerName: ${HOSTNAME:worker_name}
+
+
+error-report:
+  reportUrl: ${ERROR_REPORT_URL:xxxxxxxxxxxxx}
+  secretKey: ${ERROR_REPORT_SECRET_KEY:xxxxxxxxxx}

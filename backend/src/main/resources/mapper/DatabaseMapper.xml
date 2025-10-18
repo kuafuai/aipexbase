@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kuafuai.system.mapper.DatabaseMapper">
+
+    <update id="createDatabase">
+        CREATE DATABASE IF NOT EXISTS `${appId}`;
+    </update>
+
+    <update id="deleteDatabase">
+        DROP DATABASE IF EXISTS `${appId}`;
+    </update>
+
+    <update id="createDDL">
+        ${sql}
+    </update>
+
+    <!-- 获取指定表的所有字段信息 -->
+    <select id="getTableColumns" resultType="com.kuafuai.system.entity.vo.DatabaseStructureVO$ColumnStructureVO">
+        SELECT 
+            COLUMN_NAME as columnName,
+            DATA_TYPE as columnType,
+            CASE 
+                WHEN IS_NULLABLE = 'YES' THEN 'YES'
+                ELSE 'NO'
+            END as nullable,
+            CASE 
+                WHEN COLUMN_KEY = 'PRI' THEN 'PRI'
+                WHEN COLUMN_KEY = 'UNI' THEN 'UNI'
+                WHEN COLUMN_KEY = 'MUL' THEN 'MUL'
+                ELSE ''
+            END as colKey,
+            COLUMN_DEFAULT as defaultValue,
+            CASE 
+                WHEN EXTRA LIKE '%auto_increment%' THEN 'auto_increment'
+                ELSE ''
+            END as extra,
+            COLUMN_COMMENT as comment
+        FROM information_schema.COLUMNS 
+        WHERE TABLE_SCHEMA = #{appId} 
+        AND TABLE_NAME = #{tableName}
+        ORDER BY ORDINAL_POSITION
+    </select>
+</mapper>
