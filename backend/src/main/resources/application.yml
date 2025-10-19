@@ -37,7 +37,7 @@ spring:
       enabled: true
   web:
     resources:
-      static-locations: file:${FRONTEND_DIR:/Users/jiangfei/kuafu/tmp/frontend/test/} , classpath:/dist/
+      static-locations: file:${FRONTEND_DIR:/data/frontend/test/} , classpath:/dist/
 
 # 在控制台输出sql
 mybatis-plus:
@@ -67,19 +67,19 @@ cache:
 
 
 message:
-  enable: ${MESSAGE_ENABLE:true}
-  notifyUrl: ${MESSAGE_BASE_URL:https://open.feishu.cn/open-apis/bot/v2/hook/e11be04d-b997-4c7a-b156-c442022d2d87}
+  enable: ${MESSAGE_ENABLE:false}
+  notifyUrl: ${MESSAGE_BASE_URL:xxx}
 
 
 storage:
   type: ${STORAGE_TYPE:s3}
   s3:
-    access_key: ${S3_ACCESS_KEY:QMGHHSXHZYAI5QER6ISA}
-    secret_key: ${S3_SECRET_KEY:C3RjP5kBBKMONwSHRJlzVD79t86BHuFymOxEGKCZ}
-    endpoint: ${S3_ENDPOINT:https://obs.cn-east-3.myhuaweicloud.com}
-    domain: ${S3_DOMAIN:https://kuafuai.obs.cn-east-3.myhuaweicloud.com}
+    access_key: ${S3_ACCESS_KEY:access_key}
+    secret_key: ${S3_SECRET_KEY:secret_key}
+    endpoint: ${S3_ENDPOINT:endpoint}
+    domain: ${S3_DOMAIN:domain}
     region: ${S3_REGION:cn-east-3}
-    bucket_name: ${S3_BUCKET_NAME:kuafuai}
+    bucket_name: ${S3_BUCKET_NAME:aipexbase}
 
 delayTaskWorkerName: ${HOSTNAME:worker_name}
 
