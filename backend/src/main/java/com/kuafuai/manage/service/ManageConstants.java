@@ -6,6 +6,8 @@ public class ManageConstants {
     public static final String STATUS_DRAFT = "draft";
     public static final String EVENT_CREATE = "create";
 
+    public static final String EVENT_REGISTER = "register";
+
 
     // 表名常量
     public static final String TABLE_STATIC_RESOURCES = "static_resources";

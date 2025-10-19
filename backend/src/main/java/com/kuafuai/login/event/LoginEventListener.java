@@ -50,6 +50,11 @@ public class LoginEventListener {
     public void handleEvent(EventVo event) {
         log.info("===============Login event process:===={}", event);
 
+        // 参数检查
+        if (!validateEvent(event)) {
+            return;
+        }
+
         String database = event.getAppId();
         String tableName = event.getTableName();
 
@@ -73,6 +78,22 @@ public class LoginEventListener {
                 loginService.save(database, login);
             }
         }
+    }
+
+    private boolean validateEvent(EventVo event) {
+        if (event == null) {
+            return false;
+        }
+
+        if (StringUtils.isEmpty(event.getAppId())) {
+            return false;
+        }
+
+        if (StringUtils.isEmpty(event.getTableName())) {
+            return false;
+        }
+
+        return true;
     }
 
     private Login convert(String appId, String tableName, Object data) {
@@ -102,5 +123,5 @@ public class LoginEventListener {
             return null;
         }
     }
-    
+
 }

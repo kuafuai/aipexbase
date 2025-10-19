@@ -108,25 +108,23 @@ public class ManageBusinessService {
             return false;
         }
         users.setPassword(SecurityUtils.encryptPassword(users.getPassword()));
-        return usersService.save(users);
+        boolean flag = usersService.save(users);
+        if (flag) {
+            eventService.publishEvent(EventVo.builder().tableName(email).model(ManageConstants.EVENT_REGISTER).build());
+        }
+        return flag;
     }
 
     /**
      * 创建-应用
      */
     public AppInfo createApp(AppVo appVo) {
-        String appId = "baas_" + RandomStringUtils.generateRandomString(16);
-        AppInfo appInfo = new AppInfo();
-        appInfo.setAppId(appId);
-        appInfo.setAppName(appVo.getName());
-        appInfo.setNeedAuth(false);
-        appInfo.setConfigJson("{}");
-        appInfo.setStatus(ManageConstants.STATUS_DRAFT);
-        appInfo.setOwner(SecurityUtils.getUserId());
-        appInfoService.save(appInfo);
+        Long owner = SecurityUtils.getUserId();
+        return createAppInternal(appVo.getName(), owner);
+    }
 
-        eventService.publishEvent(EventVo.builder().appId(appInfo.getAppId()).model(ManageConstants.EVENT_CREATE).build());
-        return appInfo;
+    public AppInfo createApp(String name, Long owner) {
+        return createAppInternal(name, owner);
     }
 
     /**
@@ -704,4 +702,21 @@ public class ManageBusinessService {
     public boolean executeDDL(String appId, String ddl) {
         return true;
     }
+
+
+    private AppInfo createAppInternal(String name, Long owner) {
+        String appId = "baas_" + RandomStringUtils.generateRandomString(16);
+        AppInfo appInfo = new AppInfo();
+        appInfo.setAppId(appId);
+        appInfo.setAppName(name);
+        appInfo.setNeedAuth(false);
+        appInfo.setConfigJson("{}");
+        appInfo.setStatus(ManageConstants.STATUS_DRAFT);
+        appInfo.setOwner(owner);
+        appInfoService.save(appInfo);
+
+        eventService.publishEvent(EventVo.builder().appId(appInfo.getAppId()).model(ManageConstants.EVENT_CREATE).build());
+        return appInfo;
+    }
+
 }
