@@ -4,10 +4,10 @@
   <strong>AI 时代的后端即服务基础设施</strong>
 </p>
 <p align="center">
-  <a href="https://opensource.org/licenses/MIT">
-    <img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License">
+  <a href="https://opensource.org/license/apache-2-0">
+    <img src="https://img.shields.io/badge/license-Apache%202.0-blue.svg" alt="License">
   </a>
-  <a href="https://github.com/cross-venture/ai-baas/releases">
+  <a href="https://github.com/kuafuai/aipexbase">
     <img src="https://img.shields.io/badge/version-1.0.0-brightgreen.svg" alt="Version">
   </a>
   <a href="https://spring.io/projects/spring-boot">
@@ -20,6 +20,10 @@
 <p align="center">
   <em>让开发者在构建 AI 应用时无需关注后端接口开发</em>
 </p>
+
+<p align="center">
+  特别感谢 <a href="https://www.codeflying.net/"><strong>码上飞</strong></a> 的鼎力支持 · 共同推动 AI 开发新纪元
+</p> 
 
 ## 🚀 核心理念
 
@@ -57,9 +61,8 @@ aipexbase 通过标准化的 AI 原生后端能力，让开发者**无需再关�
 
 1. **一键安装服务**
 ```bash
-git clone https://github.com/cross-venture/ai-baas.git
-cd ai-baas
-
+git https://github.com/kuafuai/aipexbase.git
+cd aipexbase
 ```
 2. **启动后端服务**
 ```bash
@@ -81,11 +84,22 @@ npm run dev
 - 创建新应用，获取 App KEY.
 
 5. **集成到 Cursor 或 Trae 编码工具**
-```bash
-npm install baas_js
-```
+- **集成MCP**
+    ```json
+    {
+      "mcpServers": {
+        "aipexbase-mcp-server": {
+          "url": "https://域名/mcp/sse?token=APP_KEY"
+        }
+      }
+    }
+    ```
+- **集成到前端工程**
+    ```bash
+    npm install aipexbase-js
+    ```
 
-6. **Docker 快速部署（推荐）***
+6. **Docker 快速部署（推荐）**
 ```bash
 docker-compose up -d
 ```
@@ -109,8 +123,4 @@ docker-compose up -d
 让每一个开发者、每一个 AI Agent，都能轻松构建具备完整后端能力的智能应用。
 
 aipexbase 致力于成为 AI 应用开发的基础设施与行业标准，推动 AI 原生开发的普及和发展。
-
-<p align="center">
-  特别感谢 <a href="https://www.codeflying.net/"><strong>码上飞</strong></a> 的鼎力支持 · 共同推动 AI 开发新纪元
-</p> 
  
