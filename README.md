@@ -64,7 +64,7 @@ aipexbase 通过标准化的 AI 原生后端能力，让开发者**无需再关�
 git https://github.com/kuafuai/aipexbase.git
 cd aipexbase
 ```
-2. **启动后端服务**
+2. **本地启动后端服务**
 ```bash
 cd backend
 
@@ -72,7 +72,7 @@ mvn spring-boot:run
 
 服务启动在 http://localhost:8080
 ```
-3. **启动管理后台（可选）**
+3. **本地启动管理后台（可选）**
 ```bash
 cd frontend
 npm install
@@ -99,7 +99,7 @@ npm run dev
     npm install aipexbase-js
     ```
 
-6. **Docker 快速部署（推荐）**
+## **服务器 Docker Compose 快速部署（推荐）**
   [**安装指南**](./install/INSTALL.md)
 
 
