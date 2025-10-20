@@ -100,9 +100,8 @@ npm run dev
     ```
 
 6. **Docker 快速部署（推荐）**
-```bash
-docker-compose up -d
-```
+  [**安装指南**](./install/INSTALL.md)
+
 
 ## 🚀 下一步
 [**📅 RoadMap**](./docs/ROADMAP.md)

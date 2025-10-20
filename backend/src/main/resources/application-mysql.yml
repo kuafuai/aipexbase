@@ -12,7 +12,7 @@ spring:
     type: com.alibaba.druid.pool.DruidDataSource
     driverClassName: com.mysql.cj.jdbc.Driver
     druid:
-      url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:demo_test}?allowMultiQueries=true&useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&connectTimeout=10000&socketTimeout=60000&autoReconnect=true&tcpKeepAlive=true&serverTimezone=GMT%2B8
+      url: jdbc:mysql://${DB_HOST:127.0.0.1}:${DB_PORT:3306}/${DB_NAME:demo_test}?allowMultiQueries=true&useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=false&connectTimeout=10000&socketTimeout=60000&autoReconnect=true&tcpKeepAlive=true&serverTimezone=GMT%2B8&allowPublicKeyRetrieval=true
       username: ${DB_USER:aipexbase}
       password: ${DB_PASSWD:123456}
       # 初始连接数

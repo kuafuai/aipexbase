@@ -1,0 +1,48 @@
+version: '3'
+services:
+  backend-new:
+    image: swr.cn-east-3.myhuaweicloud.com/kuafuai/aipexbase-backend:20251020-3e0fea7
+    container_name: aipexbase-backend
+    environment:
+      - DB_PASSWORD=coding123
+      - DB_USERNAME=root
+      - DB_DATABASE=aipexbase
+    expose:
+      - "8080"  # 暴露 Java 应用的 8080 端口
+    volumes: # 选择一个目录作为aipexbase 后端日志输出的路径
+      - /data/aipexbase/:/app/logs
+    depends_on:
+      - mysql-new
+
+  # MySQL 服务
+  mysql-new:
+    image: mysql:8.0
+    container_name: mysql-aipexbase
+    environment:
+      MYSQL_ROOT_PASSWORD: coding123  # 设置 root 密码
+      MYSQL_DATABASE: aipexbase  # 创建默认数据库
+    ports:
+      - "3307:3306"  # 映射 MySQL 端口到主机
+    volumes:
+      - /data/aipexbase/mysql-data:/var/lib/mysql  # 数据持久化存储，可修改为自定义目录 用来存放 mysql 数据
+      - ./mysql/init.sql:/docker-entrypoint-initdb.d/init.sql  # 挂载初始化 SQL 脚本
+
+  # Nginx 服务
+  nginx-new:
+    image: swr.cn-east-3.myhuaweicloud.com/kuafuai/aipexbase-nginx:20251020-3e0fea7
+    container_name: aipexbase-nginx
+    environment:
+      - VITE_APP_TYPE=PC
+      - VITE_APP_NAME=BAAS
+      - VITE_APP_BASE_API=/baas-api
+      - VITE_APP_SERVICE_API=http://127.0.0.1:8080
+      - VITE_PROJECT_API_ENDPOINT=http://127.0.0.1:8080
+    ports:
+      - "8081:80"  # 将 Nginx 映射到主机的 8081 端口
+    depends_on:
+      - backend-new  # 等待前端服务启动
+
+volumes:
+  mysql-data:
+    driver: local
+
