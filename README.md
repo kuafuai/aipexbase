@@ -82,10 +82,10 @@ npm run dev
 
 
 ## 🚀 服务器 Docker Compose 快速部署（推荐）
-  [**安装指南**](./install/INSTALL.md)
+  [**安装指南**](./docs/INSTALL.md)
 
 ## 🚀 集成 AI IDE（如 Trae、Cursor 等）极速构建您的应用
-  [**集成指南**](./install/INSTALL.md)
+  [**集成指南**](./docs/IntegrationAI.md)
 
 ## 🚀 下一步
 [**📅 RoadMap**](./docs/ROADMAP.md)
