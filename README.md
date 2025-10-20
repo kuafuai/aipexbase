@@ -99,7 +99,7 @@ npm run dev
     npm install aipexbase-js
     ```
 
-## **服务器 Docker Compose 快速部署（推荐）**
+## 🚀 服务器 Docker Compose 快速部署（推荐）
   [**安装指南**](./install/INSTALL.md)
 
 
