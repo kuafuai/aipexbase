@@ -106,4 +106,7 @@ npm run dev
 让每一个开发者、每一个 AI Agent，都能轻松构建具备完整后端能力的智能应用。
 
 aipexbase 致力于成为 AI 应用开发的基础设施与行业标准，推动 AI 原生开发的普及和发展。
+
+## 联系我们
+📮邮箱：service@kuafuai.net
  
