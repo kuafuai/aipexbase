@@ -59,9 +59,14 @@
 ## 在 mcp server token所对应的 aipexbase 应用中自动创建数据库表
 <img width="700" height="406" alt="image" src="https://github.com/user-attachments/assets/98bb3fcf-af53-42f8-bb51-57ea793d1472" />
 
+## 管理端可查看表的创建情况
+<img width="3324" height="1982" alt="image" src="https://github.com/user-attachments/assets/dde22ba8-5063-4a4d-8b27-c9adf43549b4" />
+
 
 ## 项目初具模样
 <img width="700" height="406" alt="image" src="https://github.com/user-attachments/assets/1b0712f4-0345-49f7-9d6e-1007de79753e" />
+
+## 
 
 
 
