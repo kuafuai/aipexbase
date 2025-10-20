@@ -1,4 +1,4 @@
-# aipexbase
+# AIPEXBASE
 
 <p align="center">
   <strong>AI 时代的后端即服务基础设施</strong>
@@ -91,7 +91,7 @@ npm run dev
 [**📅 RoadMap**](./docs/ROADMAP.md)
 
 ## 使用手册
-[AipexBase 使用手册](https://vvx03gck2p.feishu.cn/docx/LSsLdYZQfoAo3zxTkwrcJuGVnC3)
+[aipexBase 使用手册](https://vvx03gck2p.feishu.cn/docx/LSsLdYZQfoAo3zxTkwrcJuGVnC3)
 
 ## 🎥 功能演示
 **[功能演示视频 - Coming Soon]**
