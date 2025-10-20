@@ -52,7 +52,8 @@ aipexbase 通过标准化的 AI 原生后端能力，让开发者**无需再关�
 
 ## 🎯 快速开始
 
-### 前提条件
+### 配置要求（本地启动）
+- Linux
 - Java 1.8+
 - Node.js 18+
 - MySQL 8.0+ 
@@ -79,29 +80,12 @@ npm install
 npm run dev
 ```
 
-4. **在aipexbase平台创建应用**
-- 访问管理后台
-- 创建新应用，获取 App KEY.
-
-5. **集成到 Cursor 或 Trae 编码工具**
-- **集成MCP**
-    ```json
-    {
-      "mcpServers": {
-        "aipexbase-mcp-server": {
-          "url": "https://域名/mcp/sse?token=APP_KEY"
-        }
-      }
-    }
-    ```
-- **集成到前端工程**
-    ```bash
-    npm install aipexbase-js
-    ```
 
 ## 🚀 服务器 Docker Compose 快速部署（推荐）
   [**安装指南**](./install/INSTALL.md)
 
+## 🚀 集成 AI IDE（如 Trae、Cursor 等）极速构建您的应用
+  [**集成指南**](./install/INSTALL.md)
 
 ## 🚀 下一步
 [**📅 RoadMap**](./docs/ROADMAP.md)
