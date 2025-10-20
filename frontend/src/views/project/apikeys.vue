@@ -258,7 +258,7 @@ const newKey = ref({
 // 页面加载时获取密钥列表
 onMounted(() => {
   // 获取API基础地址
-  apiBaseUrl.value = import.meta.env.PROJECT_API_ENDPOINT || 'http://localhost:8080/api';
+  apiBaseUrl.value = import.meta.env.VITE_PROJECT_API_ENDPOINT || 'http://HOST:PORT/baas-api';
   fetchKeys();
 });
 
