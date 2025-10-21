@@ -22,3 +22,39 @@
 docker-compose up --build -d
 ```
 
+
+### 备注
+如果自行在外部搭建代理服务转发请求到 aipexbase 则需要配置如下代理配置，以 nginx 片段配置文件举例
+```bash
+    location / {
+        root /usr/share/nginx;
+        try_files $uri $uri/ /index.html;
+    }
+    location /baas-api {
+        proxy_pass http://1.1.1.1:8080;
+        rewrite ^/baas-api/(.*)$ /$1 break;
+        proxy_set_header REMOTE-HOST $remote_addr;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+    location /mcp {
+       proxy_pass http://1.1.1.1:8080;
+       proxy_set_header Host $host;
+
+       # 保留客户端真实 IP
+       proxy_set_header X-Real-IP $remote_addr;
+       proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+       proxy_set_header X-Forwarded-Proto $scheme;
+       proxy_set_header Connection '';
+       proxy_http_version 1.1;
+       proxy_buffering off;
+       proxy_cache off;
+
+       # 保持长连接
+       proxy_read_timeout 86400s;
+       proxy_send_timeout 86400s;
+    }
+```
+
