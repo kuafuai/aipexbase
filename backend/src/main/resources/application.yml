@@ -72,7 +72,7 @@ message:
 
 
 storage:
-  type: ${STORAGE_TYPE:s3}
+  type: ${STORAGE_TYPE:local}
   s3:
     access_key: ${S3_ACCESS_KEY:access_key}
     secret_key: ${S3_SECRET_KEY:secret_key}
