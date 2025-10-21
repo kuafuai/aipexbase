@@ -25,6 +25,8 @@
   特别感谢 <a href="https://www.codeflying.net/"><strong>码上飞</strong></a> 的鼎力支持 · 共同推动 AI 开发新纪元
 </p> 
 
+<img src="docs/aipexbase.png">
+
 ## 🚀 核心理念
 
 **不写后端，也能拥有完整后端**
@@ -94,7 +96,7 @@ npm run dev
 [aipexBase 使用手册](https://vvx03gck2p.feishu.cn/docx/LSsLdYZQfoAo3zxTkwrcJuGVnC3)
 
 ## 🎥 功能演示
-([功能演示视频](https://kuafuai.obs.cn-east-3.myhuaweicloud.com/codeflying/static/media/aipexbase-zh.mp4))
+([功能演示视频](https://www.bilibili.com/video/BV1icW9zRERh/))
 
 
 ## 🌟 愿景
