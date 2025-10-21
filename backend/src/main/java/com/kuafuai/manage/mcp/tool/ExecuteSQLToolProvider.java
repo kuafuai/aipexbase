@@ -67,8 +67,6 @@ public class ExecuteSQLToolProvider implements MCPToolProvider {
                         .build();
             }
             String ddlQuery = (String) params.get("ddl_query");
-            System.out.println(ddlQuery);
-
 
             List<TableVo> tableVos = JSON.parseObject(ddlQuery, new TypeToken<List<TableVo>>() {
             }.getType());
