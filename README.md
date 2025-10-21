@@ -25,7 +25,9 @@
   特别感谢 <a href="https://www.codeflying.net/"><strong>码上飞</strong></a> 的鼎力支持 · 共同推动 AI 开发新纪元
 </p> 
 
+<p align="center">
 <img src="docs/aipexbase.png">
+</p>
 
 ## 🚀 核心理念
 
