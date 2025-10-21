@@ -70,6 +70,12 @@
 点击链接安装 aipexbase 智能体 https://s.trae.com.cn/a/cfa8bb
 
 
+## 最后欢迎提交更多 MCP TOOL
+```bash
+../backend/src/main/java/com/kuafuai/manage/mcp/tool/
+```
+
+
 
 
 
