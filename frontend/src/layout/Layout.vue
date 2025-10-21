@@ -56,7 +56,7 @@
 
   // 说明文档配置 - 请在这里填写您的文档网址
   const documentationConfig = {
-    url: 'https://www.baidu.com', // 请替换为您的实际文档网址
+    url: 'https://vvx03gck2p.feishu.cn/docx/LSsLdYZQfoAo3zxTkwrcJuGVnC3', // 请替换为您的实际文档网址
     openInNewTab: true // 是否在新标签页中打开
   }
 
