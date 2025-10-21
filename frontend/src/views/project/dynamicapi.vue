@@ -433,7 +433,7 @@ const validateServiceUrl = () => {
 
   // 增强的HTTP/HTTPS URL验证，支持更多顶级域名和URL参数
   const httpUrlRegex = /^https?:\/\/([a-zA-Z0-9.-]+(:[a-zA-Z0-9.&%$-]+)*@)*((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}|([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.([a-zA-Z]{2,}))(:[0-9]+)*(\/($|[a-zA-Z0-9.,?'\\+&%$#=~_-]*\/?)*)?(\?[a-zA-Z0-9.,?'\\+&%$#=~_-]*)?(\#[a-zA-Z0-9.,?'\\+&%$#=~_-]*)?$/;
-  
+
   if (!httpUrlRegex.test(url)) {
     proxy.$modal.msgError('URL格式不正确');
     return false;
@@ -474,7 +474,7 @@ const addService = async () => {
       headerTemplate: newService.value.headers,          // headers → header
       bodyTemplate: newService.value.body,      // body → bodyTemplate
       dataRaw: newService.value.dataRaw,       // 新增：返回值样例
-      vars: JSON.stringify(testVarValues.value,null, 2)                // 新增：提取的模版模版变量
+      vars: JSON.stringify(testVarValues.value, null, 2)                // 新增：提取的模版模版变量
     };
 
     await proxy.$api.dynamicapi.add(appId, backendData);
@@ -596,20 +596,38 @@ const testNewService = async () => {
       testing.value = false;
       return;
     }
+    console.log('---------', body);
 
     const vars = testVarValues.value;
     console.log(testVarValues.value)
 
     const replaceVars = (obj) => {
+      // 字符串 -> 做占位符替换
       if (typeof obj === 'string') {
-        return obj.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => vars[key]?.value || '');
-      } else if (typeof obj === 'object' && obj !== null) {
+        return obj.replace(/\{\{\s*([a-zA-Z0-9_]+)\s*\}\}/g, (_, key) => {
+          // 如果找不到 key，就返回空字符串（或你可以改成保留原变量）
+          const v = vars[key];
+          // 支持 vars[key] 是对象{ value: ... } 的情况
+          return v && v.value != null ? String(v.value) : '';
+        });
+      }
+
+      // 数组 -> 递归 map 每一项，保持数组结构
+      if (Array.isArray(obj)) {
+        return obj.map(item => replaceVars(item));
+      }
+
+      // 非空对象 -> 递归每个键（保持对象结构）
+      if (typeof obj === 'object' && obj !== null) {
         const newObj = {};
         for (const [k, v] of Object.entries(obj)) {
           newObj[k] = replaceVars(v);
         }
         return newObj;
-      } else return obj;
+      }
+
+      // 其他（number / boolean / null / undefined）直接返回
+      return obj;
     };
 
     headers = replaceVars(headers);
