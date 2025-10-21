@@ -65,7 +65,7 @@ public class McpBusinessService {
     /**
      * 获取 appId下的API信息
      */
-    public String getBaasUseApiDescription(String appId) {
+    public String getAipexbaseUseApiDescription(String appId) {
         List<DynamicApiSetting> list = dynamicApiSettingService.lambdaQuery().eq(DynamicApiSetting::getAppId, appId).list();
         if (list == null || list.isEmpty()) {
             return "";
@@ -119,26 +119,26 @@ public class McpBusinessService {
     }
 
     /**
-     * baas js 使用文档
+     * aipexbase js 使用文档
      */
-    public String getBaasUseDescription() {
+    public String getAipexbaseUseDescription() {
 
-        return "【baas_js 前端 SDK 介绍】" +
-                "baas_js 是一个轻量的前端 JavaScript SDK，提供身份认证、数据表 CRUD、以及自定义 API 调用能力。\n" +
+        return "【aipexbase-js 前端 SDK 介绍】" +
+                "aipexbase-js 是一个轻量的前端 JavaScript SDK，提供身份认证、数据表 CRUD、以及自定义 API 调用能力。\n" +
                 "### 安装\n" +
                 "\n" +
                 "```bash\n" +
-                "npm install baas_js\n" +
+                "npm install aipexbase-js\n" +
                 "# 或\n" +
-                "yarn add baas_js\n" +
+                "yarn add aipexbase-js\n" +
                 "```" +
                 "### 快速开始\n" +
                 "\n" +
                 "```javascript\n" +
-                "import { createClient } from \"baas_js\"; // ESM\n" +
+                "import { createClient } from \"aipexbase-js\"; // ESM\n" +
                 "\n" +
                 "const client = createClient({\n" +
-                "  baseUrl: \"https://your-baas.example.com\",\n" +
+                "  baseUrl: \"https://your-aipexbase.example.com\",\n" +
                 "  apiKey: \"YOUR_API_KEY\",\n" +
                 "});\n" +
                 "\n" +
@@ -179,7 +179,7 @@ public class McpBusinessService {
                 "\n" +
                 "- `login({ user_name?, phone?, email?, password })`\n" +
                 "  - 三选一：`user_name` / `phone` / `email`，必须提供其一；同时必须提供 `password`。\n" +
-                "  - 成功后会自动保存 token ，localStorage 存储key `baas_token`。\n" +
+                "  - 成功后会自动保存 token ，localStorage 存储key `aipexbase_token`。\n" +
                 "  - 请求：`POST /login/passwd`，请求体：`{ phone: account, password }`。\n" +
                 "\n" +
                 "- `getUser`\n" +

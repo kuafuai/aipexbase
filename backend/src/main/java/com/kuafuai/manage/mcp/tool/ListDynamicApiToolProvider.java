@@ -60,7 +60,7 @@ public class ListDynamicApiToolProvider implements MCPToolProvider {
                         .isError(true)
                         .build();
             }
-            McpSchema.Content content = new McpSchema.TextContent("这里有一些第三方服务的 API，你可以参照这些 api 的调用方式结合 baas_js 制作你的应用:\n"+mcpBusinessService.getBaasUseApiDescription(appId));
+            McpSchema.Content content = new McpSchema.TextContent("这里有一些第三方服务的 API，你可以参照这些 api 的调用方式结合 aipexbase-js 制作你的应用:\n"+mcpBusinessService.getAipexbaseUseApiDescription(appId));
             result.add(content);
             return McpSchema.CallToolResult.builder()
                     .content(result)
