@@ -63,11 +63,11 @@
 <img width="3324" height="1982" alt="image" src="https://github.com/user-attachments/assets/dde22ba8-5063-4a4d-8b27-c9adf43549b4" />
 
 
-## 项目初具模样
+## 项目请持续与AI对话和修改进一步完善功能
 <img width="700" height="406" alt="image" src="https://github.com/user-attachments/assets/1b0712f4-0345-49f7-9d6e-1007de79753e" />
 
-## 
-
+## Trae 中集成 Aipexbase
+点击链接安装 aipexbase 智能体 https://s.trae.com.cn/a/cfa8bb
 
 
 
