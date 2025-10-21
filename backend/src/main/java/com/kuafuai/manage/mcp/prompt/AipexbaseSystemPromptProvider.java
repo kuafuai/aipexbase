@@ -38,7 +38,7 @@ public class AipexbaseSystemPromptProvider implements MCPPromptProvider {
                 .content(McpSchema.TextContent.builder()
                         // 这里需要将用户在应用配置中配置的定制化前端开发框架偏好注入到上下文中。
                         .text("在任何应用研发任务开始前，如果当前项目目录下没有前端工程项目，务必帮助用户以当前目录作为工作目录初始化前端项目" +
-                                "【IMPORTANT】在任何情况下都要使用 baas_js 这个前端 SDK 进行前端编码。SDK 安装方式 'npm install baas_js' 并严格参照使用样例:\n"+mcpBusinessService.getAipexbaseUseDescription())
+                                "【IMPORTANT】在任何情况下都要使用 aipexbase-js 这个前端 SDK 进行前端编码。SDK 安装方式 'npm install aipexbase-js' 并严格参照使用样例:\n"+mcpBusinessService.getAipexbaseUseDescription())
                         .build())
                 .build());
 

@@ -89,9 +89,9 @@
         </div>
         <div class="text-sm text-blue-300">
           <div class="bg-gray-900 text-gray-100 p-3 rounded-lg font-mono text-xs overflow-x-auto">
-            <div class="text-gray-400">import { createClient } from 'baas_js';</div>
+            <div class="text-gray-400">import { createClient } from 'aipexbase-js';</div>
             <div class="mt-2"></div>
-            <div class="text-gray-400">const baas = createClient({</div>
+            <div class="text-gray-400">const aipexbase = createClient({</div>
             <div class="text-gray-300 ml-2">baseUrl: '{{ apiBaseUrl }}',</div>
             <div class="text-gray-300 ml-2">apiKey: 'YOUR_API_KEY'</div>
             <div class="text-gray-400">});</div>

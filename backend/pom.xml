@@ -12,9 +12,9 @@
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>com.kuafu</groupId>
-    <artifactId>baas</artifactId>
+    <artifactId>aipexbase</artifactId>
     <version>0.0.1-SNAPSHOT</version>
-    <name>baas</name>
+    <name>aipexbase</name>
 
     <properties>
         <java.version>1.8</java.version>
