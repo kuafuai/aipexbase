@@ -16,16 +16,37 @@
         >
           控制台
         </h1>
+
+        <div v-if="versionInfo"
+             class="flex items-center space-x-2 px-3 py-1 rounded-lg border border-white/20 text-sm ml-4">
+          <span class="text-white/70">版本 {{ versionInfo.version }}</span>
+          <template v-if="versionInfo.hasUpdate">
+            <span class="text-yellow-400 font-semibold">有新版本！</span>
+            <a
+                href="https://gitee.com/kuafuai/aipexbase"
+                target="_blank"
+                class="text-cyan-400 underline hover:text-cyan-300 transition-colors"
+            >
+              查看更新
+            </a>
+          </template>
+          <template v-else>
+            <span class="text-green-400 font-semibold">已是最新版本</span>
+          </template>
+        </div>
+
       </div>
+
 
       <div class="flex items-center space-x-4">
         <!-- 说明文档按钮 -->
-        <div 
+        <div
             class="flex items-center space-x-2 px-3 py-2 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all duration-300"
             @click="openDocumentation"
         >
           <svg class="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
           <span class="text-sm text-white/80">说明文档</span>
         </div>
@@ -35,12 +56,13 @@
           <span class="text-sm text-white/80">运行中</span>
         </div>
         <!-- 登出按钮 -->
-        <div 
+        <div
             class="flex items-center space-x-2 px-3 py-2 bg-red-600/20 border border-red-500/30 rounded-lg cursor-pointer hover:bg-red-600/30 hover:border-red-500/50 transition-all duration-300"
             @click="logout"
         >
           <svg class="w-4 h-4 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
           </svg>
           <span class="text-sm text-red-400">登出</span>
         </div>
@@ -60,16 +82,18 @@
     openInNewTab: true // 是否在新标签页中打开
   }
 
+  const versionInfo = ref(null)
+
   function logout() {
     proxy.$modal.confirm(
-      '确定要登出吗？',
-      '确认登出',
-      {
-        confirmButtonText: '确定登出',
-        cancelButtonText: '取消',
-        type: 'warning',
-        confirmButtonClass: 'el-button--danger'
-      }
+        '确定要登出吗？',
+        '确认登出',
+        {
+          confirmButtonText: '确定登出',
+          cancelButtonText: '取消',
+          type: 'warning',
+          confirmButtonClass: 'el-button--danger'
+        }
     ).then(() => {
       proxy.$api.login.logout().then((res) => {
         localStorage.removeItem('token');
@@ -90,12 +114,20 @@
       proxy.$modal.msgWarning('请先配置文档网址');
       return;
     }
-    
+
     if (documentationConfig.openInNewTab) {
       window.open(documentationConfig.url, '_blank');
     } else {
       window.location.href = documentationConfig.url;
     }
   }
+
+  onMounted(() => {
+    proxy.$api.setting.version().then((res) => {
+      if (res.success) {
+        versionInfo.value = res.data
+      }
+    })
+  });
 
 </script>

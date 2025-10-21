@@ -13,11 +13,17 @@ export default {
             method: "get",
         });
     },
-    saveSetting(appId, data){
+    saveSetting(appId, data) {
         return request({
             url: "/admin/system/settings/" + appId,
             method: "post",
             data: data
+        });
+    },
+    version() {
+        return request({
+            url: "/admin/version",
+            method: "get",
         });
     }
 };

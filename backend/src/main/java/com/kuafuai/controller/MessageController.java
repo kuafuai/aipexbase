@@ -62,8 +62,8 @@ public class MessageController {
     private MailDefinition createMailDefinition(String appId, String content) {
         Map<String, String> configMap = dynamicConfigBusinessService.getSystemConfig(appId);
         String host = configMap.getOrDefault(CONFIG_MAIL_HOST, "smtp.126.com");
-        String userName = configMap.getOrDefault(CONFIG_MAIL_USER, "kuafuai@126.com");
-        String password = configMap.getOrDefault(CONFIG_MAIL_PASSWD, "HOXVPZDIOXTNYJAX");
+        String userName = configMap.getOrDefault(CONFIG_MAIL_USER, "");
+        String password = configMap.getOrDefault(CONFIG_MAIL_PASSWD, "");
         Integer port = Integer.parseInt(configMap.getOrDefault(CONFIG_MAIL_PORT, "465"));
 
         return MailDefinition.builder()

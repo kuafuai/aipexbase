@@ -8,13 +8,31 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app")
 public class AppConfig {
     private static String profile;
+    private static String version;
+    private static String channel;
 
     public void setProfile(String profile) {
         AppConfig.profile = profile;
     }
 
+    public void setVersion(String version) {
+        AppConfig.version = version;
+    }
+
+    public void setChannel(String channel) {
+        AppConfig.channel = channel;
+    }
+
     public static String getProfile() {
         return profile;
+    }
+
+    public static String getVersion() {
+        return version;
+    }
+
+    public static String getChannel() {
+        return channel;
     }
 
     /**

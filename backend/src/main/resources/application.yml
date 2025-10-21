@@ -11,6 +11,8 @@ mybatis:
 app:
   # 文件路径 示例（ Windows配置D:/kuafu/uploadPath，Linux配置 /home/kuafu/uploadPath）
   profile: ${UPLOAD_PATH:../uploadPath}
+  version: ${VERSION:1.0.0}
+  channel: ${CHANNEL:source}
 
 knife4j:
   enable: true
