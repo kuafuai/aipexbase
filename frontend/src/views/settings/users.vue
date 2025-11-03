@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-6">
-    <p>规划中(近期即将上线)...</p>
+    <p>Planning (coming soon)...</p>
   </div>
 </template>
 

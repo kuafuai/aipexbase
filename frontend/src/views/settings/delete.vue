@@ -5,14 +5,14 @@
       <div class="p-6 border-b border-red-500/20">
         <div class="flex items-center space-x-3">
           <div class="w-3 h-3 bg-red-400 rounded-full animate-pulse"></div>
-          <h2 class="text-xl font-semibold text-red-300">危险操作</h2>
+          <h2 class="text-xl font-semibold text-red-300">{{ t('page.settings_delete.danger_title') }}</h2>
         </div>
       </div>
 
       <div class="p-6 space-y-4">
         <div class="text-white/80">
-          <p class="mb-2">删除应用将永久移除所有相关数据，此操作不可撤销。</p>
-          <p class="text-sm text-white/60">包括：数据表、API密钥、配置信息等</p>
+          <p class="mb-2">{{ t('page.settings_delete.warning') }}</p>
+          <p class="text-sm text-white/60">{{ t('page.settings_delete.includes') }}</p>
         </div>
         <el-button
             type="danger"
@@ -25,7 +25,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
           </svg>
-          删除应用
+          {{ t('page.settings_delete.delete_btn') }}
         </el-button>
       </div>
 
@@ -36,6 +36,7 @@
 
 <script setup>
 const {proxy} = getCurrentInstance();
+const t = proxy.$tt;
 const appId = proxy.$route.params.id;
 
 const deleting = ref(false);
@@ -54,38 +55,38 @@ const fetchAppInfo = async () => {
     appConfigJson.value = JSON.parse(appInfoConfig.value.configJson);
   } catch (error) {
     console.error('Failed to fetch app info:', error);
-    proxy.$modal.msgError('获取应用信息失败');
+    proxy.$modal.msgError(t('page.settings_delete.fetch_info_failed'));
   }
 };
 
 const deleteApp = async () => {
   try {
     const {value} = await proxy.$modal.prompt(
-        `请输入应用名称 "${appInfoConfig.value.appName}" 以确认删除操作`,
-        '删除应用',
+        t('page.settings_delete.confirm_message', { name: appInfoConfig.value.appName }),
+        t('page.settings_delete.confirm_title'),
         {
-          confirmButtonText: '确认删除',
-          cancelButtonText: '取消',
+          confirmButtonText: t('page.settings_delete.confirm_ok'),
+          cancelButtonText: t('page.settings_delete.confirm_cancel'),
           type: 'error',
           inputPattern: new RegExp(`^${appInfoConfig.value.appName.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`),
-          inputErrorMessage: '应用名称不匹配，请重新输入'
+          inputErrorMessage: t('page.settings_delete.name_mismatch')
         }
     );
 
     // 额外校验输入的应用名称
     if (value !== appInfoConfig.value.appName) {
-      proxy.$modal.msgError('应用名称不匹配，删除操作已取消');
+      proxy.$modal.msgError(t('page.settings_delete.name_mismatch_cancelled'));
       return;
     }
 
     deleting.value = true;
     await proxy.$api.project.delete(appId);
-    proxy.$modal.msgSuccess('应用删除成功');
+    proxy.$modal.msgSuccess(t('page.settings_delete.delete_success'));
     proxy.$router.push('/');
   } catch (error) {
     if (error !== 'cancel') {
       console.error('Failed to delete app:', error);
-      proxy.$modal.msgError('删除应用失败');
+      proxy.$modal.msgError(t('page.settings_delete.delete_failed'));
     }
   } finally {
     deleting.value = false;

@@ -11,7 +11,7 @@
 
       <div class="p-6 space-y-4">
         <div class="text-white/80">
-          <p class="mb-2">规划中....</p>
+          <p class="mb-2">{{ t('page.settings_cleanup.planning') }}</p>
         </div>
       </div>
 
@@ -22,5 +22,6 @@
 
 <script setup>
 const {proxy} = getCurrentInstance();
+const t = proxy.$tt;
 const appId = proxy.$route.params.id;
 </script>

@@ -8,8 +8,8 @@
           <div class="flex items-center space-x-3">
             <div class="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
             <div>
-              <h2 class="text-xl font-semibold text-cyan-300">权限策略</h2>
-              <p class="text-xs text-white/60">管理表的行级安全策略</p>
+              <h2 class="text-xl font-semibold text-cyan-300">{{ t('page.settings_permission.title') }}</h2>
+              <p class="text-xs text-white/60">{{ t('page.settings_permission.subtitle') }}</p>
             </div>
           </div>
           <el-button
@@ -22,7 +22,7 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
-            保存
+            {{ t('page.settings_permission.save') }}
           </el-button>
         </div>
       </div>
@@ -50,19 +50,19 @@
                       <div class="flex items-center space-x-3">
                         <h4 class="text-white font-medium">{{ table.tableName }}</h4>
                       </div>
-                      <p class="text-white/70 text-sm mt-1">{{ table.description || '暂无描述' }}</p>
+                      <p class="text-white/70 text-sm mt-1">{{ table.description || '' }}</p>
                     </div>
                   </div>
 
                   <div class="flex items-center space-x-4 ml-6">
                     <div class="flex items-center space-x-2 bg-white/5 rounded-lg px-3 py-2">
-                      <span class="text-white/90 text-sm font-medium">公开访问</span>
+                      <span class="text-white/90 text-sm font-medium">{{ t('page.settings_permission.public_access') }}</span>
                       <el-checkbox
                           class="text-white"
                           :label="table.tableName"
                           :value="table.tableName"
                       >
-                        <span class="text-white/90">启用</span>
+                        <span class="text-white/90">{{ t('page.settings_permission.enable') }}</span>
                       </el-checkbox>
                     </div>
 
@@ -91,7 +91,7 @@
                         d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"/>
                 </svg>
               </div>
-              <p class="text-white/60">暂无数据表</p>
+              <p class="text-white/60">{{ t('page.settings_permission.no_tables') }}</p>
             </div>
           </div>
 
@@ -103,6 +103,7 @@
 
 <script setup>
 const {proxy} = getCurrentInstance();
+const t = proxy.$tt;
 const appId = proxy.$route.params.id;
 
 const props = {
@@ -129,7 +130,7 @@ const fetchAppInfo = async () => {
     appConfigJson.value = JSON.parse(appInfoConfig.value.configJson);
   } catch (error) {
     console.error('Failed to fetch app info:', error);
-    proxy.$modal.msgError('获取应用信息失败');
+    proxy.$modal.msgError(t('page.settings_permission.fetch_info_failed'));
   }
 };
 
@@ -148,10 +149,10 @@ async function saveLoginConfig() {
     appInfoConfig.value.configJson = JSON.stringify(appConfigJson.value);
     await proxy.$api.project.update(appId, appInfoConfig.value);
 
-    proxy.$modal.msgSuccess('保存成功');
+    proxy.$modal.msgSuccess(t('page.settings_permission.save_success'));
   } catch (error) {
     console.error('Failed to update app name:', error);
-    proxy.$modal.msgError('保存失败');
+    proxy.$modal.msgError(t('page.settings_permission.save_failed'));
   } finally {
     saving.value = false;
   }
@@ -159,7 +160,7 @@ async function saveLoginConfig() {
 }
 
 const openTableSettings = (table) => {
-  proxy.$modal.alertSuccess('规划中....');
+  proxy.$modal.alertSuccess(t('page.settings_permission.planning'));
 }
 
 </script>

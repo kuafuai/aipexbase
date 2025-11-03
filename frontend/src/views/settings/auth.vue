@@ -7,8 +7,8 @@
           <div class="flex items-center space-x-3">
             <div class="w-3 h-3 bg-cyan-400 rounded-full animate-pulse"></div>
             <div>
-              <h2 class="text-xl font-semibold text-cyan-300">登录策略</h2>
-              <p class="text-xs text-white/60">通过多种登录方式和提供商，实现用户登录认证。</p>
+              <h2 class="text-xl font-semibold text-cyan-300">{{ t('page.settings_auth.title') }}</h2>
+              <p class="text-xs text-white/60">{{ t('page.settings_auth.subtitle') }}</p>
             </div>
           </div>
           <el-button
@@ -21,7 +21,7 @@
             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
             </svg>
-            保存
+            {{ t('page.settings_auth.save') }}
           </el-button>
         </div>
       </div>
@@ -36,7 +36,7 @@
                       d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
               </svg>
             </div>
-            <span class="text-white/80 font-medium">是否开启登录</span>
+            <span class="text-white/80 font-medium">{{ t('page.settings_auth.enable_login') }}</span>
           </div>
           <el-switch
               v-model="appInfoConfig.needAuth"
@@ -53,7 +53,7 @@
                       d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/>
               </svg>
             </div>
-            <span class="text-white/80 font-medium">登录关联业务</span>
+            <span class="text-white/80 font-medium">{{ t('page.settings_auth.bind_business') }}</span>
           </div>
           <el-select
               v-model="appInfoConfig.authTable"
@@ -62,7 +62,7 @@
               class="custom-input"
               style="width: 300px;"
               size="large"
-              placeholder="请选择关联业务"
+              :placeholder="t('page.settings_auth.bind_business_placeholder')"
           />
         </div>
       </div>
@@ -84,7 +84,7 @@
                   <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm0 18c-4.41 0-8-3.59-8-8s3.59-8 8-8 8 3.59 8 8-3.59 8-8 8z"/>
                 </svg>
               </div>
-              <span class="text-white/90 font-medium">微信</span>
+              <span class="text-white/90 font-medium">{{ t('page.settings_auth.provider_wechat') }}</span>
             </div>
             <div class="flex items-center space-x-3">
               <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -105,7 +105,7 @@
                         d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
               </div>
-              <span class="text-white/90 font-medium">Email</span>
+              <span class="text-white/90 font-medium">{{ t('page.settings_auth.provider_email') }}</span>
             </div>
             <div class="flex items-center space-x-3">
               <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,7 +128,7 @@
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
               </div>
-              <span class="text-white/90 font-medium">Google</span>
+              <span class="text-white/90 font-medium">{{ t('page.settings_auth.provider_google') }}</span>
             </div>
             <div class="flex items-center space-x-3">
               <svg class="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -165,11 +165,11 @@
                         d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">微信服务号APPID</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.wechat_appid') }}</span>
             </div>
             <el-input
                 v-model="weChatConfig['oauth2.wechat.app_id']"
-                placeholder="微信服务号APPID"
+                :placeholder="t('page.settings_auth.wechat_appid_placeholder')"
                 class="custom-input"
                 size="large"
             />
@@ -183,11 +183,11 @@
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">微信服务号SECRET</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.wechat_secret') }}</span>
             </div>
             <el-input
                 v-model="weChatConfig['oauth2.wechat.app_secret']"
-                placeholder="微信服务号SECRET"
+                :placeholder="t('page.settings_auth.wechat_secret_placeholder')"
                 type="password"
                 class="custom-input"
                 size="large"
@@ -203,15 +203,15 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">重定向地址</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.redirect_uri') }}</span>
             </div>
             <el-input
                 v-model="weChatConfig['oauth2.wechat.redirect_uri']"
-                placeholder="例如：https://your-domain.com/auth/redirect"
+                :placeholder="t('page.settings_auth.redirect_uri_placeholder')"
                 class="custom-input"
                 size="large"
             />
-            <p class="text-xs text-white/60">当oauth2认证服务商通过认证后页面会重定向到该地址，并在地址后方拼接 &token=xxxx 表示用户认证通过后的令牌</p>
+            <p class="text-xs text-white/60">{{ t('page.settings_auth.redirect_uri_tip') }}</p>
           </div>
 
           <!-- 微信回调地址（前半部分，拼接固定后缀） -->
@@ -222,17 +222,17 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">回调地址</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.callback_uri') }}</span>
             </div>
             <el-input
                 v-model="weChatConfig['oauth2.wechat.callback_uri']"
-                placeholder="例如：https://your-domain.com"
+                :placeholder="t('page.settings_auth.callback_uri_placeholder')"
                 class="custom-input"
                 size="large"
             >
               <template #append>/callback/wechat</template>
             </el-input>
-            <p class="text-xs text-white/60">oauth2授权服务认证时的回调地址，需要和认证服务商处配置的回调地址保持完全一致</p>
+            <p class="text-xs text-white/60">{{ t('page.settings_auth.callback_uri_tip') }}</p>
           </div>
         </div>
 
@@ -246,11 +246,11 @@
                         d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">SMTP服务器地址</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.smtp_host') }}</span>
             </div>
             <el-input
                 v-model="emailConfig['mail.host']"
-                placeholder="例如：smtp.qq.com"
+                :placeholder="t('page.settings_auth.smtp_host_placeholder')"
                 class="custom-input"
                 size="large"
             />
@@ -264,11 +264,11 @@
                         d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">端口号</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.smtp_port') }}</span>
             </div>
             <el-input
                 v-model="emailConfig['mail.port']"
-                placeholder="例如：465"
+                :placeholder="t('page.settings_auth.smtp_port_placeholder')"
                 class="custom-input"
                 size="large"
             />
@@ -282,11 +282,11 @@
                         d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">发件邮箱</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.smtp_user') }}</span>
             </div>
             <el-input
                 v-model="emailConfig['mail.user']"
-                placeholder="例如：admin@example.com"
+                :placeholder="t('page.settings_auth.smtp_user_placeholder')"
                 class="custom-input"
                 size="large"
             />
@@ -300,12 +300,12 @@
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">授权码/密码</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.smtp_pass') }}</span>
             </div>
             <el-input
                 v-model="emailConfig['mail.passwd']"
                 type="password"
-                placeholder="请输入授权码"
+                :placeholder="t('page.settings_auth.smtp_pass_placeholder')"
                 class="custom-input"
                 size="large"
                 show-password
@@ -321,10 +321,10 @@
                 </svg>
               </div>
               <div class="flex-1">
-                <span class="text-white/80 font-medium block mb-2">验证码模版</span>
+                <span class="text-white/80 font-medium block mb-2">{{ t('page.settings_auth.code_template') }}</span>
                 <el-input
                     v-model="emailConfig['login.mail.code_template']"
-                    placeholder="验证码模版,可以在合适的位置放入变量${{code}}"
+                    :placeholder="t('page.settings_auth.code_template_placeholder')"
                     type="textarea"
                     :rows="3"
                     class="custom-input"
@@ -346,11 +346,11 @@
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">Google Client ID</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.google_client_id') }}</span>
             </div>
             <el-input
                 v-model="googleConfig.clientId"
-                placeholder="Google OAuth Client ID"
+                :placeholder="t('page.settings_auth.google_client_id_placeholder')"
                 class="custom-input"
                 size="large"
             />
@@ -364,12 +364,12 @@
                         d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">Google Client Secret</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.google_client_secret') }}</span>
             </div>
             <el-input
                 v-model="googleConfig.clientSecret"
                 type="password"
-                placeholder="Google OAuth Client Secret"
+                :placeholder="t('page.settings_auth.google_client_secret_placeholder')"
                 class="custom-input"
                 size="large"
                 show-password
@@ -384,15 +384,15 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7l5 5m0 0l-5 5m5-5H6"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">重定向地址</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.redirect_uri') }}</span>
             </div>
             <el-input
                 v-model="googleConfig.redirectUri"
-                placeholder="例如：https://your-domain.com/auth/redirect"
+                :placeholder="t('page.settings_auth.redirect_uri_placeholder')"
                 class="custom-input"
                 size="large"
             />
-            <p class="text-xs text-white/60">当oauth2认证服务商通过认证后页面会重定向到该地址，并在地址后方拼接 &token=xxxx 表示用户认证通过后的令牌</p>
+            <p class="text-xs text-white/60">{{ t('page.settings_auth.redirect_uri_tip') }}</p>
           </div>
 
           <!-- Google 回调地址（前半部分，拼接固定后缀） -->
@@ -403,11 +403,11 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
                 </svg>
               </div>
-              <span class="text-white/80 font-medium">回调地址</span>
+              <span class="text-white/80 font-medium">{{ t('page.settings_auth.callback_uri') }}</span>
             </div>
             <el-input
                 v-model="googleConfig.callbackBase"
-                placeholder="例如：https://your-domain.com"
+                :placeholder="t('page.settings_auth.callback_uri_placeholder')"
                 class="custom-input"
                 size="large"
             >
@@ -423,6 +423,7 @@
 
 <script setup>
 const {proxy} = getCurrentInstance();
+const t = proxy.$tt;
 const appId = proxy.$route.params.id;
 
 const props = {
@@ -465,7 +466,7 @@ const fetchAppInfo = async () => {
     appConfigJson.value = JSON.parse(appInfoConfig.value.configJson);
   } catch (error) {
     console.error('Failed to fetch app info:', error);
-    proxy.$modal.msgError('获取应用信息失败');
+    proxy.$modal.msgError(t('page.settings_auth.fetch_info_failed'));
   }
 };
 
@@ -574,10 +575,10 @@ async function saveLoginConfig() {
       };
       await proxy.$api.setting.saveSetting(appId, googleSettings);
     }
-    proxy.$modal.msgSuccess('登录配置保存成功');
+    proxy.$modal.msgSuccess(t('page.settings_auth.login_save_success'));
   } catch (error) {
     console.error('Failed to update app name:', error);
-    proxy.$modal.msgError('保存失败');
+    proxy.$modal.msgError(t('page.settings_auth.save_failed'));
   } finally {
     saving.value = false;
   }
