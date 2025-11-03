@@ -4,23 +4,23 @@
     <div
         class="z-10 w-[380px] p-8 rounded-2xl bg-white/10 backdrop-blur-md border border-cyan-400/50 shadow-lg shadow-cyan-500/30">
       <h2 class="text-center text-2xl font-bold text-cyan-400 mb-8 tracking-widest">
-        控制台
+        {{ $t('page.login.title') }}
       </h2>
       <el-form :model="form" ref="formRef" :rules="rules" label-position="left">
-        <el-form-item label="邮箱" prop="email">
+        <el-form-item :label="$t('page.login.email')" prop="email">
           <el-input
               v-model="form.email"
-              placeholder="请输入邮箱"
+              :placeholder="$t('page.login.email_placeholder')"
               prefix-icon="User"
               clearable
           />
         </el-form-item>
 
-        <el-form-item label="密码" prop="password">
+        <el-form-item :label="$t('page.login.passwd')" prop="password">
           <el-input
               v-model="form.password"
               type="password"
-              placeholder="请输入密码"
+              :placeholder="$t('page.login.passwd_placeholder')"
               prefix-icon="Lock"
               show-password
               clearable
@@ -33,18 +33,18 @@
               class="w-full bg-cyan-500/90 hover:bg-cyan-400 transition-all duration-300 shadow-md shadow-cyan-400/50 animate-pulse"
               @click="handleLogin"
           >
-            登录系统
+            {{ $t('page.login.login_btn') }}
           </el-button>
         </div>
 
       </el-form>
       <div class="mt-4 text-center text-sm text-cyan-400">
-        还没有账号？
+        {{ $t('page.login.register_left') }}
         <span
             class="cursor-pointer text-cyan-300 hover:text-cyan-200 underline"
             @click="goRegister"
         >
-          立即注册
+          {{ $t('page.login.register_link') }}
         </span>
       </div>
     </div>
@@ -60,8 +60,8 @@ const form = ref({
 });
 
 const rules = {
-  email: [{required: true, message: "请输入邮箱", trigger: "blur"}],
-  password: [{required: true, message: "请输入密码", trigger: "blur"}],
+  email: [{required: true, message: proxy.$tt('page.login.email_placeholder'), trigger: "blur"}],
+  password: [{required: true, message: proxy.$tt('page.login.passwd_placeholder'), trigger: "blur"}],
 };
 
 function handleLogin() {
@@ -69,7 +69,6 @@ function handleLogin() {
     proxy.$api.login.loginPasswd(form.value).then((r) => {
       if (r.success) {
 
-        proxy.$modal.msgSuccess("登录成功");
         localStorage.setItem("token", r.data);
 
         let fullPath = proxy.$route.fullPath;

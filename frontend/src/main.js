@@ -10,9 +10,12 @@ const app = createApp(App);
 import ElementPlus from 'element-plus'
 import 'element-plus/dist/index.css'
 import zhCn from 'element-plus/es/locale/lang/zh-cn'
+import en from 'element-plus/es/locale/lang/en'
+const lang = import.meta.env.VITE_APP_LANGE || 'en'
+const elementLocale = lang === 'zh' ? zhCn : en
 
 app.use(ElementPlus, {
-    locale: zhCn,
+    locale: elementLocale,
 });
 
 // 注册element icon
@@ -22,6 +25,9 @@ for (const [key, component] of Object.entries(ElementPlusIconsVue)) {
     app.component(key, component)
 }
 
+import i18n from '@/i18n'
+app.use(i18n);
+app.config.globalProperties.$tt = i18n.global.t;
 
 // 路由
 import router from './router'

@@ -20,13 +20,13 @@
           <h2 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent truncate">
             {{ appId }}
           </h2>
-          <p class="text-sm text-white/60 truncate">项目控制台</p>
+          <p class="text-sm text-white/60 truncate">{{ t('page.project_detail.project_console') }}</p>
         </div>
       </div>
 
       <!-- 导航菜单 -->
       <h3 class="text-sm font-semibold text-white/40 uppercase tracking-wider mb-4 px-2">
-        项目导航
+        {{ t('page.project_detail.project_nav') }}
       </h3>
       <nav class="flex flex-col space-y-2">
         <router-link
@@ -90,8 +90,8 @@
         <div class="flex items-center space-x-3 p-3 bg-white/5 rounded-xl">
           <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
           <div class="flex-1">
-            <p class="text-sm font-medium text-white">运行正常</p>
-            <p class="text-xs text-white/50">最后更新: 刚刚</p>
+            <p class="text-sm font-medium text-white">{{ t('page.project_detail.healthy') }}</p>
+            <p class="text-xs text-white/50">{{ t('page.project_detail.breadcrumb_home') }}: {{ t('page.project_detail.title') }}</p>
           </div>
         </div>
       </div>
@@ -103,7 +103,7 @@
         <!-- 页面标题栏 -->
         <div class="mb-8">
           <div class="flex items-center space-x-3 text-sm text-white/50 mb-2">
-            <router-link to="/" class="hover:text-cyan-400 transition-colors duration-200">首页</router-link>
+            <router-link to="/" class="hover:text-cyan-400 transition-colors duration-200">{{ t('page.project_detail.breadcrumb_home') }}</router-link>
             <span>/</span>
             <span class="text-cyan-400">{{ appId }}</span>
             <span>/</span>
@@ -119,14 +119,15 @@
 </template>
 <script setup>
 const {proxy} = getCurrentInstance();
+const t = proxy.$tt;
 const appId = proxy.$route.params.id;
 
 const menus = ref([
-  {label: '概览', path: 'overview'},
-  {label: '数据表', path: 'tables'},
-  {label: '第三方服务集成', path: 'dynamicapi'},
-  {label: 'API KEYS', path: 'apikeys'},
-  {label: '应用管理', path: 'settings'},
+  {label: t('page.project_detail.menu_overview'), path: 'overview'},
+  {label: t('page.project_detail.menu_tables'), path: 'tables'},
+  {label: t('page.project_detail.menu_dynamicapi'), path: 'dynamicapi'},
+  {label: t('page.project_detail.menu_apikeys'), path: 'apikeys'},
+  {label: t('page.project_detail.menu_settings'), path: 'settings'},
 ])
 
 function getCurrentPageName() {
@@ -134,7 +135,7 @@ function getCurrentPageName() {
   const currentMenu = menus.value.find(menu =>
       currentPath.includes(menu.path)
   );
-  return currentMenu ? currentMenu.label : '项目管理';
+  return currentMenu ? currentMenu.label : t('page.project_detail.project_manage');
 }
 
 console.log(appId);

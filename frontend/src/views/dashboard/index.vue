@@ -3,9 +3,9 @@
     <div class="flex justify-between items-center mb-8">
       <div>
         <h2 class="text-3xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-          应用列表
+          {{ t('page.project.list_title') }}
         </h2>
-        <p class="text-white/60 mt-2">管理您的所有应用</p>
+        <p class="text-white/60 mt-2">{{ t('page.project.list_sub') }}</p>
       </div>
       <el-button
           type="primary"
@@ -15,7 +15,7 @@
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
-        添加应用
+        {{ t('page.project.add_app') }}
       </el-button>
     </div>
 
@@ -55,8 +55,8 @@
             </div>
             <span>{{
                 project.status === 'active'
-                    ? '运行中'
-                    : '创建中'
+                    ? t('page.project.status_running')
+                    : t('page.project.status_creating')
               }}</span>
           </span>
           <svg class="w-4 h-4 transform group-hover:translate-x-1 transition-transform duration-300" fill="none"
@@ -78,14 +78,14 @@
                 d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"/>
         </svg>
       </div>
-      <h3 class="text-xl font-semibold text-white/80 mb-2">暂无项目</h3>
-      <p class="text-white/60 mb-6">点击右上角「添加项目」创建您的第一个项目</p>
+      <h3 class="text-xl font-semibold text-white/80 mb-2">{{ t('page.project.empty_title') }}</h3>
+      <p class="text-white/60 mb-6">{{ t('page.project.empty_desc') }}</p>
       <el-button
           type="primary"
           class="bg-gradient-to-r from-cyan-500 to-blue-500 border-0"
           @click="openDialog"
       >
-        开始创建
+        {{ t('page.project.empty_btn') }}
       </el-button>
     </div>
 
@@ -102,17 +102,17 @@
 
     <el-dialog
         v-model="showDialog"
-        title="添加应用"
+        :title="t('page.project.dialog_add_title')"
         width="480px"
         class="ai-dialog"
         :close-on-click-modal="false"
     >
       <div class="p-2">
         <el-form :model="newProject" label-width="100px">
-          <el-form-item label="应用名称">
+          <el-form-item :label="t('page.project.dialog_app_name')">
             <el-input
                 v-model="newProject.name"
-                placeholder="请输入应用名称"
+                :placeholder="t('page.project.dialog_app_name_placeholder')"
                 size="large"
                 class="custom-input"
             />
@@ -126,7 +126,7 @@
               @click="showDialog = false"
               class="border-white/20 text-white/80 hover:bg-white/5"
           >
-            取消
+            {{ t('page.project.cancel') }}
           </el-button>
           <el-button
               type="primary"
@@ -134,7 +134,7 @@
               @click="submitAdd"
               class="bg-gradient-to-r from-cyan-500 to-blue-500 border-0 text-white hover:from-cyan-600 hover:to-blue-600"
           >
-            创建应用
+            {{ t('page.project.create_app') }}
           </el-button>
         </div>
       </template>
@@ -145,6 +145,7 @@
 
 <script setup>
 const {proxy} = getCurrentInstance();
+const t = proxy.$tt;
 
 const loading = ref(false)
 const adding = ref(false)
@@ -189,7 +190,7 @@ function handlePageChange(val) {
 
 function openProject(project) {
   if (project.status !== 'active') {
-    proxy.$modal.msgWarning('该应用正在创建中，请稍后再试');
+    proxy.$modal.msgWarning(t('page.project.creating_warning'));
   } else {
     proxy.$router.push({name: 'ProjectDetail', params: {id: project.appId}});
   }
@@ -197,14 +198,14 @@ function openProject(project) {
 
 function submitAdd() {
   if (!newProject.value.name.trim()) {
-    proxy.$modal.msgWarning("请输入项目名称");
+    proxy.$modal.msgWarning(t('page.project.input_project_name'));
     return
   }
 
   adding.value = true
   proxy.$api.project.add(newProject.value).then((res) => {
     if (res.success) {
-      proxy.$modal.msgSuccess('应用创建成功');
+      proxy.$modal.msgSuccess(t('page.project.create_success'));
       showDialog.value = false;
       refresh();
     }

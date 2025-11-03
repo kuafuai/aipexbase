@@ -23,7 +23,8 @@
     "quill-image-resize-module": "^3.0.0",
     "vue": "^3.4.24",
     "vue-advanced-chat": "latest",
-    "vue-router": "^4.3.0"
+    "vue-router": "^4.3.0",
+    "vue-i18n": "^9.1.9"
   },
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.0.4",

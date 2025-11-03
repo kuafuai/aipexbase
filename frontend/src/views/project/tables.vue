@@ -20,9 +20,9 @@
 
         <div>
           <h2 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-            数据表
+            {{ t('page.tables.title') }}
           </h2>
-          <p class="text-sm text-white/60">管理应用数据表</p>
+          <p class="text-sm text-white/60">{{ t('page.tables.sub') }}</p>
         </div>
 
       </div>
@@ -36,7 +36,7 @@
         <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
         </svg>
-        新建表
+        {{ t('page.tables.new_table') }}
       </el-button>
 
       <div class="flex-1 overflow-hidden flex flex-col min-h-0">
@@ -120,7 +120,7 @@
                                       d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
                               </svg>
                             </div>
-                            <span>编辑表</span>
+                          <span>{{ t('page.tables.edit_table') }}</span>
                           </div>
                         </el-dropdown-item>
                         <el-dropdown-item :command="{ action: 'delete', table: table }">
@@ -131,7 +131,7 @@
                                       d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
                               </svg>
                             </div>
-                            <span>删除表</span>
+                            <span>{{ t('page.tables.delete_table') }}</span>
                           </div>
                         </el-dropdown-item>
                       </el-dropdown-menu>
@@ -150,8 +150,8 @@
                 </svg>
               </div>
 
-              <p class="text-white/60 text-sm">暂无数据表</p>
-              <p class="text-white/40 text-xs mt-1">点击上方按钮创建第一个数据表</p>
+              <p class="text-white/60 text-sm">{{ t('page.tables.no_tables') }}</p>
+              <p class="text-white/40 text-xs mt-1">{{ t('page.tables.no_tables_tip') }}</p>
             </div>
           </div>
         </el-scrollbar>
@@ -177,7 +177,7 @@
                 <span class="text-white/40">•</span>
                 <span class="flex items-center space-x-1 text-sm">
                   <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-                  <span>运行中</span>
+                  <span>{{ t('page.layout.running') }}</span>
                 </span>
               </p>
             </div>
@@ -222,7 +222,7 @@
               border
               class="custom-table"
               style="width: 100%;"
-              empty-text="暂无数据"
+              :empty-text="t('page.tables.empty_text')"
           >
 
             <template v-for="column in tableColumns" :key="column.columnName">
@@ -273,7 +273,7 @@
                       effect="dark"
                       class="rounded-full px-3"
                   >
-                    {{ scope.row[column.columnName] ? "是" : "否" }}
+                    {{ scope.row[column.columnName] ? t('page.tables.bool_true') : t('page.tables.bool_false') }}
                   </el-tag>
                 </template>
               </el-table-column>
@@ -314,7 +314,7 @@
             </template>
 
 
-            <el-table-column fixed="right" label="操作" width="140" align="center">
+            <el-table-column fixed="right" :label="t('page.tables.operations')" width="140" align="center">
               <template #default="scope">
                 <div class="flex items-center justify-center space-x-2">
                   <el-button
@@ -368,8 +368,8 @@
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
           </div>
-          <h3 class="text-xl font-semibold text-white/80 mb-2">选择数据表</h3>
-          <p class="text-white/60">请从左侧选择一个数据表开始管理</p>
+      <h3 class="text-xl font-semibold text-white/80 mb-2">{{ t('page.tables.select_table_title') }}</h3>
+      <p class="text-white/60">{{ t('page.tables.select_table_tip') }}</p>
         </div>
       </div>
 
@@ -380,7 +380,7 @@
 
   <el-drawer
       v-model="drawerAddAndEdit"
-      title="数据管理"
+      :title="t('page.tables.data_manage')"
       direction="rtl"
       size="480px"
       class="custom-drawer"
@@ -394,7 +394,7 @@
           </svg>
         </div>
         <h4 class="text-lg font-semibold ">
-          {{ dataMode === 'edit' ? '编辑数据' : '添加数据' }}
+          {{ dataMode === 'edit' ? t('page.tables.edit_data') : t('page.tables.add_data') }}
         </h4>
       </div>
     </template>
@@ -413,7 +413,7 @@
                       show-password
                       size="large"
                       class="custom-input"
-                      placeholder="请输入密码"
+                      :placeholder="t('page.tables.input_password')"
             />
           </el-form-item>
 
@@ -426,7 +426,7 @@
                 v-model="dataForm[column.columnName]"
                 class="custom-input"
                 size="large"
-                :placeholder="`请选择${column.columnComment}`"
+                :placeholder="t('page.tables.please_select', { label: column.columnComment })"
                 filterable
                 remote
                 :remote-method="table_select_data(column.referenceTableName, column.columnName)"
@@ -470,7 +470,7 @@
             <el-input v-model="dataForm[column.columnName]"
                       size="large"
                       class="custom-input"
-                      :placeholder="`请输入${column.columnComment}`"
+                      :placeholder="`${t('page.tables.default_value')}-${column.columnComment}`"
             />
           </el-form-item>
         </template>
@@ -483,14 +483,14 @@
             @click="drawerAddAndEdit = false"
             class="border-white/20 text-white/80 hover:bg-white/5 transition-all duration-300"
         >
-          取消
+          {{ t('page.project.cancel') }}
         </el-button>
         <el-button
             type="primary"
             @click="onSaveData"
             class="bg-gradient-to-r from-cyan-500 to-blue-500 border-0 text-white hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 shadow-lg shadow-cyan-500/25"
         >
-          保存数据
+          {{ t('page.tables.save_data') }}
         </el-button>
       </div>
     </template>
@@ -513,7 +513,7 @@
           </svg>
         </div>
         <h4 class="text-lg font-semibold">
-          {{ drawerTableMode === 'edit' ? '编辑表' : '新建表' }}
+          {{ drawerTableMode === 'edit' ? t('page.tables.drawer_table_title_edit') : t('page.tables.drawer_table_title_add') }}
         </h4>
       </div>
     </template>
@@ -525,24 +525,24 @@
         <div class=" rounded-xl p-4 border border-cyan/10">
           <div class="flex items-center space-x-2 mb-4">
             <div class="w-2 h-2 bg-cyan-400 rounded-full"></div>
-            <h5 class="text-sm font-semibold text-cyan-300">表基本信息</h5>
+            <h5 class="text-sm font-semibold text-cyan-300">{{ t('page.tables.table_basic') }}</h5>
           </div>
 
-          <el-form-item label="表名" prop="tableName" class="mb-0">
+          <el-form-item :label="t('page.tables.table_name')" prop="tableName" class="mb-0">
             <el-input
                 v-model="tableForm.tableName"
-                placeholder="请输入表名（英文）"
+                :placeholder="t('page.tables.table_name_placeholder')"
                 size="large"
                 :disabled="drawerTableMode === 'edit'"
                 class="custom-input"
             />
-            <div class="text-xs text-black mt-1">建议使用英文，如：user_info</div>
+            <div class="text-xs text-black mt-1">{{ t('page.tables.table_name_hint') }}</div>
           </el-form-item>
 
-          <el-form-item label="表描述" prop="description" class="mb-0 mt-4">
+          <el-form-item :label="t('page.tables.table_desc')" prop="description" class="mb-0 mt-4">
             <el-input
                 v-model="tableForm.description"
-                placeholder="请输入表描述"
+                :placeholder="t('page.tables.table_desc')"
                 size="large"
                 class="custom-input"
             />
@@ -554,7 +554,7 @@
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center space-x-2">
               <div class="w-2 h-2 bg-blue-400 rounded-full"></div>
-              <h5 class="text-sm font-semibold text-blue-300">字段列表</h5>
+              <h5 class="text-sm font-semibold text-blue-300">{{ t('page.tables.field_list') }}</h5>
             </div>
             <el-button
                 type="primary"
@@ -565,7 +565,7 @@
               <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
               </svg>
-              添加字段
+              {{ t('page.tables.add_field') }}
             </el-button>
           </div>
 
@@ -574,7 +574,7 @@
               <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
                     d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
             </svg>
-            <p class="text-sm">暂无字段，点击上方按钮添加</p>
+            <p class="text-sm">{{ t('page.tables.no_fields') }}</p>
           </div>
 
           <div v-else class="space-y-4 max-h-screen overflow-y-auto pr-2">
@@ -588,7 +588,7 @@
                   <div class="w-6 h-6 bg-blue-500/20 rounded flex items-center justify-center">
                     <span class="text-xs font-medium text-blue-400">{{ index + 1 }}</span>
                   </div>
-                  <span class="text-sm font-medium text-white">字段 {{ index + 1 }}</span>
+                  <span class="text-sm font-medium text-white">{{ t('page.tables.field_label', { index: index + 1 }) }}</span>
                 </div>
                 <el-button
                     type="danger"
@@ -604,23 +604,23 @@
               </div>
 
               <div class="grid grid-cols-2 gap-3">
-                <el-form-item label="字段名称"
+                <el-form-item :label="t('page.tables.field_name')"
                               :prop="'columns.' + index + '.columnName'"
                               :rules="fieldRules.columnName">
                   <el-input
                       v-model="field.columnName"
-                      placeholder="字段名"
+                      :placeholder="t('page.tables.field_name_placeholder')"
                       size="small"
                       class="custom-input"
                   />
                 </el-form-item>
 
-                <el-form-item label="字段类型"
+                <el-form-item :label="t('page.tables.field_type')"
                               :prop="'columns.' + index + '.columnType'"
                               :rules="fieldRules.columnType">
                   <el-select
                       v-model="field.columnType"
-                      placeholder="选择类型"
+                      :placeholder="t('page.tables.choose_type')"
                       size="small"
                       class="custom-input w-full"
                   >
@@ -634,24 +634,24 @@
                 </el-form-item>
               </div>
 
-              <el-form-item v-if="showQuote(field.columnType)" label="关联对象" class="mb-0 mt-3">
+              <el-form-item v-if="showQuote(field.columnType)" :label="t('page.tables.ref_object')" class="mb-0 mt-3">
                 <el-select
                     v-model="field.referenceTableName"
                     :options="tables"
                     :props="props"
                     class="custom-input"
                     size="small"
-                    placeholder="请选择关联对象"
+                    :placeholder="t('page.tables.ref_object')"
                 />
               </el-form-item>
 
-              <el-form-item label="字段描述"
+              <el-form-item :label="t('page.tables.field_desc')"
                             :prop="'columns.' + index + '.columnComment'"
                             :rules="fieldRules.columnComment"
                             class="mb-0">
                 <el-input
                     v-model="field.columnComment"
-                    placeholder="字段描述"
+                    :placeholder="t('page.tables.field_desc')"
                     size="small"
                     class="custom-input"
                 />
@@ -659,7 +659,7 @@
 
               <!-- 字段额外配置 -->
               <div class="grid grid-cols-2 gap-3 mt-3">
-                <el-form-item label="是否主键" class="mb-0">
+                <el-form-item :label="t('page.tables.is_primary')" class="mb-0">
                   <el-switch
                       v-model="field.isPrimary"
                       active-color="#06b6d4"
@@ -667,7 +667,7 @@
                   />
                 </el-form-item>
 
-                <el-form-item label="是否必填" class="mb-0">
+                <el-form-item :label="t('page.tables.is_required')" class="mb-0">
                   <el-switch
                       v-model="field.isNullable"
                       active-color="#06b6d4"
@@ -675,7 +675,7 @@
                   />
                 </el-form-item>
 
-                <el-form-item label="是否关联展示" class="mb-0">
+                <el-form-item :label="t('page.tables.is_show')" class="mb-0">
                   <el-switch
                       v-model="field.isShow"
                       active-color="#06b6d4"
@@ -686,7 +686,7 @@
               </div>
 
               <!-- 默认值设置 -->
-              <el-form-item v-if="showDefaultValue(field.columnType)" label="默认值" class="mb-0 mt-3">
+              <el-form-item v-if="showDefaultValue(field.columnType)" :label="t('page.tables.default_value')" class="mb-0 mt-3">
                 <el-input
                     v-model="field.defaultValue"
                     :placeholder="getDefaultValuePlaceholder(field.columnType)"
@@ -708,7 +708,7 @@
             @click="drawerTable = false"
             class="border-white/20 text-white/80 hover:bg-white/5 transition-all duration-300"
         >
-          取消
+          {{ t('page.project.cancel') }}
         </el-button>
         <el-button
             type="primary"
@@ -719,7 +719,7 @@
           <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
           </svg>
-          保存
+          {{ t('page.tables.save') }}
         </el-button>
       </div>
     </template>
@@ -731,6 +731,7 @@
 <script setup>
 
 const {proxy} = getCurrentInstance();
+const t = proxy.$tt;
 const appId = proxy.$route.params.id;
 const tables = ref([])
 
@@ -857,7 +858,7 @@ function table_select_data(table_name, columnName) {
 
 
 function deleteData(row) {
-  proxy.$modal.confirm("您确定删除这条数据吗？").then(() => {
+  proxy.$modal.confirm(t('page.tables.confirm_delete_data') || '您确定删除这条数据吗？').then(() => {
     let data = {appId: currentTable.value.appId, tableName: currentTable.value.tableName, data: row}
     proxy.$api.dataset.deleteData(data).then((res) => {
       if (res.success) {
@@ -1006,14 +1007,14 @@ function getTableInfo(table) {
 }
 
 function deleteTable(table) {
-  proxy.$modal.confirm(`删除表同时会将数据给删除, 确定要删除表 "${table.description}" 吗？`).then(() => {
+  proxy.$modal.confirm(t('page.tables.confirm_delete_table', { name: table.description })).then(() => {
     let data = {appId: table.appId, id: table.id};
     proxy.$api.dataset.deleteTable(data).then((res) => {
       if (res.success) {
-        proxy.$modal.msgSuccess('删除成功');
+        proxy.$modal.msgSuccess(t('page.tables.delete_success'));
         loadTables(false);
       } else {
-        proxy.$modal.msgSuccess('删除失败');
+        proxy.$modal.msgSuccess(t('page.tables.delete_failed'));
       }
     })
   });
@@ -1046,7 +1047,7 @@ async function onSaveTable() {
     const result = await apiCall(requestData);
 
     if (result.success) {
-      const successMessage = drawerTableMode.value === 'add' ? '表创建成功' : '表更新成功';
+      const successMessage = drawerTableMode.value === 'add' ? t('page.tables.table_created') : t('page.tables.table_updated');
       proxy.$modal.msgSuccess(successMessage)
       drawerTable.value = false
       loadTables(false) // 刷新表列表
@@ -1089,15 +1090,15 @@ function showDefaultValue(type) {
 // 获取默认值占位符
 function getDefaultValuePlaceholder(type) {
   const placeholders = {
-    string: '请输入默认字符串',
-    integer: '请输入默认数字',
-    decimal: '请输入默认小数',
-    boolean: 'true 或 false',
-    date: 'YYYY-MM-DD',
-    datetime: 'YYYY-MM-DD HH:mm:ss',
-    password: '默认密码'
+    string: t('page.tables.default_value_placeholder.string'),
+    integer: t('page.tables.default_value_placeholder.integer'),
+    decimal: t('page.tables.default_value_placeholder.decimal'),
+    boolean: t('page.tables.default_value_placeholder.boolean'),
+    date: t('page.tables.default_value_placeholder.date'),
+    datetime: t('page.tables.default_value_placeholder.datetime'),
+    password: t('page.tables.default_value_placeholder.password')
   }
-  return placeholders[type] || '请输入默认值'
+  return placeholders[type] || t('page.tables.default_value')
 }
 
 

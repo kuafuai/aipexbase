@@ -1,13 +1,27 @@
 import axios from 'axios';
 import {ElMessage, ElMessageBox} from 'element-plus';
 
+const languageMap = {
+    'en': 'en-US',
+    'zh': 'zh-CN',
+    'ja': 'ja-JP',
+    'ko': 'ko-KR',
+    // 可以根据需要添加更多映射
+};
+
+const getLanguageHeader = () => {
+    const lang = import.meta.env.VITE_APP_LANGE || 'en';
+    // 如果语言代码在映射表中，使用映射值，否则使用原值
+    return languageMap[lang] || lang;
+}
+
 // 创建axios实例
 const service = axios.create({
     baseURL: import.meta.env.VITE_APP_BASE_API,
     timeout: 500000, // 请求超时时间：50s
     headers: {
         'Content-Type': 'application/json;charset=utf-8',
-        'Accept-Language': import.meta.env.VITE_APP_LANG
+        'Accept-Language': getLanguageHeader()
     },
 });
 

@@ -14,24 +14,24 @@
             class="text-2xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent cursor-pointer hover:from-cyan-300 hover:to-blue-300 transition-all duration-300"
             @click="goHome"
         >
-          控制台
+          {{ t('page.layout.title') }}
         </h1>
 
         <div v-if="versionInfo"
              class="flex items-center space-x-2 px-3 py-1 rounded-lg border border-white/20 text-sm ml-4">
-          <span class="text-white/70">版本 {{ versionInfo.version }}</span>
+          <span class="text-white/70">{{ t('page.layout.version', { version: versionInfo.version }) }}</span>
           <template v-if="versionInfo.hasUpdate">
-            <span class="text-yellow-400 font-semibold">有新版本！</span>
+            <span class="text-yellow-400 font-semibold">{{ t('page.layout.has_update') }}</span>
             <a
                 href="https://gitee.com/kuafuai/aipexbase"
                 target="_blank"
                 class="text-cyan-400 underline hover:text-cyan-300 transition-colors"
             >
-              查看更新
+              {{ t('page.layout.view_update') }}
             </a>
           </template>
           <template v-else>
-            <span class="text-green-400 font-semibold">已是最新版本</span>
+            <span class="text-green-400 font-semibold">{{ t('page.layout.latest') }}</span>
           </template>
         </div>
 
@@ -48,12 +48,12 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
           </svg>
-          <span class="text-sm text-white/80">说明文档</span>
+          <span class="text-sm text-white/80">{{ t('page.layout.docs') }}</span>
         </div>
         <!-- 运行状态 -->
         <div class="flex items-center space-x-2 px-3 py-2 bg-white/5 rounded-lg">
           <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
-          <span class="text-sm text-white/80">运行中</span>
+          <span class="text-sm text-white/80">{{ t('page.layout.running') }}</span>
         </div>
         <!-- 登出按钮 -->
         <div
@@ -64,7 +64,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                   d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/>
           </svg>
-          <span class="text-sm text-red-400">登出</span>
+          <span class="text-sm text-red-400">{{ t('page.layout.logout') }}</span>
         </div>
       </div>
     </header>
@@ -76,21 +76,20 @@
 <script setup>
   const {proxy} = getCurrentInstance();
 
-  // 说明文档配置 - 请在这里填写您的文档网址
   const documentationConfig = {
-    url: 'https://vvx03gck2p.feishu.cn/docx/LSsLdYZQfoAo3zxTkwrcJuGVnC3', // 请替换为您的实际文档网址
-    openInNewTab: true // 是否在新标签页中打开
+    url: 'https://vvx03gck2p.feishu.cn/docx/LSsLdYZQfoAo3zxTkwrcJuGVnC3',
+    openInNewTab: true
   }
 
   const versionInfo = ref(null)
 
   function logout() {
     proxy.$modal.confirm(
-        '确定要登出吗？',
-        '确认登出',
+        t('page.layout.logout_confirm_message'),
+        t('page.layout.logout_confirm_title'),
         {
-          confirmButtonText: '确定登出',
-          cancelButtonText: '取消',
+          confirmButtonText: t('page.layout.logout_confirm_ok'),
+          cancelButtonText: t('page.layout.logout_confirm_cancel'),
           type: 'warning',
           confirmButtonClass: 'el-button--danger'
         }
@@ -111,7 +110,7 @@
   // 打开说明文档
   function openDocumentation() {
     if (!documentationConfig.url || documentationConfig.url === 'https://your-documentation-url.com') {
-      proxy.$modal.msgWarning('请先配置文档网址');
+      proxy.$modal.msgWarning(t('page.layout.docs_config_warning'));
       return;
     }
 
@@ -130,4 +129,5 @@
     })
   });
 
+  const t = proxy.$tt;
 </script>
