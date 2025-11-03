@@ -41,7 +41,10 @@ export default {
             logout_confirm_message: "确定要登出吗？",
             logout_confirm_ok: "确定登出",
             logout_confirm_cancel: "取消",
-            docs_config_warning: "请先配置文档网址"
+            docs_config_warning: "请先配置文档网址",
+            language: "语言",
+            lang_en: "英语",
+            lang_zh: "中文"
         },
         dashboard: {
             app_list: "应用列表",

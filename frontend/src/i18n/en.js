@@ -41,7 +41,10 @@ export default {
             logout_confirm_message: "Are you sure you want to logout?",
             logout_confirm_ok: "Logout",
             logout_confirm_cancel: "Cancel",
-            docs_config_warning: "Please configure the documentation URL first"
+            docs_config_warning: "Please configure the documentation URL first",
+            language: "Language",
+            lang_en: "English",
+            lang_zh: "Chinese"
         },
         dashboard: {
             app_list: "Applications",

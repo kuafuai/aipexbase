@@ -122,13 +122,17 @@ const {proxy} = getCurrentInstance();
 const t = proxy.$tt;
 const appId = proxy.$route.params.id;
 
-const menus = ref([
-  {label: t('page.project_detail.menu_overview'), path: 'overview'},
-  {label: t('page.project_detail.menu_tables'), path: 'tables'},
-  {label: t('page.project_detail.menu_dynamicapi'), path: 'dynamicapi'},
-  {label: t('page.project_detail.menu_apikeys'), path: 'apikeys'},
-  {label: t('page.project_detail.menu_settings'), path: 'settings'},
-])
+const menus = computed(() => {
+  // 依赖当前语言，确保切换语言时触发重算
+  const _locale = proxy.$i18n.locale
+  return [
+    {label: t('page.project_detail.menu_overview'), path: 'overview'},
+    {label: t('page.project_detail.menu_tables'), path: 'tables'},
+    {label: t('page.project_detail.menu_dynamicapi'), path: 'dynamicapi'},
+    {label: t('page.project_detail.menu_apikeys'), path: 'apikeys'},
+    {label: t('page.project_detail.menu_settings'), path: 'settings'},
+  ]
+})
 
 function getCurrentPageName() {
   const currentPath = proxy.$route.path;

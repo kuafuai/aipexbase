@@ -50,6 +50,17 @@
           </svg>
           <span class="text-sm text-white/80">{{ t('page.layout.docs') }}</span>
         </div>
+        <!-- 语言切换 -->
+        <div
+            class="flex items-center space-x-2 px-3 py-2 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all duration-300"
+            @click="toggleLang"
+        >
+          <svg class="w-4 h-4 text-white/80" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 4v1m0 14v1m8-8h1M3 12H2m15.364 6.364l.707.707M5.636 6.343l-.707-.707m12.728 0l.707-.707M5.636 17.657l-.707.707M8 12a4 4 0 118 0 4 4 0 01-8 0z"/>
+          </svg>
+          <span class="text-sm text-white/80">{{ t('page.layout.language') }}: {{ currentLang === 'zh' ? t('page.layout.lang_zh') : t('page.layout.lang_en') }}</span>
+        </div>
         <!-- 运行状态 -->
         <div class="flex items-center space-x-2 px-3 py-2 bg-white/5 rounded-lg">
           <div class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></div>
@@ -82,6 +93,7 @@
   }
 
   const versionInfo = ref(null)
+  const currentLang = ref(proxy.$i18n.locale)
 
   function logout() {
     proxy.$modal.confirm(
@@ -130,4 +142,10 @@
   });
 
   const t = proxy.$tt;
+
+  function toggleLang() {
+    const next = currentLang.value === 'zh' ? 'en' : 'zh';
+    proxy.$i18n.locale = next;
+    currentLang.value = next;
+  }
 </script>
