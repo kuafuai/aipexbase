@@ -17,16 +17,16 @@
         </div>
         <div>
           <h1 class="text-xl font-bold bg-gradient-to-r from-cyan-400 to-blue-400 bg-clip-text text-transparent">
-            {{ appInfoConfig.appName || '应用管理' }}
+            {{ appInfoConfig.appName || t('page.settings.app_manage_title') }}
           </h1>
-          <p class="text-xs text-white/40">应用配置中心</p>
+          <p class="text-xs text-white/40">{{ t('page.settings.app_config_center') }}</p>
         </div>
       </div>
 
       <nav class="flex flex-col space-y-2">
 
         <div class="px-4 py-2">
-          <h3 class="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">应用管理</h3>
+          <h3 class="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">{{ t('page.settings.section_app_manage') }}</h3>
 
           <div class="space-y-1">
             <router-link
@@ -42,14 +42,14 @@
                   v-if="proxy.$route.path.includes('/users')"
                   class="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-8 bg-gradient-to-b from-cyan-400 to-blue-400 rounded-r-full"
               ></div>
-              <span class="font-medium">登录用户</span>
+              <span class="font-medium">{{ t('page.settings.menu_users') }}</span>
 
             </router-link>
           </div>
         </div>
 
         <div class="px-4 py-2">
-          <h3 class="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">配置中心</h3>
+          <h3 class="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">{{ t('page.settings.section_config_center') }}</h3>
           <div class="space-y-1">
             <router-link
                 v-for="item in configMenus"
@@ -89,7 +89,7 @@
         </div>
 
         <div class="px-4 py-2">
-          <h3 class="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">危险区域</h3>
+          <h3 class="text-xs font-semibold text-white/40 uppercase tracking-wider mb-3">{{ t('page.settings.section_danger') }}</h3>
           <div class="space-y-1">
             <router-link
                 v-for="item in dangerMenus"
@@ -139,6 +139,7 @@
 <script setup>
 
 const {proxy} = getCurrentInstance();
+const t = proxy.$tt;
 const appId = proxy.$route.params.id;
 
 const appInfoConfig = ref({});
@@ -153,15 +154,15 @@ const weChatConfig = ref({});
 const configMenus = computed(() => [
   {
     path: 'settings/basic',
-    label: '基本信息',
+    label: t('page.settings.menu_basic'),
   },
   {
     path: 'settings/auth',
-    label: '登录策略',
+    label: t('page.settings.menu_auth'),
   },
   {
     path: 'settings/permission',
-    label: '权限策略',
+    label: t('page.settings.menu_permission'),
   }
 ])
 
@@ -173,7 +174,7 @@ const dangerMenus = computed(() => [
   // },
   {
     path: 'settings/delete',
-    label: '删除应用',
+    label: t('page.settings.menu_delete'),
   }
 ])
 
@@ -192,7 +193,7 @@ const fetchAppInfo = async () => {
     appConfigJson.value = JSON.parse(appInfoConfig.value.configJson);
   } catch (error) {
     console.error('Failed to fetch app info:', error);
-    proxy.$modal.msgError('获取应用信息失败');
+    proxy.$modal.msgError(t('page.settings.fetch_info_failed'));
   }
 };
 

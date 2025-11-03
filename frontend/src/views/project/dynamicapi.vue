@@ -1,13 +1,13 @@
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-cyan-400 mb-6">第三方服务集成</h1>
+    <h1 class="text-2xl font-semibold text-cyan-400 mb-6">{{ t('page.dynamicapi.title') }}</h1>
 
     <!-- 添加新的外部服务 -->
     <el-card class="mb-6" shadow="hover" style="background-color: #1e293b; color: #e2e8f0; border: 1px solid #334155;">
       <template #header>
         <div class="flex items-center gap-3">
           <div class="w-3 h-3 bg-green-500 rounded-full"></div>
-          <span class="text-lg font-semibold text-green-600">添加外部服务</span>
+          <span class="text-lg font-semibold text-green-600">{{ t('page.dynamicapi.add_service') }}</span>
         </div>
       </template>
 
@@ -15,45 +15,41 @@
         <div>
           <el-form :model="newService" label-width="120px" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <el-form-item label="服务标识" required>
+              <el-form-item :label="t('page.dynamicapi.field_key')" required>
                 <el-input
                     v-model="newService.name"
-                    placeholder="请输入服务标识，如：weather_service"
+                    :placeholder="t('page.dynamicapi.field_key_placeholder')"
                     class="w-full"
                     style="--el-input-bg-color: #334155; --el-input-border-color: #475569; --el-input-text-color: #e2e8f0; --el-input-placeholder-color: #94a3b8;"
                     @blur="validateServiceName"
                 />
-                <div class="text-xs text-gray-500 mt-1">
-                  仅允许小写字母+数字，长度小于16个字符，必须以小写字母开头
-                </div>
+                <div class="text-xs text-gray-500 mt-1">{{ t('page.dynamicapi.field_key_hint') }}</div>
               </el-form-item>
-              <el-form-item label="请求URL" required>
+              <el-form-item :label="t('page.dynamicapi.field_url')" required>
                 <el-input
                     v-model="newService.url"
-                    placeholder="https://api.example.com/get_weather"
+                    :placeholder="t('page.dynamicapi.field_url_placeholder')"
                     class="w-full"
                     style="--el-input-bg-color: #334155; --el-input-border-color: #475569; --el-input-text-color: #e2e8f0; --el-input-placeholder-color: #94a3b8;"
                     @blur="validateServiceUrl"
                 />
-                <div class="text-xs text-gray-500 mt-1">
-                  请输入完整的API接口地址，支持 http:// 或 https:// 协议，各国顶级域名(.cn, .uk, .de等)，以及URL参数(?param=1)
-                </div>
+                <div class="text-xs text-gray-500 mt-1">{{ t('page.dynamicapi.field_url_hint') }}</div>
               </el-form-item>
             </div>
 
-            <el-form-item label="服务描述" required>
+            <el-form-item :label="t('page.dynamicapi.field_desc')" required>
               <el-input
                   v-model="newService.description"
                   type="textarea"
                   :rows="2"
-                  placeholder="可选：描述此服务的用途和使用场景"
+                  :placeholder="t('page.dynamicapi.field_desc_placeholder')"
                   class="w-full"
                   style="--el-input-bg-color: #334155; --el-input-border-color: #475569; --el-input-text-color: #e2e8f0; --el-input-placeholder-color: #94a3b8;"
               />
             </el-form-item>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <el-form-item label="请求方法">
+            <el-form-item :label="t('page.dynamicapi.field_method')">
                 <el-select v-model="newService.method" class="w-full"
                            style="--el-select-bg-color: #334155; --el-select-border-color: #475569; --el-select-text-color: #e2e8f0; --el-select-hover-border-color: #475569; --el-select-focus-border-color: #475569;">
                   <el-option label="GET" value="GET"/>
@@ -65,7 +61,7 @@
               </el-form-item>
             </div>
 
-            <el-form-item label="请求头">
+            <el-form-item :label="t('page.dynamicapi.field_headers')">
               <el-input
                   v-model="newService.headers"
                   type="textarea"
@@ -73,12 +69,10 @@
                   class="w-full"
                   style="--el-input-bg-color: #334155; --el-input-border-color: #475569; --el-input-text-color: #e2e8f0; --el-input-placeholder-color: #94a3b8;"
               />
-              <div class="text-xs text-gray-500 mt-1">
-                支持占位符，如 &#123;&#123;token&#125;&#125;、&#123;&#123;userId&#125;&#125; 等
-              </div>
+              <div class="text-xs text-gray-500 mt-1">{{ t('page.dynamicapi.field_headers_hint') }}</div>
             </el-form-item>
 
-            <el-form-item label="请求体">
+            <el-form-item :label="t('page.dynamicapi.field_body')">
               <el-input
                   v-model="newService.body"
                   type="textarea"
@@ -86,13 +80,10 @@
                   class="w-full"
                   style="--el-input-bg-color: #334155; --el-input-border-color: #475569; --el-input-text-color: #e2e8f0; --el-input-placeholder-color: #94a3b8;"
               />
-              <div class="text-xs text-gray-500 mt-1">
-                支持占位符，如 &#123;&#123;text&#125;&#125;、&#123;&#123;content&#125;&#125;、&#123;&#123;location&#125;&#125;
-                等
-              </div>
+              <div class="text-xs text-gray-500 mt-1">{{ t('page.dynamicapi.field_body_hint') }}</div>
             </el-form-item>
 
-            <el-form-item label="返回值样例">
+            <el-form-item :label="t('page.dynamicapi.field_return_example')">
               <el-input
                   v-model="newService.dataRaw"
                   type="textarea"
@@ -101,7 +92,7 @@
                   style="--el-input-bg-color: #334155; --el-input-border-color: #475569; --el-input-text-color: #e2e8f0; --el-input-placeholder-color: #94a3b8;"
               />
               <div class="text-xs text-red-500 mt-1">
-                第三方服务返回的JSON结构示例。建议结合测试结果，补齐返回参数描述。以便AI更好的理解
+                {{ t('page.dynamicapi.field_return_example_label') }}
               </div>
             </el-form-item>
 
@@ -111,16 +102,16 @@
                   @click="addService"
                   :loading="adding"
               >
-                添加服务
+                {{ t('page.dynamicapi.btn_add') }}
               </el-button>
-              <el-button @click="resetForm">重置</el-button>
+              <el-button @click="resetForm">{{ t('page.dynamicapi.btn_reset') }}</el-button>
             </el-form-item>
           </el-form>
         </div>
 
         <div class="p-4 bg-slate-700 rounded-lg border border-slate-600">
-          <h3 class="text-gray-200 mb-3 font-semibold">测试服务调用</h3>
-          <el-button size="small" type="success" @click="updateTestVariables">提取变量</el-button>
+          <h3 class="text-gray-200 mb-3 font-semibold">{{ t('page.dynamicapi.test_title') }}</h3>
+          <el-button size="small" type="success" @click="updateTestVariables">{{ t('page.dynamicapi.btn_extract_vars') }}</el-button>
           <div v-if="testVars.length > 0" class="space-y-2 mt-4">
             <div
                 v-for="(info, key) in testVarValues"
@@ -131,19 +122,17 @@
               <el-input
                   v-model="info.value"
                   size="small"
-                  placeholder="输入变量值"
+                  :placeholder="t('page.dynamicapi.input_var_value')"
               />
               <el-input
                   v-model="info.desc"
                   size="small"
-                  placeholder="变量描述（可选）"
+                  :placeholder="t('page.dynamicapi.input_var_desc')"
               />
             </div>
           </div>
 
-          <div v-else class="text-gray-500 mt-3 text-sm">
-            未检测到任何变量。
-          </div>
+          <div v-else class="text-gray-500 mt-3 text-sm">{{ t('page.dynamicapi.no_vars') }}</div>
 
           <div class="mt-4">
             <el-button
@@ -153,12 +142,12 @@
                 :loading="testing"
                 :disabled="!newService.url"
             >
-              执行测试
+              {{ t('page.dynamicapi.btn_exec_test') }}
             </el-button>
           </div>
 
           <div v-if="testResult" class="mt-4">
-            <div class="text-gray-300 mb-2">返回结果：</div>
+            <div class="text-gray-300 mb-2">{{ t('page.dynamicapi.result_label') }}</div>
             <pre class="bg-slate-800 p-2 rounded text-xs text-gray-200 overflow-x-auto border border-slate-600">
 {{ testResult }}
             </pre>
@@ -177,7 +166,7 @@
         <div class="flex items-center justify-between">
           <div class="flex items-center gap-3">
             <div class="w-3 h-3 bg-blue-500 rounded-full"></div>
-            <span class="text-lg font-semibold text-blue-600">已配置的服务</span>
+            <span class="text-lg font-semibold text-blue-600">{{ t('page.dynamicapi.configured_title') }}</span>
           </div>
           <el-button
               type="primary"
@@ -185,7 +174,7 @@
               @click="refreshServices"
               :loading="loading"
           >
-            刷新
+            {{ t('page.dynamicapi.btn_refresh') }}
           </el-button>
         </div>
       </template>
@@ -194,11 +183,11 @@
         <el-icon class="is-loading text-blue-500 text-2xl">
           <Loading/>
         </el-icon>
-        <div class="text-gray-500 mt-2">加载中...</div>
+        <div class="text-gray-500 mt-2">{{ t('page.dynamicapi.loading') }}</div>
       </div>
 
       <div v-else-if="services.length === 0" class="text-center py-8">
-        <div class="text-gray-500">暂无配置的外部服务</div>
+        <div class="text-gray-500">{{ t('page.dynamicapi.empty') }}</div>
       </div>
 
       <div v-else class="space-y-4">
@@ -224,15 +213,15 @@
 
           <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
             <div>
-              <span class="text-gray-300">URL:</span>
+              <span class="text-gray-300">{{ t('page.dynamicapi.field_url_label') }}</span>
               <span class="text-gray-100 ml-2 font-mono">{{ service.url }}</span>
             </div>
             <div>
-              <span class="text-gray-300">方法:</span>
+              <span class="text-gray-300">{{ t('page.dynamicapi.field_method_label') }}</span>
               <el-tag size="small" class="ml-2">{{ service.method }}</el-tag>
             </div>
             <div v-if="service.description" class="md:col-span-2">
-              <span class="text-gray-300">描述:</span>
+              <span class="text-gray-300">{{ t('page.dynamicapi.field_desc_label') }}</span>
               <span class="text-gray-100 ml-2">{{ service.description }}</span>
             </div>
           </div>
@@ -241,20 +230,20 @@
           <div v-if="service.showDetails" class="mt-4 pt-4 border-t border-slate-600">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <div v-if="service.headers">
-                <div class="text-gray-300 mb-2">请求头:</div>
+                <div class="text-gray-300 mb-2">{{ t('page.dynamicapi.field_headers_label') }}</div>
                 <pre class="bg-slate-800 p-2 rounded text-xs text-gray-200 overflow-x-auto border border-slate-600">{{
                     formatJson(service.headers)
                   }}</pre>
               </div>
               <div v-if="service.body">
-                <div class="text-gray-300 mb-2">请求体:</div>
+                <div class="text-gray-300 mb-2">{{ t('page.dynamicapi.field_body_label') }}</div>
                 <pre class="bg-slate-800 p-2 rounded text-xs text-gray-200 overflow-x-auto border border-slate-600">{{
                     formatJson(service.body)
                   }}</pre>
               </div>
             </div>
             <div v-if="service.dataRaw" class="mt-4 text-sm">
-              <div class="text-gray-300 mb-2">返回值样例:</div>
+              <div class="text-gray-300 mb-2">{{ t('page.dynamicapi.field_return_example_label') }}</div>
               <pre class="bg-slate-800 p-2 rounded text-xs text-gray-200 overflow-x-auto border border-slate-600">{{
                   formatJson(service.dataRaw)
                 }}</pre>
@@ -267,7 +256,7 @@
                 size="small"
                 @click="service.showDetails = !service.showDetails"
             >
-              {{ service.showDetails ? '收起' : '展开详情' }}
+              {{ service.showDetails ? t('page.dynamicapi.btn_toggle_details_show') : t('page.dynamicapi.btn_toggle_details_hide') }}
             </el-button>
           </div>
         </div>
@@ -294,6 +283,7 @@ import {Loading} from '@element-plus/icons-vue'
 import {validURL} from '@/utils/validate'
 
 const {proxy} = getCurrentInstance();
+const t = proxy.$tt;
 const appId = proxy.$route.params.id;
 
 // 响应式数据
@@ -387,7 +377,7 @@ const fetchServices = async () => {
     }
   } catch (error) {
     console.error('Failed to fetch services:', error);
-    proxy.$modal.msgError('获取服务列表失败');
+    proxy.$modal.msgError(t('page.dynamicapi.fetch_failed'));
   } finally {
     loading.value = false;
   }
@@ -420,7 +410,7 @@ const validateServiceName = () => {
   // 校验规则：仅允许小写字母+数字，长度小于16个字符，必须以小写字母开头
   const regex = /^[a-z][a-z0-9]{0,14}$/;
   if (!regex.test(name)) {
-    proxy.$modal.msgError('服务标识格式不正确：仅允许小写字母+数字，长度小于16个字符，必须以小写字母开头');
+    proxy.$modal.msgError(t('page.dynamicapi.key_invalid'));
     return false;
   }
   return true;
@@ -435,7 +425,7 @@ const validateServiceUrl = () => {
   const httpUrlRegex = /^https?:\/\/([a-zA-Z0-9.-]+(:[a-zA-Z0-9.&%$-]+)*@)*((25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9][0-9]?)(\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}|([a-zA-Z0-9-]+\.)*[a-zA-Z0-9-]+\.([a-zA-Z]{2,}))(:[0-9]+)*(\/($|[a-zA-Z0-9.,?'\\+&%$#=~_-]*\/?)*)?(\?[a-zA-Z0-9.,?'\\+&%$#=~_-]*)?(\#[a-zA-Z0-9.,?'\\+&%$#=~_-]*)?$/;
 
   if (!httpUrlRegex.test(url)) {
-    proxy.$modal.msgError('URL格式不正确');
+    proxy.$modal.msgError(t('page.dynamicapi.url_invalid'));
     return false;
   }
   return true;
@@ -444,12 +434,12 @@ const validateServiceUrl = () => {
 // 添加新服务
 const addService = async () => {
   if (!newService.value.name || !newService.value.url || !newService.value.description) {
-    proxy.$modal.msgWarning('请填写服务标识和URL和服务描述');
+    proxy.$modal.msgWarning(t('page.dynamicapi.need_fields_warning'));
     return;
   }
 
   if (!testResult.value) {
-    proxy.$modal.msgWarning('请先测试一下服务');
+    proxy.$modal.msgWarning(t('page.dynamicapi.need_test_warning'));
     return;
   }
 
@@ -478,12 +468,12 @@ const addService = async () => {
     };
 
     await proxy.$api.dynamicapi.add(appId, backendData);
-    proxy.$modal.msgSuccess('服务添加成功');
+    proxy.$modal.msgSuccess(t('page.dynamicapi.btn_add') + t('page.tables.delete_success').replace('删除','添加'));
     resetForm();
     fetchServices();
   } catch (error) {
     console.error('Failed to add service:', error);
-    proxy.$modal.msgError('添加服务失败');
+    proxy.$modal.msgError(t('page.dynamicapi.delete_failed').replace('删除','添加'));
   } finally {
     adding.value = false;
   }
@@ -511,22 +501,22 @@ const resetForm = () => {
 const deleteService = async (service) => {
   try {
     await proxy.$modal.confirm(
-        `确定要删除服务 "${service.name}" 吗？此操作不可撤销。`,
-        '删除服务',
+        t('page.dynamicapi.confirm_delete_message', { name: service.name }),
+        t('page.dynamicapi.confirm_delete_title'),
         {
-          confirmButtonText: '确定删除',
-          cancelButtonText: '取消',
+          confirmButtonText: t('page.dynamicapi.confirm_delete_ok'),
+          cancelButtonText: t('page.dynamicapi.confirm_delete_cancel'),
           type: 'warning'
         }
     );
 
     await proxy.$api.dynamicapi.delete(appId, service.name);
-    proxy.$modal.msgSuccess('服务删除成功');
+    proxy.$modal.msgSuccess(t('page.dynamicapi.delete_success'));
     fetchServices();
   } catch (error) {
     if (error !== 'cancel') {
       console.error('Failed to delete service:', error);
-      proxy.$modal.msgError('删除服务失败');
+      proxy.$modal.msgError(t('page.dynamicapi.delete_failed'));
     }
   }
 };
@@ -592,7 +582,7 @@ const testNewService = async () => {
       headers = JSON.parse(newService.value.headers || '{}');
       body = JSON.parse(newService.value.body || '{}');
     } catch (e) {
-      proxy.$modal.msgError('请求头或请求体不是合法的 JSON');
+      proxy.$modal.msgError(t('page.dynamicapi.json_invalid'));
       testing.value = false;
       return;
     }
@@ -646,7 +636,7 @@ const testNewService = async () => {
       testResult.value = data;
     }
   } catch (err) {
-    testResult.value = '请求失败: ' + err.message;
+    testResult.value = t('page.dynamicapi.request_failed_prefix') + err.message;
   } finally {
     testing.value = false;
   }

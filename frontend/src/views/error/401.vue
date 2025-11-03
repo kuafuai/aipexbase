@@ -1,19 +1,19 @@
 <template>
   <div class="errPage-container">
     <el-button icon="arrow-left" class="pan-back-btn" @click="back">
-      返回
+      {{ t('page.error401.back') }}
     </el-button>
     <el-row>
       <el-col :span="12">
         <h1 class="text-jumbo text-ginormous">
-          401错误!
+          {{ t('page.error401.title') }}
         </h1>
-        <h2>您没有访问权限！</h2>
-        <h6>对不起，您没有访问权限，请不要进行非法操作！您可以返回主页面</h6>
+        <h2>{{ t('page.error401.no_permission') }}</h2>
+        <h6>{{ t('page.error401.info') }}</h6>
         <ul class="list-unstyled">
           <li class="link-type">
             <router-link to="/">
-              回首页
+              {{ t('page.error401.back_home') }}
             </router-link>
           </li>
         </ul>
@@ -29,6 +29,7 @@
 import errImage from "@/assets/401_images/401.gif";
 
 let { proxy } = getCurrentInstance();
+const t = proxy.$tt;
 
 const errGif = ref(errImage + "?" + +new Date());
 
