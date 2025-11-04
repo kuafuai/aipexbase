@@ -65,11 +65,13 @@ public class TextBusinessService {
         try {
             String keyName = "tts";
             Map<String, Object> params = Maps.newHashMap();
-            params.put("text", Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_8)));
+//            params.put("text", Base64.getEncoder().encodeToString(text.getBytes(StandardCharsets.UTF_8)));
+            params.put("text", text);
 
             String result = apiBusinessService.callApi(appId, keyName, params);
             ApiResultParser.parser(result);
-            String content = JsonPath.read(result, "$.data.data.audio");
+//            String content = JsonPath.read(result, "$.data.data.audio");
+            String content = JsonPath.read(result, "$.data.data");
             byte[] audio = Base64.getDecoder().decode(content);
 
             return storageService.upload(audio, GlobalAppIdFilter.getAppId(), "mp3", "audio/mpeg");
