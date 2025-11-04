@@ -77,13 +77,13 @@ public class OAuth2ServiceImpl implements OAuth2Service {
     }
 
     @Override
-    public String getRedirectUrl(String provider) {
+    public String getCallbackUri(String provider) {
         OAuth2ProviderInterface oauth2Provider = getProvider(provider);
         if (oauth2Provider == null) {
             throw new RuntimeException("不支持的 OAuth2 提供商: " + provider);
         }
 
-        return oauth2Provider.getRedirectUrl();
+        return oauth2Provider.getCallbackUri();
     }
 
     /**

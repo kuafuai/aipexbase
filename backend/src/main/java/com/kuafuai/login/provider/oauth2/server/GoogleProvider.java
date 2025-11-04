@@ -137,7 +137,7 @@ public class GoogleProvider implements OAuth2ProviderInterface {
 
         Map<String, String> params = new HashMap<>();
         params.put("client_id", map.getOrDefault("oauth2.google.client_id", ""));
-        params.put("redirect_uri", map.getOrDefault("oauth2.google.callback_uri", ""));
+        params.put("redirect_uri", map.getOrDefault("oauth2.google.redirect_uri", ""));
         params.put("response_type", "code");
         params.put("scope", "openid email profile");
         params.put("state", state);
@@ -146,14 +146,14 @@ public class GoogleProvider implements OAuth2ProviderInterface {
     }
 
     @Override
-    public String getRedirectUrl() {
+    public String getCallbackUri() {
         String appId = GlobalAppIdFilter.getAppId();
         Map<String, String> map = dynamicConfigBusinessService.getSystemConfig(appId);
         if (map.isEmpty()) {
             throw new RuntimeException("Google OAuth2配置不存在");
         }
 
-        return map.getOrDefault("oauth2.google.redirect_uri", "");
+        return map.getOrDefault("oauth2.google.callback_uri", "");
     }
 
 

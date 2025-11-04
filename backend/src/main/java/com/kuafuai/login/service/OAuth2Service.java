@@ -38,5 +38,5 @@ public interface OAuth2Service {
      * @param provider 提供商名称
      * @return 授权URL
      */
-    String getRedirectUrl(String provider);
+    String getCallbackUri(String provider);
 }

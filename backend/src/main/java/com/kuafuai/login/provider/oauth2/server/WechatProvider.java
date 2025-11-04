@@ -61,7 +61,7 @@ public class WechatProvider implements OAuth2ProviderInterface {
     }
 
     @Override
-    public String getRedirectUrl() {
+    public String getCallbackUri() {
         String appId = GlobalAppIdFilter.getAppId();
         Map<String, String> map = dynamicConfigBusinessService.getSystemConfig(appId);
 
@@ -69,7 +69,7 @@ public class WechatProvider implements OAuth2ProviderInterface {
             throw new RuntimeException("Wechat OAuth2配置不存在");
         }
 
-        return map.getOrDefault("oauth2.wechat.redirect_uri", "");
+        return map.getOrDefault("oauth2.wechat.callback_uri", "");
     }
 
     @Override

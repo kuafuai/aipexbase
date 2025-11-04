@@ -126,14 +126,14 @@ public class OAuth2LoginController {
             String token = processOAuth2Login(loginRequest);
             
             if (!StringUtils.isEmpty(token)) {
-                String redirectUrl = oauth2Service.getRedirectUrl(provider);
+                String callbackUri = oauth2Service.getCallbackUri(provider);
 
                 // 构建重定向URL，将token作为参数传递
-                String redirectWithToken = redirectUrl + "?token=" + token + "&login_success=true";
-                log.info("OAuth2登录成功，重定向到: {}", redirectWithToken);
+                String callbackUrlWithToken = callbackUri + "?token=" + token + "&login_success=true";
+                log.info("OAuth2登录成功，重定向到: {}", callbackUrlWithToken);
                 
                 return ResponseEntity.status(HttpStatus.FOUND)
-                        .location(URI.create(redirectWithToken))
+                        .location(URI.create(callbackUrlWithToken))
                         .build();
             } else {
                 // todo 跳转统一的错误页

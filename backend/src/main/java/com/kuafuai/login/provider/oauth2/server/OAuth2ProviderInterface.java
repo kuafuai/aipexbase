@@ -38,5 +38,5 @@ public interface OAuth2ProviderInterface {
      *
      * 获取重定向url
      */
-    String getRedirectUrl();
+    String getCallbackUri();
 }
