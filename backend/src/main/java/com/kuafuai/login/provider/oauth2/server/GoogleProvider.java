@@ -51,9 +51,9 @@ public class GoogleProvider implements OAuth2ProviderInterface {
         }
 
         Map<String, String> params = new HashMap<>();
-        params.put("client_id", map.getOrDefault("oauth2.google.client_id", ""));
-        params.put("client_secret", map.getOrDefault("oauth2.google.client_secret", ""));
-        params.put("redirect_uri", map.getOrDefault("oauth2.google.callback_uri", ""));
+        params.put("client_id", map.getOrDefault("google.oauth.client_id", ""));
+        params.put("client_secret", map.getOrDefault("google.oauth.client_secret", ""));
+        params.put("redirect_uri", map.getOrDefault("google.oauth.redirect_uri", ""));
         params.put("code", code);
         params.put("grant_type", "authorization_code");
 
@@ -136,8 +136,8 @@ public class GoogleProvider implements OAuth2ProviderInterface {
         }
 
         Map<String, String> params = new HashMap<>();
-        params.put("client_id", map.getOrDefault("oauth2.google.client_id", ""));
-        params.put("redirect_uri", map.getOrDefault("oauth2.google.redirect_uri", ""));
+        params.put("client_id", map.getOrDefault("google.oauth.client_id", ""));
+        params.put("redirect_uri", map.getOrDefault("google.oauth.redirect_uri", ""));
         params.put("response_type", "code");
         params.put("scope", "openid email profile");
         params.put("state", state);
@@ -153,7 +153,7 @@ public class GoogleProvider implements OAuth2ProviderInterface {
             throw new RuntimeException("Google OAuth2配置不存在");
         }
 
-        return map.getOrDefault("oauth2.google.callback_uri", "");
+        return map.getOrDefault("google.oauth.callback_uri", "");
     }
 
 
