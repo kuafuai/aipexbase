@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kuafuai.system.mapper.ApiMarketMapper">
+
+    <select id="selectPage" resultType="com.kuafuai.system.entity.ApiMarket">
+        select am.id,
+               am.provider_id,
+               am.name,
+               am.description,
+               am.url,
+               am.category,
+               am.method,
+               am.protocol,
+               am.status,
+               am.created_at,
+               u.nick_name as provider_name
+        from api_market am left join users u on am.provider_id = u.id
+        ${ew.customSqlSegment}
+    </select>
+
+    <select id="selectList" resultType="com.kuafuai.system.entity.ApiMarket">
+        select am.id,
+               am.provider_id,
+               am.name,
+               am.description,
+               am.url,
+               am.category,
+               am.method,
+               am.protocol,
+               am.status,
+               am.created_at,
+               u.nick_name as provider_name
+        from api_market am left join users u on am.provider_id = u.id
+        ${ew.customSqlSegment}
+    </select>
+
+</mapper>

@@ -1,6 +1,5 @@
 package com.kuafuai.manage.entity.vo;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
 import com.kuafuai.common.domin.PageRequest;
 import lombok.Data;
 

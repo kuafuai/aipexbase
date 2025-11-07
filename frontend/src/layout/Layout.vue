@@ -2,7 +2,8 @@
   <div
       class="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-white flex flex-col relative overflow-hidden">
     <!-- 顶部导航 -->
-    <header class="flex justify-between items-center px-8 py-4 border-b border-white/20">
+    <header class="flex items-center px-8 py-4 border-b border-white/20 relative">
+      <!-- 左侧：Logo和版本信息 -->
       <div class="flex items-center space-x-3">
         <div class="w-8 h-8 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg flex items-center justify-center">
           <svg class="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -34,11 +35,28 @@
             <span class="text-green-400 font-semibold">{{ t('page.layout.latest') }}</span>
           </template>
         </div>
-
       </div>
 
+      <!-- 中间：页面切换标签 -->
+      <div class="absolute left-1/2 transform -translate-x-1/2 flex items-center space-x-1 bg-white/5 rounded-lg p-1">
+        <div
+            class="px-4 py-2 rounded-md cursor-pointer transition-all duration-300"
+            :class="currentTab === 'dashboard' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'"
+            @click="switchTab('dashboard')"
+        >
+          {{ t('page.layout.my_apps') }}
+        </div>
+        <div
+            class="px-4 py-2 rounded-md cursor-pointer transition-all duration-300"
+            :class="currentTab === 'apimarket' ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white' : 'text-white/70 hover:text-white hover:bg-white/10'"
+            @click="switchTab('apimarket')"
+        >
+          {{ t('page.layout.api_market') }}
+        </div>
+      </div>
 
-      <div class="flex items-center space-x-4">
+      <!-- 右侧：操作按钮 -->
+      <div class="flex items-center space-x-4 ml-auto">
         <!-- 说明文档按钮 -->
         <div
             class="flex items-center space-x-2 px-3 py-2 bg-white/5 rounded-lg cursor-pointer hover:bg-white/10 transition-all duration-300"
@@ -94,6 +112,25 @@
 
   const versionInfo = ref(null)
   const currentLang = ref(proxy.$i18n.locale)
+  const currentTab = ref('dashboard')
+
+  // 监听路由变化，更新当前标签
+  watch(() => proxy.$route.path, (newPath) => {
+    if (newPath.includes('/apimarket')) {
+      currentTab.value = 'apimarket'
+    } else if (newPath.includes('/dashboard') || newPath === '/') {
+      currentTab.value = 'dashboard'
+    }
+  }, { immediate: true })
+
+  function switchTab(tab) {
+    currentTab.value = tab
+    if (tab === 'dashboard') {
+      proxy.$router.push({ path: '/dashboard' })
+    } else if (tab === 'apimarket') {
+      proxy.$router.push({ path: '/apimarket' })
+    }
+  }
 
   function logout() {
     proxy.$modal.confirm(

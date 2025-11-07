@@ -22,6 +22,25 @@ export const constantRouters = [
                 component: () => import("@/views/dashboard/index.vue")
             },
             {
+                path: 'apimarket',
+                component: () => import("@/views/apimarket/index.vue")
+            },
+            {
+                path: 'apimarket/add',
+                name: 'ApiMarketAdd',
+                component: () => import("@/views/apimarket/add.vue")
+            },
+            {
+                path: 'apimarket/:id',
+                name: 'ApiMarketDetail',
+                component: () => import("@/views/apimarket/detail.vue")
+            },
+            {
+                path: 'apimarket/:id/edit',
+                name: 'ApiMarketEdit',
+                component: () => import("@/views/apimarket/add.vue")
+            },
+            {
                 path: 'project/:id',
                 component: () => import('@/views/project/index.vue'),
                 name: 'ProjectDetail',
