@@ -42,5 +42,13 @@ export default {
             url: `/admin/api/market/delete/${id}`,
             method: 'post'
         });
+    },
+
+    // 获取所有API列表（不分页）
+    list() {
+        return request({
+            url: '/admin/api/market/list',
+            method: 'get'
+        });
     }
 };

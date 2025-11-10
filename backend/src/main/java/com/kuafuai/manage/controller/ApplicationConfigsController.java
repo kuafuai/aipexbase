@@ -5,6 +5,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.google.common.collect.ImmutableMap;
 import com.kuafuai.common.domin.BaseResponse;
 import com.kuafuai.common.domin.PageRequest;
 import com.kuafuai.common.domin.ResultUtils;
@@ -13,6 +14,7 @@ import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.DateUtils;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.manage.entity.vo.APIKeyVo;
+import com.kuafuai.manage.entity.vo.ApiMarketVo;
 import com.kuafuai.manage.entity.vo.DynamicApiVo;
 import com.kuafuai.manage.entity.vo.SwitchStatusVo;
 import com.kuafuai.manage.service.ManageBusinessService;
@@ -28,6 +30,7 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.util.Arrays;
+import java.util.Map;
 import java.util.Objects;
 
 @Slf4j
@@ -35,6 +38,14 @@ import java.util.Objects;
 @RequiredArgsConstructor
 @RequestMapping("/admin/application/config")
 public class ApplicationConfigsController {
+
+    private static final Map<Integer, String> METHOD_MAP = ImmutableMap.<Integer, String>builder()
+            .put(0, "GET")
+            .put(1, "POST")
+            .put(2, "PUT")
+            .put(3, "DELETE")
+            .put(4, "PATCH")
+            .build();
 
     private final AppInfoService appInfoService;
 
@@ -126,6 +137,37 @@ public class ApplicationConfigsController {
         return ResultUtils.success(dynamicApiSettingService.remove(queryWrapper));
     }
 
+
+    @PostMapping("/dynamicapi/{id}/saveApiMarket")
+    public BaseResponse saveApi(@PathVariable("id") String appId, @RequestBody ApiMarketVo marketVo) {
+        AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
+        if (Objects.isNull(appInfo)) {
+            throw new BusinessException("error.code.not_found");
+        }
+
+        if (!Objects.equals(appInfo.getOwner(), SecurityUtils.getUserId())) {
+            throw new BusinessException("error.code.no_auth");
+        }
+
+        LambdaQueryWrapper<DynamicApiSetting> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(DynamicApiSetting::getKeyName, marketVo.getName());
+        queryWrapper.eq(DynamicApiSetting::getAppId, appId);
+
+        if (Objects.nonNull(dynamicApiSettingService.getOne(queryWrapper))) {
+            return ResultUtils.error("error.data.exist");
+        }
+
+        DynamicApiSetting json = DynamicApiSetting.builder()
+                .appId(appInfo.getAppId())
+                .marketId(marketVo.getId())
+                .keyName(marketVo.getName())
+                .description(marketVo.getDescription())
+                .url(marketVo.getUrl())
+                .method(METHOD_MAP.get(marketVo.getMethod()))
+                .build();
+
+        return ResultUtils.success(dynamicApiSettingService.save(json));
+    }
 
     /**
      * 创建 api key

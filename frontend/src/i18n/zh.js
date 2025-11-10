@@ -362,7 +362,16 @@ export default {
             need_fields_warning: "请填写服务标识和URL和服务描述",
             need_test_warning: "请先测试一下服务",
             json_invalid: "请求头或请求体不是合法的 JSON",
-            request_failed_prefix: "请求失败: "
+            request_failed_prefix: "请求失败: ",
+            import_from_market: "从API市场导入",
+            market_dialog_title: "选择API市场服务",
+            market_search_placeholder: "搜索API名称或描述",
+            market_category_filter: "按分类筛选",
+            market_empty: "暂无可用的API",
+            market_load_failed: "加载API市场失败",
+            import_success: "API导入成功，请填写变量值并测试",
+            import_selected: "导入选中的API",
+            cancel: "取消"
         },
         settings: {
             app_manage_title: "应用管理",

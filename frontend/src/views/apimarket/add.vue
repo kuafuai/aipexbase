@@ -60,9 +60,9 @@
             <el-select v-model="formData.method" :placeholder="t('page.apimarket.form_method_placeholder')">
               <el-option label="GET" :value="0" />
               <el-option label="POST" :value="1" />
-              <el-option label="PUT" :value="2" />
-              <el-option label="DELETE" :value="3" />
-              <el-option label="PATCH" :value="4" />
+<!--              <el-option label="PUT" :value="2" />-->
+<!--              <el-option label="DELETE" :value="3" />-->
+<!--              <el-option label="PATCH" :value="4" />-->
             </el-select>
           </el-form-item>
 
@@ -133,6 +133,7 @@
                 v-model="formData.unitPrice"
                 :min="0"
                 :precision="2"
+                :step="0.01"
                 :placeholder="t('page.apimarket.form_unit_price_placeholder')"
                 class="w-full"
             />

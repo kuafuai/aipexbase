@@ -2,6 +2,7 @@ package com.kuafuai.manage.service;
 
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.login.SecurityUtils;
+import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.manage.entity.vo.ApiMarketVo;
 import com.kuafuai.system.entity.ApiMarket;
 import com.kuafuai.system.entity.ApiPricing;
@@ -69,6 +70,11 @@ public class ApiManageBusinessService {
             throw new BusinessException("error.code.no_auth");
         }
 
+        String token = market.getToken();
+        if (!StringUtils.contains(marketVo.getToken(), "*")) {
+            token = market.getToken();
+        }
+
         ApiMarket updateMarket = ApiMarket.builder()
                 .id(market.getId())
                 .providerId(market.getProviderId())
@@ -80,7 +86,7 @@ public class ApiManageBusinessService {
                 .protocol(marketVo.getProtocol())
                 .authType(marketVo.getAuthType())
                 .authConfig(marketVo.getAuthConfig())
-                .token(marketVo.getToken())
+                .token(token)
                 .bodyType(marketVo.getBodyType())
                 .bodyTemplate(marketVo.getBodyTemplate())
                 .headers(marketVo.getHeaders())

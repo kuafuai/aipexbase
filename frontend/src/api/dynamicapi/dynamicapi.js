@@ -17,6 +17,13 @@ export default {
             data: data
         });
     },
+    addMarket(appId, data){
+        return request({
+            url: `/admin/application/config/dynamicapi/${appId}/saveApiMarket`,
+            method: "post",
+            data: data
+        });
+    },
     // 删除第三方服务
     delete(appId, keyName) {
         return request({

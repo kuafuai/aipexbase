@@ -362,7 +362,16 @@ export default {
             need_fields_warning: "Please fill in key, URL and description",
             need_test_warning: "Please test the service first",
             json_invalid: "Headers or Body is not valid JSON",
-            request_failed_prefix: "Request failed: "
+            request_failed_prefix: "Request failed: ",
+            import_from_market: "Import from API Market",
+            market_dialog_title: "Select API from Market",
+            market_search_placeholder: "Search API name or description",
+            market_category_filter: "Filter by category",
+            market_empty: "No APIs available",
+            market_load_failed: "Failed to load API market",
+            import_success: "API imported successfully, please fill in variable values and test",
+            import_selected: "Import Selected API",
+            cancel: "Cancel"
         },
         settings: {
             app_manage_title: "Application Settings",

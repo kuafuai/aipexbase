@@ -1,6 +1,19 @@
 <template>
   <div>
-    <h1 class="text-2xl font-semibold text-cyan-400 mb-6">{{ t('page.dynamicapi.title') }}</h1>
+    <div class="flex items-center justify-between mb-6">
+      <h1 class="text-2xl font-semibold text-cyan-400">{{ t('page.dynamicapi.title') }}</h1>
+      <el-button
+          type="primary"
+          @click="showMarketDialog = true"
+          class="import-from-market-btn"
+      >
+        <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/>
+        </svg>
+        {{ t('page.dynamicapi.import_from_market') }}
+      </el-button>
+    </div>
 
     <!-- 添加新的外部服务 -->
     <el-card class="mb-6" shadow="hover" style="background-color: #1e293b; color: #e2e8f0; border: 1px solid #334155;">
@@ -49,7 +62,7 @@
             </el-form-item>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <el-form-item :label="t('page.dynamicapi.field_method')">
+              <el-form-item :label="t('page.dynamicapi.field_method')">
                 <el-select v-model="newService.method" class="w-full"
                            style="--el-select-bg-color: #334155; --el-select-border-color: #475569; --el-select-text-color: #e2e8f0; --el-select-hover-border-color: #475569; --el-select-focus-border-color: #475569;">
                   <el-option label="GET" value="GET"/>
@@ -111,7 +124,10 @@
 
         <div class="p-4 bg-slate-700 rounded-lg border border-slate-600">
           <h3 class="text-gray-200 mb-3 font-semibold">{{ t('page.dynamicapi.test_title') }}</h3>
-          <el-button size="small" type="success" @click="updateTestVariables">{{ t('page.dynamicapi.btn_extract_vars') }}</el-button>
+          <el-button size="small" type="success" @click="updateTestVariables">{{
+              t('page.dynamicapi.btn_extract_vars')
+            }}
+          </el-button>
           <div v-if="testVars.length > 0" class="space-y-2 mt-4">
             <div
                 v-for="(info, key) in testVarValues"
@@ -256,7 +272,9 @@
                 size="small"
                 @click="service.showDetails = !service.showDetails"
             >
-              {{ service.showDetails ? t('page.dynamicapi.btn_toggle_details_show') : t('page.dynamicapi.btn_toggle_details_hide') }}
+              {{
+                service.showDetails ? t('page.dynamicapi.btn_toggle_details_show') : t('page.dynamicapi.btn_toggle_details_hide')
+              }}
             </el-button>
           </div>
         </div>
@@ -275,6 +293,101 @@
         />
       </div>
     </el-card>
+
+    <!-- API市场导入弹窗 -->
+    <el-dialog
+        v-model="showMarketDialog"
+        :title="t('page.dynamicapi.market_dialog_title')"
+        width="80%"
+        :close-on-click-modal="false"
+    >
+      <div v-loading="loadingMarketApis" class="market-api-list">
+        <!-- 搜索和筛选 -->
+        <div class="mb-4 flex gap-4">
+          <el-input
+              v-model="marketSearchKeyword"
+              :placeholder="t('page.dynamicapi.market_search_placeholder')"
+              clearable
+              @input="searchMarketApis"
+              class="flex-1"
+          >
+            <template #prefix>
+              <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+              </svg>
+            </template>
+          </el-input>
+          <el-select
+              v-model="marketCategoryFilter"
+              :placeholder="t('page.dynamicapi.market_category_filter')"
+              clearable
+              @change="filterMarketApis"
+              style="width: 200px"
+          >
+            <el-option
+                v-for="cat in marketCategories"
+                :key="cat"
+                :label="cat"
+                :value="cat"
+            />
+          </el-select>
+        </div>
+
+        <!-- API列表 -->
+        <div v-if="filteredMarketApis.length === 0" class="text-center py-8 text-gray-400">
+          {{ t('page.dynamicapi.market_empty') }}
+        </div>
+
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+          <div
+              v-for="api in filteredMarketApis"
+              :key="api.id"
+              class="p-4 bg-slate-700 rounded-lg border border-slate-600 hover:border-cyan-500 transition-all cursor-pointer"
+              :class="{'border-cyan-500 bg-slate-600': selectedMarketApi?.id === api.id}"
+              @click="selectMarketApi(api)"
+          >
+            <div class="flex items-start justify-between mb-2">
+              <div class="flex-1">
+                <h3 class="text-white font-semibold mb-1">{{ api.name }}</h3>
+                <p class="text-gray-400 text-sm">{{ api.description }}</p>
+              </div>
+              <el-tag v-if="api.category" size="small" class="ml-2">{{ api.category }}</el-tag>
+            </div>
+
+            <div class="flex items-center gap-4 mt-3 text-sm">
+              <span class="text-gray-300">
+                <el-tag size="small" type="info">{{ getMethodText(api.method) }}</el-tag>
+              </span>
+              <span class="text-gray-400">{{ getPricingModelBadge(api.pricingModel) }}</span>
+              <span v-if="api.pricingModel !== 0" class="text-cyan-400">
+                ¥{{ Number(api.unitPrice || 0).toFixed(2) }}
+              </span>
+            </div>
+
+            <!-- 预览URL -->
+            <div class="mt-2 text-xs text-gray-500 font-mono truncate">
+              {{ api.url }}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end gap-3">
+          <el-button @click="showMarketDialog = false">
+            {{ t('page.dynamicapi.cancel') }}
+          </el-button>
+          <el-button
+              type="primary"
+              :disabled="!selectedMarketApi"
+              @click="importFromMarket"
+          >
+            {{ t('page.dynamicapi.import_selected') }}
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -468,12 +581,12 @@ const addService = async () => {
     };
 
     await proxy.$api.dynamicapi.add(appId, backendData);
-    proxy.$modal.msgSuccess(t('page.dynamicapi.btn_add') + t('page.tables.delete_success').replace('删除','添加'));
+    proxy.$modal.msgSuccess(t('page.dynamicapi.btn_add') + t('page.tables.delete_success').replace('删除', '添加'));
     resetForm();
     fetchServices();
   } catch (error) {
     console.error('Failed to add service:', error);
-    proxy.$modal.msgError(t('page.dynamicapi.delete_failed').replace('删除','添加'));
+    proxy.$modal.msgError(t('page.dynamicapi.delete_failed').replace('删除', '添加'));
   } finally {
     adding.value = false;
   }
@@ -501,7 +614,7 @@ const resetForm = () => {
 const deleteService = async (service) => {
   try {
     await proxy.$modal.confirm(
-        t('page.dynamicapi.confirm_delete_message', { name: service.name }),
+        t('page.dynamicapi.confirm_delete_message', {name: service.name}),
         t('page.dynamicapi.confirm_delete_title'),
         {
           confirmButtonText: t('page.dynamicapi.confirm_delete_ok'),
@@ -545,6 +658,120 @@ const testVars = ref([]);
 const testVarValues = ref({});
 const testing = ref(false);
 const testResult = ref('');
+
+// API市场相关状态
+const showMarketDialog = ref(false);
+const loadingMarketApis = ref(false);
+const marketApis = ref([]);
+const filteredMarketApis = ref([]);
+const selectedMarketApi = ref(null);
+const marketSearchKeyword = ref('');
+const marketCategoryFilter = ref('');
+const marketCategories = ref([]);
+
+// 监听弹窗打开，加载市场API
+watch(showMarketDialog, (newVal) => {
+  if (newVal) {
+    loadMarketApis();
+  }
+});
+
+// 加载市场API列表
+const loadMarketApis = async () => {
+  loadingMarketApis.value = true;
+  try {
+    const res = await proxy.$api.apimarket.list();
+    if (res.success && res.data) {
+      marketApis.value = res.data;
+      filteredMarketApis.value = res.data;
+
+      // 提取所有分类
+      const categories = new Set();
+      res.data.forEach(api => {
+        if (api.category) {
+          categories.add(api.category);
+        }
+      });
+      marketCategories.value = Array.from(categories);
+    }
+  } catch (error) {
+    console.error('Failed to load market APIs:', error);
+    proxy.$modal.msgError(t('page.dynamicapi.market_load_failed'));
+  } finally {
+    loadingMarketApis.value = false;
+  }
+};
+
+// 搜索市场API
+const searchMarketApis = () => {
+  filterMarketApis();
+};
+
+// 筛选市场API
+const filterMarketApis = () => {
+  let result = marketApis.value;
+
+  // 按关键词搜索
+  if (marketSearchKeyword.value) {
+    const keyword = marketSearchKeyword.value.toLowerCase();
+    result = result.filter(api =>
+        api.name.toLowerCase().includes(keyword) ||
+        api.description?.toLowerCase().includes(keyword)
+    );
+  }
+
+  // 按分类筛选
+  if (marketCategoryFilter.value) {
+    result = result.filter(api => api.category === marketCategoryFilter.value);
+  }
+
+  filteredMarketApis.value = result;
+};
+
+// 选择市场API
+const selectMarketApi = (api) => {
+  selectedMarketApi.value = api;
+};
+
+// 从市场导入API
+const importFromMarket = async () => {
+  if (!selectedMarketApi.value) return;
+
+  const api = selectedMarketApi.value;
+  let res = await proxy.$api.dynamicapi.addMarket(appId, api);
+  if (res.success) {
+    proxy.$modal.msgSuccess(t('page.dynamicapi.btn_add') + t('page.tables.delete_success').replace('删除', '添加'));
+    // 关闭弹窗
+    showMarketDialog.value = false;
+    selectedMarketApi.value = null;
+  } else {
+    proxy.$modal.msgSuccess(t('page.dynamicapi.btn_add') + t('page.tables.delete_failed').replace('删除', '添加'));
+  }
+
+
+};
+
+// 获取请求方法文本
+const getMethodText = (method) => {
+  const methods = {
+    0: 'GET',
+    1: 'POST',
+    2: 'PUT',
+    3: 'DELETE',
+    4: 'PATCH'
+  };
+  return methods[method] || 'GET';
+};
+
+// 获取计费模式标签
+const getPricingModelBadge = (pricingModel) => {
+  const models = {
+    0: 'FREE',
+    1: t('page.apimarket.pricing_per_call'),
+    2: t('page.apimarket.pricing_per_token')
+  };
+  return models[pricingModel] || 'FREE';
+};
 
 
 const updateTestVariables = () => {
@@ -643,3 +870,37 @@ const testNewService = async () => {
 };
 
 </script>
+
+<style scoped>
+.import-from-market-btn {
+  display: flex;
+  align-items: center;
+}
+
+.market-api-list {
+  min-height: 300px;
+}
+
+/* 弹窗样式覆盖 */
+:deep(.el-dialog) {
+  background-color: #1e293b;
+  border: 1px solid #334155;
+}
+
+:deep(.el-dialog__header) {
+  border-bottom: 1px solid #334155;
+  color: #e2e8f0;
+}
+
+:deep(.el-dialog__title) {
+  color: #e2e8f0;
+}
+
+:deep(.el-dialog__body) {
+  color: #e2e8f0;
+}
+
+:deep(.el-dialog__footer) {
+  border-top: 1px solid #334155;
+}
+</style>

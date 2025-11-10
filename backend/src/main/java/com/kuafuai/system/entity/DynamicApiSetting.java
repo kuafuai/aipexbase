@@ -37,4 +37,6 @@ public class DynamicApiSetting {
     @TableField(value = "`show`")
     private Integer show;
     private String varRaw;
+
+    private Integer marketId;
 }

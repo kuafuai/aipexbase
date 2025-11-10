@@ -34,6 +34,11 @@ public class ApiMarketController {
         return ResultUtils.success(apiMarketService.page(page, queryWrapper));
     }
 
+    @GetMapping("/list")
+    public BaseResponse list() {
+        return ResultUtils.success(apiMarketService.lambdaQuery().orderByDesc(ApiMarket::getCreatedAt).list());
+    }
+
     @PostMapping("/add")
     public BaseResponse add(@RequestBody ApiMarketVo marketVo) {
         return ResultUtils.success(apiManageBusinessService.createApiMarket(marketVo));
@@ -47,6 +52,7 @@ public class ApiMarketController {
     @GetMapping("/{id}")
     public BaseResponse detail(@PathVariable(value = "id") Integer apiMarketId) {
         ApiMarket apiMarket = apiMarketService.getById(apiMarketId);
+        apiMarket.setToken("********");
         apiMarket.setOwner(Objects.equals(apiMarket.getProviderId(), SecurityUtils.getUserId().intValue()));
         ApiPricing pricing = apiManageBusinessService.getByMarketId(apiMarketId);
         if (pricing != null) {
