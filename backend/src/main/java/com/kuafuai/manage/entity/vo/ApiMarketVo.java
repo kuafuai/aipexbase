@@ -5,4 +5,32 @@ import lombok.Data;
 
 @Data
 public class ApiMarketVo extends PageRequest {
+    private Integer id;
+
+    private String name;
+    private String description;
+    private String category;
+    private Integer status;
+
+    private String url;
+    private Integer protocol;
+    private Integer method;
+    private String headers;
+
+
+    private String authType;
+    private String authConfig;
+    private String token;
+
+    private Integer bodyType;
+    private String bodyTemplate;
+
+    private Integer dataType;
+    private String dataPath;
+
+    private String dataRow;
+    private String varRow;
+
+    private Integer pricingModel;
+    private Double unitPrice;
 }

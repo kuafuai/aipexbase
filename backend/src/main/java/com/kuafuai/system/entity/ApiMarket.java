@@ -37,7 +37,7 @@ public class ApiMarket {
 
     private String token;
 
-    private Integer body_type;
+    private Integer bodyType;
     private String bodyTemplate;
 
     private String headers;
@@ -50,4 +50,11 @@ public class ApiMarket {
 
     private Integer status;
     private Date createdAt;
+
+    @TableField(exist = false)
+    private boolean owner;
+    @TableField(exist = false)
+    private Integer pricingModel;
+    @TableField(exist = false)
+    private Double unitPrice;
 }

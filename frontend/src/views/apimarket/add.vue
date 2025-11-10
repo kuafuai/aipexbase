@@ -116,6 +116,29 @@
           </el-form-item>
         </div>
 
+        <!-- 计价信息 -->
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 mb-6">
+          <h2 class="text-xl font-bold text-white mb-6">{{ t('page.apimarket.form_pricing_info') }}</h2>
+
+          <el-form-item :label="t('page.apimarket.form_pricing_model')">
+            <el-select v-model="formData.pricingModel" :placeholder="t('page.apimarket.form_pricing_model_placeholder')">
+              <el-option label="FREE" :value="0" />
+              <el-option :label="t('page.apimarket.pricing_per_call')" :value="1" />
+              <el-option :label="t('page.apimarket.pricing_per_token')" :value="2" />
+            </el-select>
+          </el-form-item>
+
+          <el-form-item v-if="formData.pricingModel !== 0" :label="t('page.apimarket.form_unit_price')">
+            <el-input-number
+                v-model="formData.unitPrice"
+                :min="0"
+                :precision="2"
+                :placeholder="t('page.apimarket.form_unit_price_placeholder')"
+                class="w-full"
+            />
+          </el-form-item>
+        </div>
+
         <!-- 响应数据配置 -->
         <div class="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 mb-6">
           <h2 class="text-xl font-bold text-white mb-6">{{ t('page.apimarket.form_response_config') }}</h2>
@@ -223,7 +246,9 @@ const formData = ref({
   dataType: 0,
   dataRow: '',
   varRow: '',
-  status: 1
+  status: 1,
+  pricingModel: 0,
+  unitPrice: 0
 });
 
 onMounted(() => {
