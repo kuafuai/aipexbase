@@ -2,7 +2,6 @@ package com.kuafuai.common.dynamic_config.service;
 
 import com.google.common.collect.Maps;
 import com.kuafuai.common.cache.Cache;
-import com.kuafuai.common.dynamic_config.domain.KfSystemConfig;
 import com.kuafuai.common.dynamic_config.domain.SystemConfig;
 import com.kuafuai.system.service.AppTableInfoService;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -47,6 +47,18 @@ public class ApplicationConfigsController {
             .put(4, "PATCH")
             .build();
 
+    private static final Map<Integer, String> DATA_TYPE_MAP = ImmutableMap.<Integer, String>builder()
+            .put(0, "TEXT")
+            .put(1, "JSON")
+            .put(2, "ARRAY")
+            .build();
+
+
+    private static final Map<Integer, String> PROTOCOL_MAP = ImmutableMap.<Integer, String>builder()
+            .put(1, "HTTP")
+            .put(2, "WSS")
+            .build();
+
     private final AppInfoService appInfoService;
 
     @Resource
@@ -163,7 +175,10 @@ public class ApplicationConfigsController {
                 .keyName(marketVo.getName())
                 .description(marketVo.getDescription())
                 .url(marketVo.getUrl())
+                .protocol(PROTOCOL_MAP.get(marketVo.getProtocol()))
                 .method(METHOD_MAP.get(marketVo.getMethod()))
+                .dataType(DATA_TYPE_MAP.get(marketVo.getDataType()))
+                .dataPath(marketVo.getDataPath())
                 .build();
 
         return ResultUtils.success(dynamicApiSettingService.save(json));

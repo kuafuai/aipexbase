@@ -6,7 +6,6 @@ import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.util.I18nUtils;
 import com.kuafuai.common.util.JSON;
 import com.kuafuai.common.util.ServletUtils;
-import com.kuafuai.common.util.StringUtils;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;

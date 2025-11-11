@@ -4,23 +4,21 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.google.common.collect.Maps;
 import com.jayway.jsonpath.JsonPath;
 import com.kuafuai.api.client.ApiClient;
-import com.kuafuai.api.parser.ApiResultParser;
 import com.kuafuai.api.spec.ApiDefinition;
 import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.exception.BusinessException;
-import com.kuafuai.common.util.IdUtils;
+import com.kuafuai.system.entity.ApiMarket;
+import com.kuafuai.system.entity.ApiPricing;
+import com.kuafuai.system.entity.AppInfo;
 import com.kuafuai.system.entity.DynamicApiSetting;
-import com.kuafuai.system.service.DynamicApiSettingService;
+import com.kuafuai.system.service.*;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import javax.imageio.ImageIO;
-import java.awt.image.BufferedImage;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.util.Base64;
+import java.math.BigDecimal;
 import java.util.Map;
 
 @Service
@@ -31,6 +29,20 @@ public class ApiBusinessService {
     @Autowired
     private DynamicApiSettingService dynamicApiSettingService;
 
+    @Autowired
+    private ApiMarketService apiMarketService;
+
+    @Autowired
+    private ApiPricingService apiPricingService;
+
+    @Autowired
+    private AppInfoService appInfoService;
+
+    @Autowired
+    private UserBalanceService userBalanceService;
+
+    @Autowired
+    private ApiBillingService apiBillingService;
 
     private final ApiClient apiClient = new ApiClient();
 
@@ -81,64 +93,172 @@ public class ApiBusinessService {
                 .build();
     }
 
-
-    /**
-     * 识别图片中的内容
-     *
-     * @param image
-     * @param format
-     * @return
-     */
-    public String pic2word(String appId, BufferedImage image, String format) {
-        try {
-            byte[] imageBytes = imageToByte(image, format);
-            String base64Content = Base64.getEncoder().encodeToString(imageBytes);
-
-            String keyName = "pic2word";
-            Map<String, Object> params = Maps.newHashMap();
-            params.put("content", base64Content);
-
-            String result = callApi(appId, keyName, params);
-            ApiResultParser.parser(result);
-            return JsonPath.read(result, "$.data.payload.choices.text[0].content");
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
+    private void mergeMarketSetting(ApiMarket apiMarket, DynamicApiSetting setting) {
+        setting.setToken(apiMarket.getToken());
+        setting.setHeader(apiMarket.getHeaders());
+        setting.setBodyTemplate(apiMarket.getBodyTemplate());
+        if (StringUtils.isNotEmpty(apiMarket.getBodyTemplate())) {
+            setting.setBodyType("template");
+        } else {
+            setting.setBodyType("");
         }
     }
 
     /**
-     * 文本2文本
+     * 执行API调用并计费(事务方法)
      *
-     * @param text
-     * @param prompt
-     * @return
+     * @param appId   应用ID
+     * @param setting API配置
+     * @param params  请求参数
+     * @return API响应结果
      */
-    public String text2text(String appId, String text, String prompt) {
-        try {
-            String keyName = "text2text";
-            Map<String, Object> params = Maps.newHashMap();
-            params.put("query", text);
-            Map<String, Object> inputs = Maps.newHashMap();
-            inputs.put("prompt", com.kuafuai.common.util.StringUtils.isNotEmpty(prompt) ? prompt : "用户与你的对话只会进行一次,之后也不会和你再次进行对话,你需要尽可能的使用用户提供的信息,完成用户的需求,并且使用合理的语言表述出来,step by step");
-            params.put("inputs", inputs);
-            params.put("response_mode", "blocking");
-            params.put("conversation_id", "");
-            params.put("user", IdUtils.simpleUUID());
-
-            String result = callApi(appId, keyName, params);
-            log.info("text2text result: {}", result);
-            ApiResultParser.parser(result);
-            return JsonPath.read(result, "$.data.answer");
-
-        } catch (Exception e) {
-            throw new RuntimeException(e.getMessage());
+    @Transactional(rollbackFor = Exception.class)
+    public String callApiWithBilling(String appId, DynamicApiSetting setting, Map<String, Object> params) {
+        // 1. 获取定价信息
+        ApiPricing pricing = getApiPricing(setting.getMarketId());
+        if (pricing == null) {
+            log.warn("API未配置定价信息,跳过计费, appId: {}, apiKey: {}", appId, setting.getKeyName());
+            return callHttpApi(setting, params);
         }
 
+        ApiMarket apiMarket = getApiMarket(setting.getMarketId());
+        mergeMarketSetting(apiMarket, setting);
+
+        Integer billingModel = pricing.getPricingModel();
+        BigDecimal unitPrice = BigDecimal.valueOf(pricing.getUnitPrice());
+
+        // 2. 预估费用并检查余额
+        BigDecimal estimatedAmount;
+        if (billingModel == 1) {
+            // 按次收费
+            estimatedAmount = unitPrice;
+        } else if (billingModel == 2) {
+            // 按token收费,暂时无法预估,跳过余额检查
+            estimatedAmount = BigDecimal.ZERO;
+        } else {
+            log.warn("未知的计费模式: {}", billingModel);
+            return callHttpApi(setting, params);
+        }
+
+        // 3. 检查余额(按次收费时检查,按token收费时先调用再扣费)
+        if (!checkUserBalance(appId, estimatedAmount)) {
+            throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
+        }
+
+        // 4. 调用API
+        String response;
+        try {
+            response = callHttpApi(setting, params);
+        } catch (Exception e) {
+            log.error("API调用失败,不扣费, appId: {}, apiKey: {}, error: {}", appId, setting.getKeyName(), e.getMessage());
+            throw e;
+        }
+
+        // 5. 计算实际费用
+        Integer quantity;
+        if (billingModel == 1) {
+            // 按次收费
+            quantity = 1;
+        } else {
+            // 按token收费,从响应中提取token数量(TODO: tokenPath需要配置)
+            quantity = extractTokenCount(response, null);
+            if (quantity == null || quantity <= 0) {
+                log.warn("无法提取token数量,跳过计费, appId: {}, apiKey: {}", appId, setting.getKeyName());
+                return response;
+            }
+        }
+
+        BigDecimal totalAmount = apiBillingService.calculateAmount(billingModel, quantity, unitPrice);
+
+        // 6. 扣费并记录
+        Long userId = getUserIdByAppId(appId);
+        boolean deductSuccess = userBalanceService.deductBalance(userId, totalAmount);
+        if (!deductSuccess) {
+            throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
+        }
+
+        // 7. 记录计费日志
+        apiBillingService.recordBilling(appId, setting.getMarketId(), setting.getId(), billingModel, quantity, unitPrice);
+
+        log.info("API调用计费成功, appId: {}, apiKey: {}, billingModel: {}, quantity: {}, totalAmount: {}", appId, setting.getKeyName(), billingModel, quantity, totalAmount);
+
+        return response;
     }
 
-    private byte[] imageToByte(BufferedImage image, String format) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        ImageIO.write(image, format, baos);
-        return baos.toByteArray();
+    public ApiMarket getApiMarket(Integer marketId) {
+        if (marketId == null) {
+            return null;
+        }
+        return apiMarketService.getById(marketId);
     }
+
+    /**
+     * 获取API定价信息
+     *
+     * @param marketId API市场ID
+     * @return 定价信息
+     */
+    public ApiPricing getApiPricing(Integer marketId) {
+        if (marketId == null) {
+            return null;
+        }
+        LambdaQueryWrapper<ApiPricing> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(ApiPricing::getMarketId, marketId);
+        return apiPricingService.getOne(queryWrapper);
+    }
+
+    /**
+     * 通过appId获取userId
+     *
+     * @param appId 应用ID
+     * @return 用户ID
+     */
+    public Long getUserIdByAppId(String appId) {
+        AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
+        if (appInfo == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "应用不存在");
+        }
+        return appInfo.getOwner();
+    }
+
+    /**
+     * 检查用户余额是否充足
+     *
+     * @param appId  应用ID
+     * @param amount 需要的金额
+     * @return 是否充足
+     */
+    public boolean checkUserBalance(String appId, BigDecimal amount) {
+        Long userId = getUserIdByAppId(appId);
+        return userBalanceService.checkBalance(userId, amount);
+    }
+
+    /**
+     * 从API响应中提取token数量(预留方法)
+     *
+     * @param response  API响应
+     * @param tokenPath token数量的JSONPath路径
+     * @return token数量, 解析失败返回null
+     */
+    public Integer extractTokenCount(String response, String tokenPath) {
+        if (StringUtils.isEmpty(response) || StringUtils.isEmpty(tokenPath)) {
+            log.warn("响应或token路径为空,无法提取token数量");
+            return null;
+        }
+
+        try {
+            Object tokenObj = JsonPath.read(response, tokenPath);
+            if (tokenObj instanceof Number) {
+                return ((Number) tokenObj).intValue();
+            } else if (tokenObj instanceof String) {
+                return Integer.parseInt((String) tokenObj);
+            }
+            log.warn("提取的token数量类型不支持: {}", tokenObj.getClass());
+            return null;
+        } catch (Exception e) {
+            log.error("提取token数量失败: {}", e.getMessage());
+            return null;
+        }
+    }
+
 }

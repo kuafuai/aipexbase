@@ -13,7 +13,9 @@
                am.protocol,
                am.status,
                am.created_at,
-               u.nick_name as provider_name
+               u.nick_name as provider_name,
+               am.data_type,
+               am.data_path
         from api_market am left join users u on am.provider_id = u.id
         ${ew.customSqlSegment}
     </select>
@@ -29,7 +31,9 @@
                am.protocol,
                am.status,
                am.created_at,
-               u.nick_name as provider_name
+               u.nick_name as provider_name,
+               am.data_type,
+               am.data_path
         from api_market am left join users u on am.provider_id = u.id
         ${ew.customSqlSegment}
     </select>

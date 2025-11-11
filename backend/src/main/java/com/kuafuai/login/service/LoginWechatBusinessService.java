@@ -1,6 +1,5 @@
 package com.kuafuai.login.service;
 
-import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.dynamic_config.service.DynamicConfigBusinessService;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.util.StringUtils;

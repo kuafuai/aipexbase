@@ -1,14 +1,11 @@
 package com.kuafuai.login.provider.phone;
 
-import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.login.LoginUser;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.login.domain.Login;
 import com.kuafuai.login.entity.LoginVo;
-import com.kuafuai.login.provider.mail.MailAuthentication;
 import com.kuafuai.login.service.LoginBusinessService;
-import com.kuafuai.login.service.LoginMailBusinessService;
 import com.kuafuai.login.service.LoginPhoneBusinessService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,7 +1,6 @@
 package com.kuafuai.login.service;
 
 import com.kuafuai.common.cache.Cache;
-import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.login.config.WechatConfig;

@@ -12,6 +12,7 @@ import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.util.ServletUtils;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
 import com.kuafuai.system.entity.DynamicApiSetting;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -21,6 +22,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api")
+@Slf4j
 public class UnifiedApiController {
 
     @Autowired
@@ -40,34 +42,35 @@ public class UnifiedApiController {
         if (setting == null) {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
-        if (StringUtils.equalsIgnoreCase(setting.getProtocol(), "http")) {
-            // 设置环境变量参数
-            data.put("ip", ServletUtils.getClientIp());
-            String result = apiBusinessService.callHttpApi(setting, data);
+        // 设置环境变量参数
+        data.put("ip", ServletUtils.getClientIp());
+        String result = "";
+        if (setting.getMarketId() > 0) {
+            result = apiBusinessService.callApiWithBilling(appId, setting, data);
+        } else {
+            result = apiBusinessService.callHttpApi(setting, data);
             ApiResultParser.parser(result);
-            String dataPath = setting.getDataPath();
-            String dataType = setting.getDataType();
-            try {
-                if (StringUtils.isNotEmpty(dataPath)) {
-                    Object content = JsonPath.read(result, dataPath);
+        }
+        String dataPath = setting.getDataPath();
+        String dataType = setting.getDataType();
+        try {
+            if (StringUtils.isNotEmpty(dataPath)) {
+                Object content = JsonPath.read(result, dataPath);
 
-                    if (StringUtils.isNotEmpty(dataType) && StringUtils.equalsIgnoreCase(dataType, "json")) {
-                        if (content instanceof String) {
-                            return ResultUtils.success(gson.fromJson(String.valueOf(content), return_value_type));
-                        } else {
-                            return ResultUtils.success(content);
-                        }
+                if (StringUtils.isNotEmpty(dataType) && StringUtils.equalsIgnoreCase(dataType, "json")) {
+                    if (content instanceof String) {
+                        return ResultUtils.success(gson.fromJson(String.valueOf(content), return_value_type));
                     } else {
                         return ResultUtils.success(content);
                     }
                 } else {
-                    return gson.fromJson(result, return_value_type);
+                    return ResultUtils.success(content);
                 }
-            } catch (Exception e) {
-                throw new BusinessException(e.getMessage() + "\n" + result);
+            } else {
+                return gson.fromJson(result, return_value_type);
             }
-        } else {
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        } catch (Exception e) {
+            throw new BusinessException(e.getMessage() + "\n" + result);
         }
     }
 }

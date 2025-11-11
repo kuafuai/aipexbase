@@ -18,7 +18,9 @@ public enum ErrorCode {
     NOT_BIND_DATA_ERROR(40401, "error.code.not_bind_data"),
     FORBIDDEN_ERROR(40300, "error.code.forbidden"),
     SYSTEM_ERROR(50000, "error.code.system_error"),
-    OPERATION_ERROR(50001, "error.code.operation_error");
+    OPERATION_ERROR(50001, "error.code.operation_error"),
+    BALANCE_NOT_ENOUGH(50002, "error.code.balance_not_enough")
+    ;
 
     /**
      * 状态码

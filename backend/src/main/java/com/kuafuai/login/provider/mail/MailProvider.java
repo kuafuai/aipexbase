@@ -1,6 +1,5 @@
 package com.kuafuai.login.provider.mail;
 
-import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.login.LoginUser;
 import com.kuafuai.common.util.StringUtils;

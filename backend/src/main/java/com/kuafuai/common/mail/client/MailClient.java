@@ -2,9 +2,7 @@ package com.kuafuai.common.mail.client;
 
 import com.kuafuai.api.util.ApiUtil;
 import com.kuafuai.common.mail.spec.MailDefinition;
-import org.springframework.mail.MailMessage;
 import org.springframework.mail.javamail.JavaMailSenderImpl;
-import org.springframework.mail.javamail.MimeMailMessage;
 import org.springframework.mail.javamail.MimeMessageHelper;
 
 import javax.mail.MessagingException;

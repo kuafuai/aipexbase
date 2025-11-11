@@ -10,7 +10,6 @@ import com.kuafuai.common.file.FileUtils;
 import com.kuafuai.common.storage.StorageService;
 import com.kuafuai.common.util.JSON;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;

@@ -1,8 +1,6 @@
 package com.kuafuai.config;
 
 import com.google.common.collect.Maps;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
 import com.kuafuai.common.config.AppConfig;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
@@ -16,7 +14,6 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.Resource;
-import java.lang.reflect.Type;
 import java.util.Map;
 import java.util.Objects;
 

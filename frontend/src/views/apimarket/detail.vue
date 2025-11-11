@@ -228,8 +228,9 @@ function getBodyTypeText(bodyType) {
 
 function getDataTypeText(dataType) {
   const types = {
-    0: t('page.apimarket.data_type_object'),
-    1: t('page.apimarket.data_type_array')
+    0: t('page.apimarket.data_type_text'),
+    1: t('page.apimarket.data_type_object'),
+    2: t('page.apimarket.data_type_array')
   };
   return types[dataType] || types[0];
 }

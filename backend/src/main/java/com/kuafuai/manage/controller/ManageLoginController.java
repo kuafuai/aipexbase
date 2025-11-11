@@ -4,7 +4,6 @@ import com.kuafuai.common.domin.BaseResponse;
 import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.login.LoginUser;
-import com.kuafuai.common.util.I18nUtils;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.login.service.TokenService;
 import com.kuafuai.manage.entity.vo.ManageLoginVo;

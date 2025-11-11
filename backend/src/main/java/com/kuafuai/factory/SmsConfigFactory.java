@@ -1,8 +1,8 @@
 package com.kuafuai.factory;
 
+import com.kuafuai.factory.sms.SmsSendMessage;
 import com.kuafuai.factory.sms.impl.AlibabaSendMessage;
 import com.kuafuai.factory.sms.impl.HuaweiSendMessage;
-import com.kuafuai.factory.sms.SmsSendMessage;
 import com.kuafuai.factory.sms.impl.TencentSendMessage;
 import com.kuafuai.factory.sms.request.SmsConfigRequest;
 import org.dromara.sms4j.aliyun.config.AlibabaConfig;
@@ -12,7 +12,6 @@ import org.dromara.sms4j.huawei.config.HuaweiConfig;
 import org.dromara.sms4j.tencent.config.TencentConfig;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
