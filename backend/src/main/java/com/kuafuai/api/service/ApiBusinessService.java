@@ -1,8 +1,9 @@
 package com.kuafuai.api.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.google.common.collect.Maps;
 import com.jayway.jsonpath.JsonPath;
+import com.kuafuai.api.auth.AuthHandler;
+import com.kuafuai.api.auth.AuthHandlerFactory;
 import com.kuafuai.api.client.ApiClient;
 import com.kuafuai.api.spec.ApiDefinition;
 import com.kuafuai.common.domin.ErrorCode;
@@ -44,6 +45,9 @@ public class ApiBusinessService {
     @Autowired
     private ApiBillingService apiBillingService;
 
+    @Autowired
+    private AuthHandlerFactory authHandlerFactory;
+
     private final ApiClient apiClient = new ApiClient();
 
     public String callApi(String appId, String apiKey, Map<String, Object> params) {
@@ -53,23 +57,17 @@ public class ApiBusinessService {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
         if (StringUtils.equalsIgnoreCase(setting.getProtocol(), "http")) {
-            return callHttpApi(setting, params);
+            return callHttpApi(setting, params, null);
         } else {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
         }
     }
 
-    public String callHttpApi(DynamicApiSetting setting, Map<String, Object> params) {
-
+    public String callHttpApi(DynamicApiSetting setting, Map<String, Object> params, ApiMarket apiMarket) {
         ApiDefinition apiDefinition = getApiBySetting(setting);
-        Map<String, String> fixedParams = Maps.newHashMap();
-        // 判断鉴权方式
-        if (StringUtils.isNotEmpty(setting.getToken())) {
-            fixedParams.put("token", setting.getToken());
-        }
 
-        // 合并 params
-        params.putAll(fixedParams);
+        // 判断鉴权方式
+        process_auth_type(setting, apiDefinition, apiMarket, params);
 
         return apiClient.call(apiDefinition, params);
     }
@@ -125,7 +123,7 @@ public class ApiBusinessService {
         ApiPricing pricing = getApiPricing(setting.getMarketId());
         if (pricing == null) {
             log.warn("API未配置定价信息,跳过计费, appId: {}, apiKey: {}", appId, setting.getKeyName());
-            return callHttpApi(setting, params);
+            return callHttpApi(setting, params, null);
         }
 
         ApiMarket apiMarket = getApiMarket(setting.getMarketId());
@@ -156,7 +154,7 @@ public class ApiBusinessService {
         // 4. 调用API
         String response;
         try {
-            response = callHttpApi(setting, params);
+            response = callHttpApi(setting, params, apiMarket);
         } catch (Exception e) {
             log.error("API调用失败,不扣费, appId: {}, apiKey: {}, error: {}", appId, setting.getKeyName(), e.getMessage());
             throw e;
@@ -272,4 +270,23 @@ public class ApiBusinessService {
         }
     }
 
+    private void process_auth_type(DynamicApiSetting setting, ApiDefinition apiDefinition, ApiMarket apiMarket, Map<String, Object> params) {
+
+        String authType;
+        if (apiMarket == null) {
+            authType = "default";
+        } else {
+            authType = apiMarket.getAuthType();
+            if (StringUtils.equalsAnyIgnoreCase(authType, "None", "Bearer")) {
+                authType = "default";
+            }
+        }
+        AuthHandler handler = authHandlerFactory.getHandler(authType);
+
+        try {
+            handler.handle(setting, apiDefinition, apiMarket, params);
+        } catch (Exception e) {
+            throw new BusinessException(ErrorCode.OPERATION_ERROR, "认证处理失败: " + e.getMessage());
+        }
+    }
 }

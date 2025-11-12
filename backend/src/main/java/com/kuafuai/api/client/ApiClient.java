@@ -45,16 +45,20 @@ public class ApiClient {
                             // 如果是字符串，直接返回
                             if (value instanceof String) {
                                 String raw = (String) value;
-
-                                // 检查是否含有需要转义的字符
-                                if (raw.contains("\"") || raw.contains("\\") || raw.contains("\n") || raw.contains("\r") || raw.contains("\t")) {
-                                    raw = JSON.toJSONString(value); // 会自动转义
-                                    // 去掉最外层引号
-                                    if (raw.startsWith("\"") && raw.endsWith("\"")) {
-                                        raw = raw.substring(1, raw.length() - 1);
+                                if (raw.trim().startsWith("{") || raw.trim().startsWith("[")) {
+                                    //json格式
+                                    return raw;
+                                } else {
+                                    // 检查是否含有需要转义的字符
+                                    if (raw.contains("\"") || raw.contains("\\") || raw.contains("\n") || raw.contains("\r") || raw.contains("\t")) {
+                                        raw = JSON.toJSONString(value); // 会自动转义
+                                        // 去掉最外层引号
+                                        if (raw.startsWith("\"") && raw.endsWith("\"")) {
+                                            raw = raw.substring(1, raw.length() - 1);
+                                        }
                                     }
+                                    return raw;
                                 }
-                                return raw;
                             }
                             // 如果是 List/Map，用 gson 序列化
                             return gson.toJson(entry.getValue());

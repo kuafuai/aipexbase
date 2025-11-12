@@ -48,7 +48,7 @@ public class UnifiedApiController {
         if (setting.getMarketId() > 0) {
             result = apiBusinessService.callApiWithBilling(appId, setting, data);
         } else {
-            result = apiBusinessService.callHttpApi(setting, data);
+            result = apiBusinessService.callHttpApi(setting, data, null);
             ApiResultParser.parser(result);
         }
         String dataPath = setting.getDataPath();
