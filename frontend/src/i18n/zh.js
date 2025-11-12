@@ -164,8 +164,11 @@ export default {
             var_value_placeholder: "输入测试值",
             var_desc_placeholder: "输入变量描述（可选）",
             form_required_fields: "请填写必填字段：名称、描述、URL",
+            form_name_english_only: "API名称只能包含英文字母、数字、空格、短横线和下划线",
             add_success: "API添加成功",
-            update_success: "API更新成功"
+            update_success: "API更新成功",
+            test: "测试",
+            testing: "测试中...",
         },
         project_detail: {
             title: "概览",

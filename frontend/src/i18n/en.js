@@ -164,8 +164,11 @@ export default {
             var_value_placeholder: "Enter test value",
             var_desc_placeholder: "Enter variable description (optional)",
             form_required_fields: "Please fill in required fields: Name, Description, URL",
+            form_name_english_only: "API name can only contain English letters, numbers, spaces, hyphens, and underscores",
             add_success: "API added successfully",
-            update_success: "API updated successfully"
+            update_success: "API updated successfully",
+            test: "Test",
+            testing: "Testing..."
         },
         project_detail: {
             title: "Overview",
