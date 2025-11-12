@@ -98,9 +98,16 @@ public class ApiBusinessService {
         setting.setHeader(apiMarket.getHeaders());
         setting.setBodyTemplate(apiMarket.getBodyTemplate());
         if (StringUtils.isNotEmpty(apiMarket.getBodyTemplate())) {
-            setting.setBodyType("template");
+            if (apiMarket.getBodyType() == 1) {
+                setting.setBodyType("form");
+            } else {
+                setting.setBodyType("template");
+            }
         } else {
             setting.setBodyType("");
+        }
+        if (!StringUtils.equalsIgnoreCase(apiMarket.getDataPath(), setting.getDataPath())) {
+            setting.setDataPath(apiMarket.getDataPath());
         }
     }
 

@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import com.kuafuai.api.spec.ApiDefinition;
 import com.kuafuai.api.util.ApiUtil;
 import com.kuafuai.common.util.JSON;
+import lombok.extern.slf4j.Slf4j;
 import okhttp3.*;
 import org.apache.commons.lang3.StringUtils;
 
@@ -14,6 +15,7 @@ import java.util.Map;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
+@Slf4j
 public class ApiClient {
 
     private final OkHttpClient httpClient;
@@ -42,7 +44,7 @@ public class ApiClient {
                             Object value = entry.getValue();
                             // 如果是字符串，直接返回
                             if (value instanceof String) {
-                                String raw=(String) value;
+                                String raw = (String) value;
 
                                 // 检查是否含有需要转义的字符
                                 if (raw.contains("\"") || raw.contains("\\") || raw.contains("\n") || raw.contains("\r") || raw.contains("\t")) {
@@ -76,6 +78,19 @@ public class ApiClient {
                 String rendered = ApiUtil.interpolateString(apiDef.bodyTemplate, templateMaps);
 
                 body = RequestBody.create(MediaType.get("application/json; charset=utf-8"), rendered);
+            } else if ("form".equalsIgnoreCase(apiDef.bodyType)) {
+                String rendered = ApiUtil.interpolateString(apiDef.bodyTemplate, templateMaps);
+                log.info("Rendered form body: {}", rendered);
+
+                // 解析模板为 key=value 格式
+                FormBody.Builder formBuilder = new FormBody.Builder();
+                for (String pair : rendered.split("&")) {
+                    String[] kv = pair.split("=", 2);
+                    if (kv.length == 2) {
+                        formBuilder.add(kv[0].trim(), kv[1].trim());
+                    }
+                }
+                body = formBuilder.build();
             } else {
                 body = RequestBody.create(
                         MediaType.get("application/json; charset=utf-8"),
@@ -95,10 +110,68 @@ public class ApiClient {
             }
         }
 
-        try (Response response = httpClient.newCall(requestBuilder.build()).execute()) {
-            return response.body().string();
+        Request request = requestBuilder.build();
+
+        // 打印请求日志
+        logRequest(request, apiDef, templateMaps);
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            String responseBody = response.body().string();
+
+            // 打印响应日志
+            logResponse(response, responseBody);
+
+            return responseBody;
         } catch (IOException e) {
+            log.error("API请求失败: url={}, method={}, error={}", urlWithParams, apiDef.method, e.getMessage());
             throw new RuntimeException("API请求失败", e);
+        }
+    }
+
+    /**
+     * 打印请求日志
+     */
+    private void logRequest(Request request, ApiDefinition apiDef, Map<String, String> params) {
+        try {
+            log.info("============================================ API Request ==========");
+            log.info("URL: {}", request.url());
+            log.info("Method: {}", request.method());
+
+            // 打印请求头
+            if (!request.headers().names().isEmpty()) {
+                log.info("Headers: ");
+                for (String name : request.headers().names()) {
+                    log.info("  {}: {}", name, request.headers().get(name));
+                }
+            }
+
+            // 打印请求体
+            if (request.body() != null) {
+                if ("template".equalsIgnoreCase(apiDef.bodyType)) {
+                    String rendered = ApiUtil.interpolateString(apiDef.bodyTemplate, params);
+                    log.info("Request Body (template): {}", rendered);
+                } else {
+                    log.info("Request Body (json): {}", gson.toJson(params));
+                }
+            }
+        } catch (Exception e) {
+            log.warn("打印请求日志失败: {}", e.getMessage());
+        }
+    }
+
+    /**
+     * 打印响应日志
+     */
+    private void logResponse(Response response, String responseBody) {
+        try {
+            log.info("============================================ API Response ==========");
+            log.info("Status Code: {}", response.code());
+            log.info("Response Body: {}", responseBody != null && responseBody.length() > 1000
+                    ? responseBody.substring(0, 1000) + "... (truncated)"
+                    : responseBody);
+            log.info("====================================================================");
+        } catch (Exception e) {
+            log.warn("打印响应日志失败: {}", e.getMessage());
         }
     }
 
