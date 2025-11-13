@@ -250,24 +250,42 @@ public class ApiBusinessService {
      * @return token数量, 解析失败返回null
      */
     public Integer extractTokenCount(String response, String tokenPath) {
-        if (StringUtils.isEmpty(response) || StringUtils.isEmpty(tokenPath)) {
-            log.warn("响应或token路径为空,无法提取token数量");
+        if (StringUtils.isEmpty(response)) {
+            log.warn("响应为空,无法提取token数量");
             return null;
         }
 
+        // 如果提供了特定的tokenPath，则使用它
+        if (StringUtils.isNotEmpty(tokenPath)) {
+            try {
+                Object tokenObj = JsonPath.read(response, tokenPath);
+                if (tokenObj instanceof Number) {
+                    return ((Number) tokenObj).intValue();
+                } else if (tokenObj instanceof String) {
+                    return Integer.parseInt((String) tokenObj);
+                }
+                log.warn("提取的token数量类型不支持: {}", tokenObj.getClass());
+                return null;
+            } catch (Exception e) {
+                log.error("提取token数量失败: {}", e.getMessage());
+                return null;
+            }
+        }
+
+        // 默认尝试从标准位置提取total_tokens
         try {
-            Object tokenObj = JsonPath.read(response, tokenPath);
+            Object tokenObj = JsonPath.read(response, "$.metadata.usage.total_tokens");
             if (tokenObj instanceof Number) {
                 return ((Number) tokenObj).intValue();
             } else if (tokenObj instanceof String) {
                 return Integer.parseInt((String) tokenObj);
             }
-            log.warn("提取的token数量类型不支持: {}", tokenObj.getClass());
-            return null;
         } catch (Exception e) {
-            log.error("提取token数量失败: {}", e.getMessage());
-            return null;
+            log.warn("从默认路径提取token数量失败: {}", e.getMessage());
         }
+
+
+        return null;
     }
 
     private void process_auth_type(DynamicApiSetting setting, ApiDefinition apiDefinition, ApiMarket apiMarket, Map<String, Object> params) {

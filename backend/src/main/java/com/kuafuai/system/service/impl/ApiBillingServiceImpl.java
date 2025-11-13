@@ -54,7 +54,12 @@ public class ApiBillingServiceImpl extends ServiceImpl<ApiBillingRecordMapper, A
             if (quantity == null || quantity <= 0) {
                 return BigDecimal.ZERO;
             }
-            return unitPrice.multiply(BigDecimal.valueOf(quantity));
+            BigDecimal amount = unitPrice.multiply(BigDecimal.valueOf(quantity/10000.0));
+            // 如果按token计费的费用不足0.01，就以0.01计费
+            if (amount.compareTo(BigDecimal.valueOf(0.01)) < 0) {
+                return BigDecimal.valueOf(0.01);
+            }
+            return amount;
         }
 
         return BigDecimal.ZERO;
