@@ -72,7 +72,7 @@ public class ApiManageBusinessService {
 
         String token = market.getToken();
         if (!StringUtils.contains(marketVo.getToken(), "*")) {
-            token = market.getToken();
+            token = marketVo.getToken();
         }
 
         ApiMarket updateMarket = ApiMarket.builder()

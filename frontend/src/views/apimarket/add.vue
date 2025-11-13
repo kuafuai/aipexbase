@@ -22,21 +22,25 @@
         <div class="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 mb-6">
           <h2 class="text-xl font-bold text-white mb-6">{{ t('page.apimarket.form_basic_info') }}</h2>
 
-          <el-form-item :label="t('page.apimarket.form_name')" required>
-            <el-input v-model="formData.name" :placeholder="t('page.apimarket.form_name_placeholder')" />
+          <el-form-item :label="t('page.apimarket.form_name')" required :error="nameError">
+            <el-input 
+              v-model="formData.name" 
+              :placeholder="t('page.apimarket.form_name_placeholder')"
+              @input="validateName"
+            />
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_description')" required>
             <el-input v-model="formData.description" type="textarea" :rows="3"
-                      :placeholder="t('page.apimarket.form_description_placeholder')" />
+                      :placeholder="t('page.apimarket.form_description_placeholder')"/>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_category')">
-            <el-input v-model="formData.category" :placeholder="t('page.apimarket.form_category_placeholder')" />
+            <el-input v-model="formData.category" :placeholder="t('page.apimarket.form_category_placeholder')"/>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_status')">
-            <el-switch v-model="formData.status" :active-value="1" :inactive-value="0" />
+            <el-switch v-model="formData.status" :active-value="1" :inactive-value="0"/>
           </el-form-item>
         </div>
 
@@ -46,30 +50,30 @@
 
           <el-form-item :label="t('page.apimarket.form_url')" required>
             <el-input v-model="formData.url" :placeholder="t('page.apimarket.form_url_placeholder')"
-                      @input="extractVariables" />
+                      @input="extractVariables"/>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_protocol')" required>
             <el-select v-model="formData.protocol" :placeholder="t('page.apimarket.form_protocol_placeholder')">
-              <el-option label="HTTP" :value="1" />
-              <el-option label="WSS" :value="2" />
+              <el-option label="HTTP" :value="1"/>
+              <el-option label="WSS" :value="2"/>
             </el-select>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_method')" required>
             <el-select v-model="formData.method" :placeholder="t('page.apimarket.form_method_placeholder')">
-              <el-option label="GET" :value="0" />
-              <el-option label="POST" :value="1" />
-<!--              <el-option label="PUT" :value="2" />-->
-<!--              <el-option label="DELETE" :value="3" />-->
-<!--              <el-option label="PATCH" :value="4" />-->
+              <el-option label="GET" :value="0"/>
+              <el-option label="POST" :value="1"/>
+              <!--              <el-option label="PUT" :value="2" />-->
+              <!--              <el-option label="DELETE" :value="3" />-->
+              <!--              <el-option label="PATCH" :value="4" />-->
             </el-select>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_headers')">
             <el-input v-model="formData.headers" type="textarea" :rows="4"
                       :placeholder="t('page.apimarket.form_headers_placeholder')"
-                      @input="extractVariables" />
+                      @input="extractVariables"/>
           </el-form-item>
         </div>
 
@@ -80,18 +84,18 @@
           <el-form-item :label="t('page.apimarket.form_auth_type')">
             <el-select v-model="formData.authType" :placeholder="t('page.apimarket.form_auth_type_placeholder')"
                        @change="handleAuthTypeChange">
-              <el-option label="None" value="None" />
-              <el-option label="Bearer" value="Bearer" />
+              <el-option label="None" value="None"/>
+              <el-option label="Bearer" value="Bearer"/>
             </el-select>
           </el-form-item>
 
           <el-form-item v-show="false" :label="t('page.apimarket.form_auth_config_value')">
             <el-input v-model="formData.authConfig" type="textarea" :rows="3"
-                      :placeholder="t('page.apimarket.form_auth_config_placeholder')" />
+                      :placeholder="t('page.apimarket.form_auth_config_placeholder')"/>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_token')">
-            <el-input v-model="formData.token" :placeholder="t('page.apimarket.form_token_placeholder')" />
+            <el-input v-model="formData.token" :placeholder="t('page.apimarket.form_token_placeholder')"/>
           </el-form-item>
         </div>
 
@@ -101,18 +105,18 @@
 
           <el-form-item :label="t('page.apimarket.form_body_type')">
             <el-select v-model="formData.bodyType" :placeholder="t('page.apimarket.form_body_type_placeholder')">
-              <el-option label="JSON" :value="0" />
-              <el-option label="Form-Data" :value="1" />
-              <el-option label="URL-Encoded" :value="2" />
-              <el-option label="XML" :value="3" />
-              <el-option label="Text" :value="4" />
+              <el-option label="JSON" :value="0"/>
+              <el-option label="Form-Data" :value="1"/>
+              <el-option label="URL-Encoded" :value="2"/>
+              <el-option label="XML" :value="3"/>
+              <el-option label="Text" :value="4"/>
             </el-select>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_body_template')">
             <el-input v-model="formData.bodyTemplate" type="textarea" :rows="6"
                       :placeholder="t('page.apimarket.form_body_template_placeholder')"
-                      @input="extractVariables" />
+                      @input="extractVariables"/>
           </el-form-item>
         </div>
 
@@ -121,10 +125,11 @@
           <h2 class="text-xl font-bold text-white mb-6">{{ t('page.apimarket.form_pricing_info') }}</h2>
 
           <el-form-item :label="t('page.apimarket.form_pricing_model')">
-            <el-select v-model="formData.pricingModel" :placeholder="t('page.apimarket.form_pricing_model_placeholder')">
-              <el-option label="FREE" :value="0" />
-              <el-option :label="t('page.apimarket.pricing_per_call')" :value="1" />
-              <el-option :label="t('page.apimarket.pricing_per_token')" :value="2" />
+            <el-select v-model="formData.pricingModel"
+                       :placeholder="t('page.apimarket.form_pricing_model_placeholder')">
+              <el-option label="FREE" :value="0"/>
+              <el-option :label="t('page.apimarket.pricing_per_call')" :value="1"/>
+              <el-option :label="t('page.apimarket.pricing_per_token')" :value="2"/>
             </el-select>
           </el-form-item>
 
@@ -145,20 +150,20 @@
           <h2 class="text-xl font-bold text-white mb-6">{{ t('page.apimarket.form_response_config') }}</h2>
 
           <el-form-item :label="t('page.apimarket.form_data_path')">
-            <el-input v-model="formData.dataPath" :placeholder="t('page.apimarket.form_data_path_placeholder')" />
+            <el-input v-model="formData.dataPath" :placeholder="t('page.apimarket.form_data_path_placeholder')"/>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_data_type')">
             <el-select v-model="formData.dataType" :placeholder="t('page.apimarket.form_data_type_placeholder')">
-              <el-option :label="t('page.apimarket.data_type_text')" :value="0" />
-              <el-option :label="t('page.apimarket.data_type_object')" :value="1" />
-              <el-option :label="t('page.apimarket.data_type_array')" :value="2" />
+              <el-option :label="t('page.apimarket.data_type_text')" :value="0"/>
+              <el-option :label="t('page.apimarket.data_type_object')" :value="1"/>
+              <el-option :label="t('page.apimarket.data_type_array')" :value="2"/>
             </el-select>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_data_row')">
             <el-input v-model="formData.dataRow" type="textarea" :rows="4"
-                      :placeholder="t('page.apimarket.form_data_row_placeholder')" />
+                      :placeholder="t('page.apimarket.form_data_row_placeholder')"/>
           </el-form-item>
 
           <el-form-item :label="t('page.apimarket.form_var_row')">
@@ -193,12 +198,29 @@
         <!-- 操作按钮 -->
         <div class="flex justify-end space-x-4">
           <button
+              type="button"
               @click="goBack"
-              class="px-6 py-2.5 bg-white/5 rounded-lg border border-white/20 text-white/80 hover:bg-white/10 hover:border-white/30 transition-all duration-300"
+              class="flex items-center space-x-2 px-4 py-2 bg-white/5 rounded-lg border border-white/20 text-white/80 hover:bg-white/10 hover:border-white/30 transition-all duration-300"
           >
             {{ t('page.apimarket.cancel') }}
           </button>
           <button
+              v-if="!isEdit"
+              type="button"
+              @click="testApi"
+              :disabled="testing"
+              class="flex items-center space-x-2 px-4 py-2 bg-white/5 rounded-lg border border-white/20 text-white/80 hover:bg-white/10 hover:border-white/30 transition-all duration-300"
+          >
+            <svg v-if="testing" class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none"
+                 viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{{ testing ? t('page.apimarket.testing') : t('page.apimarket.test') }}</span>
+          </button>
+          <button
+              type="button"
               @click="handleSubmit"
               :disabled="submitting"
               class="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-500 rounded-lg border-0 text-white hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 shadow-lg shadow-cyan-500/25 disabled:opacity-50 disabled:cursor-not-allowed"
@@ -216,6 +238,31 @@
       </el-form>
     </div>
   </div>
+
+  <!-- 测试结果弹窗 -->
+  <el-dialog
+      v-model="showTestResult"
+      title="测试结果"
+      width="50%"
+  >
+    <div v-if="testResult" class="p-4">
+      <div class="mb-4">
+        <p class="text-gray-700 mb-1">状态码: <span class="font-mono font-bold">{{ testResult.statusCode }}</span></p>
+        <p class="text-gray-700 mb-1">消息: <span class="font-mono">{{ testResult.message }}</span></p>
+      </div>
+      <div>
+        <p class="text-gray-700 mb-1">响应体:</p>
+        <pre class="bg-gray-100 p-3 rounded text-xs overflow-auto max-h-60">{{
+            formatJson(testResult.responseBody)
+          }}</pre>
+      </div>
+    </div>
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="showTestResult = false">关闭</el-button>
+      </span>
+    </template>
+  </el-dialog>
 </template>
 
 <script setup>
@@ -226,6 +273,10 @@ const route = useRoute();
 const loading = ref(false);
 const submitting = ref(false);
 const isEdit = ref(false);
+const testing = ref(false);
+const testResult = ref(null);
+const showTestResult = ref(false);
+const nameError = ref('');
 
 // 提取的变量列表
 const extractedVars = ref([]);
@@ -263,7 +314,22 @@ onMounted(() => {
 // 监听变量值和描述的变化
 watch(extractedVars, () => {
   updateVarRow();
-}, { deep: true });
+}, {deep: true});
+
+// 监听token值的变化
+watch(() => formData.value.token, () => {
+  // 当token值变化时重新提取变量
+  extractVariables();
+});
+
+// 验证API名称是否为英文
+function validateName(value) {
+  if (value && !/^[a-zA-Z0-9\s\-_]+$/.test(value)) {
+    nameError.value = t('page.apimarket.form_name_english_only');
+  } else {
+    nameError.value = '';
+  }
+}
 
 function loadApiDetail(id) {
   loading.value = true;
@@ -274,6 +340,8 @@ function loadApiDetail(id) {
       loadExistingVars();
       // 提取变量
       extractVariables();
+      // 验证已有的名称
+      validateName(formData.value.name);
     }
   }).finally(() => {
     loading.value = false;
@@ -318,6 +386,11 @@ function extractVariables() {
       allVars.add(match[1].trim());
     }
   });
+
+  // 如果token有值，则从变量列表中移除token
+  if (formData.value.token) {
+    allVars.delete('token');
+  }
 
   // 更新extractedVars，保留已有的值和描述
   const existingVarsMap = {};
@@ -400,10 +473,118 @@ function handleAuthTypeChange(value) {
   }
 }
 
+// 格式化JSON显示
+function formatJson(jsonString) {
+  try {
+    const parsed = JSON.parse(jsonString);
+    return JSON.stringify(parsed, null, 2);
+  } catch (e) {
+    return jsonString;
+  }
+}
+
+// 测试API功能
+async function testApi() {
+  // 表单验证
+  if (!formData.value.name || !formData.value.description || !formData.value.url) {
+    proxy.$modal.msgWarning(t('page.apimarket.form_required_fields'));
+    return;
+  }
+  
+  // 验证API名称必须为英文
+  if (nameError.value) {
+    proxy.$modal.msgWarning(nameError.value);
+    return;
+  }
+
+  testing.value = true;
+  testResult.value = null;
+
+  try {
+    // 解析headers和body
+    let headers = {};
+    let body = {};
+    
+    try {
+      // 只有当headers不为空时才尝试解析
+      if (formData.value.headers && formData.value.headers.trim() !== '') {
+        // 先替换变量再解析
+        let headerStr = formData.value.headers;
+        headerStr = replaceTemplateVars(headerStr);
+        headers = JSON.parse(headerStr);
+      }
+      
+      // 只有当bodyTemplate不为空时才尝试解析
+      if (formData.value.bodyTemplate && formData.value.bodyTemplate.trim() !== '') {
+        // 兼容不同的变量格式
+        let bodyStr = formData.value.bodyTemplate;
+        bodyStr = replaceTemplateVars(bodyStr);
+        body = JSON.parse(bodyStr);
+      }
+    } catch (e) {
+      proxy.$modal.msgError(t('page.dynamicapi.json_invalid'));
+      testing.value = false;
+      return;
+    }
+
+    // 根据认证类型处理认证头
+    if (formData.value.authType === 'Bearer' && formData.value.token) {
+      headers['Authorization'] = `Bearer ${formData.value.token}`;
+    }
+
+    // 替换模板变量的函数
+    function replaceTemplateVars(str) {
+      return str.replace(/\$?\{\{([^}]+)\}\}|\$([a-zA-Z0-9_]+)/g, (_, curlyBraceVar, dollarSignVar) => {
+        const varName = (curlyBraceVar || dollarSignVar).trim();
+        // 对于token变量，使用表单中的token值
+        if (varName === 'token' && formData.value.token) {
+          return formData.value.token;
+        }
+        // 对于其他变量，尝试从extractedVars中获取值
+        const varItem = extractedVars.value.find(v => v.name === varName);
+        return varItem && varItem.value ? varItem.value : '';
+      });
+    }
+
+    // 发起请求
+    const response = await fetch(formData.value.url, {
+      method: formData.value.method === 0 ? 'GET' : 'POST',
+      headers,
+      body: formData.value.method === 1 && Object.keys(body).length > 0 ? JSON.stringify(body) : undefined
+    });
+
+    const data = await response.text();
+    let responseBody;
+    try {
+      responseBody = JSON.stringify(JSON.parse(data), null, 2);
+    } catch {
+      responseBody = data;
+    }
+
+    testResult.value = {
+      statusCode: response.status,
+      message: response.statusText,
+      responseBody: responseBody
+    };
+    
+    showTestResult.value = true;
+  } catch (err) {
+    proxy.$modal.msgError(t('page.dynamicapi.request_failed_prefix') + err.message);
+  } finally {
+    testing.value = false;
+  }
+}
+
 function handleSubmit() {
   // 表单验证
   if (!formData.value.name || !formData.value.description || !formData.value.url) {
     proxy.$modal.msgWarning(t('page.apimarket.form_required_fields'));
+    return;
+  }
+  
+  // 验证API名称必须为英文
+  if (nameError.value) {
+    proxy.$modal.msgWarning(nameError.value);
     return;
   }
 
