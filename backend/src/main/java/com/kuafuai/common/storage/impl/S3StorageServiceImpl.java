@@ -8,6 +8,7 @@ import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.AmazonS3ClientBuilder;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.kuafuai.common.file.FileUploadUtils;
+import com.kuafuai.common.file.ImageUtils;
 import com.kuafuai.common.file.MimeTypeUtils;
 import com.kuafuai.common.storage.StorageService;
 import com.kuafuai.common.util.StringUtils;
@@ -81,6 +82,18 @@ public class S3StorageServiceImpl implements StorageService {
         } catch (Exception e) {
             throw new RuntimeException(e.getMessage());
         }
+    }
+
+    @Override
+    public String upload(String fileUrl, String formatter, String contentType) {
+        String appId = GlobalAppIdFilter.getAppId();
+        if (StringUtils.isEmpty(appId)) {
+            appId = "1";
+        }
+
+        byte[] buffer = ImageUtils.readFile(fileUrl);
+
+        return upload(buffer, appId, formatter, contentType);
     }
 
     @Override

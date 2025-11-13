@@ -6,11 +6,14 @@ import com.google.common.collect.Maps;
 import com.kuafuai.common.config.MessageConfig;
 import com.kuafuai.common.domin.BaseResponse;
 import com.kuafuai.common.domin.ResultUtils;
+import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.file.FileUtils;
 import com.kuafuai.common.storage.StorageService;
 import com.kuafuai.common.util.JSON;
+import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
@@ -54,6 +57,24 @@ public class CommonController {
         } catch (Exception e) {
             return ResultUtils.error(e.getMessage());
         }
+    }
+
+    @PostMapping("/uploadByUrl")
+    public BaseResponse uploadByUrl(@RequestBody Map<String, String> params) {
+        String fileUrl = params.get("fileUrl");
+        if (StringUtils.isEmpty(fileUrl)) {
+            return ResultUtils.error("error.code.params_error");
+        }
+        String formatter = params.get("formatter");
+        if (StringUtils.isEmpty(formatter)) {
+            return ResultUtils.error("error.code.params_error");
+        }
+        String contentType = params.get("contentType");
+        if (StringUtils.isEmpty(contentType)) {
+            return ResultUtils.error("error.code.params_error");
+        }
+        String resultUrl = storageService.upload(fileUrl, formatter, contentType);
+        return ResultUtils.success(resultUrl);
     }
 
     /**

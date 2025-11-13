@@ -26,6 +26,11 @@ public class LocalStorageServiceImpl implements StorageService {
     }
 
     @Override
+    public String upload(String fileUrl, String formatter, String contentType) {
+        return null;
+    }
+
+    @Override
     public String upload(byte[] buffer, String appId, String formatter, String contentType) {
         return null;
     }
