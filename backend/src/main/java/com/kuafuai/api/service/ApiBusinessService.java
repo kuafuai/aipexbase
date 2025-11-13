@@ -6,6 +6,7 @@ import com.kuafuai.api.auth.AuthHandler;
 import com.kuafuai.api.auth.AuthHandlerFactory;
 import com.kuafuai.api.client.ApiClient;
 import com.kuafuai.api.spec.ApiDefinition;
+import com.kuafuai.api.spec.BillingResult;
 import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.system.entity.ApiMarket;
@@ -126,70 +127,28 @@ public class ApiBusinessService {
             return callHttpApi(setting, params, null);
         }
 
+        // 准备API配置
         ApiMarket apiMarket = getApiMarket(setting.getMarketId());
         mergeMarketSetting(apiMarket, setting);
 
         Integer billingModel = pricing.getPricingModel();
         BigDecimal unitPrice = BigDecimal.valueOf(pricing.getUnitPrice());
 
-        // 2. 预估费用并检查余额
-        BigDecimal estimatedAmount;
-        if (billingModel == 1) {
-            // 按次收费
-            estimatedAmount = unitPrice;
-        } else if (billingModel == 2) {
-            // 按token收费,暂时无法预估,跳过余额检查
-            estimatedAmount = BigDecimal.ZERO;
-        } else {
-            // Free 免费
-            estimatedAmount = BigDecimal.ZERO;
-            unitPrice = BigDecimal.ZERO;
+        // 2. 预检查余额
+        // 按次计费：检查余额是否足够支付单次调用费用
+        if (isPerCallBilling(billingModel) && !hasSufficientBalance(appId, unitPrice)) {
+            throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
         }
-
-        // 3. 检查余额(按次收费时检查,按token收费时先调用再扣费)
-        if (billingModel != 0 && !checkUserBalance(appId, estimatedAmount)) {
+        // 按token计费：检查余额是否大于0（因为无法提前知道确切的token消耗量）
+        if (isPerTokenBilling(billingModel) && !hasSufficientBalance(appId, BigDecimal.ZERO)) {
             throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
         }
 
-        // 4. 调用API
-        String response;
-        try {
-            response = callHttpApi(setting, params, apiMarket);
-        } catch (Exception e) {
-            log.error("API调用失败,不扣费, appId: {}, apiKey: {}, error: {}", appId, setting.getKeyName(), e.getMessage());
-            throw e;
-        }
+        // 3. 调用API
+        String response = callApiSafely(setting, params, apiMarket, appId);
 
-        // 5. 计算实际费用
-        Integer quantity;
-        if (billingModel == 1) {
-            // 按次收费
-            quantity = 1;
-        } else if (billingModel == 2) {
-            // 按token收费,从响应中提取token数量(TODO: tokenPath需要配置)
-            quantity = extractTokenCount(response, null);
-            if (quantity == null || quantity <= 0) {
-                log.warn("无法提取token数量,跳过计费, appId: {}, apiKey: {}", appId, setting.getKeyName());
-                return response;
-            }
-        } else {
-            // Free
-            quantity = 1;
-        }
-
-        BigDecimal totalAmount = apiBillingService.calculateAmount(billingModel, quantity, unitPrice);
-
-        // 6. 扣费并记录
-        Long userId = getUserIdByAppId(appId);
-        boolean deductSuccess = userBalanceService.deductBalance(userId, totalAmount);
-        if (billingModel != 0 && !deductSuccess) {
-            throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
-        }
-
-        // 7. 记录计费日志
-        apiBillingService.recordBilling(appId, setting.getMarketId(), setting.getId(), billingModel, quantity, unitPrice);
-
-        log.info("API调用计费成功, appId: {}, apiKey: {}, billingModel: {}, quantity: {}, totalAmount: {}", appId, setting.getKeyName(), billingModel, quantity, totalAmount);
+        // 4. 处理计费
+        processBilling(appId, setting, billingModel, unitPrice, response);
 
         return response;
     }
@@ -255,36 +214,47 @@ public class ApiBusinessService {
             return null;
         }
 
-        // 如果提供了特定的tokenPath，则使用它
-        if (StringUtils.isNotEmpty(tokenPath)) {
-            try {
-                Object tokenObj = JsonPath.read(response, tokenPath);
-                if (tokenObj instanceof Number) {
-                    return ((Number) tokenObj).intValue();
-                } else if (tokenObj instanceof String) {
-                    return Integer.parseInt((String) tokenObj);
-                }
-                log.warn("提取的token数量类型不支持: {}", tokenObj.getClass());
-                return null;
-            } catch (Exception e) {
-                log.error("提取token数量失败: {}", e.getMessage());
-                return null;
+        // 优先使用自定义路径，如果没有则使用默认路径
+        String[] extractPaths = StringUtils.isNotEmpty(tokenPath)
+                ? new String[]{tokenPath}
+                : new String[]{"$.metadata.usage.total_tokens", "$.usage.total_tokens"};
+
+        return extractTokenFromPaths(response, extractPaths);
+    }
+
+    private Integer extractTokenFromPaths(String response, String[] paths) {
+        for (String path : paths) {
+            Integer tokenCount = extractTokenByPath(response, path);
+            if (tokenCount != null) {
+                log.info("从路径 {} 成功提取token数量: {}", path, tokenCount);
+                return tokenCount;
             }
         }
+        return null;
+    }
 
-        // 默认尝试从标准位置提取total_tokens
+    private Integer extractTokenByPath(String response, String path) {
         try {
-            Object tokenObj = JsonPath.read(response, "$.metadata.usage.total_tokens");
-            if (tokenObj instanceof Number) {
-                return ((Number) tokenObj).intValue();
-            } else if (tokenObj instanceof String) {
-                return Integer.parseInt((String) tokenObj);
-            }
+            Object tokenObj = JsonPath.read(response, path);
+            return convertToInteger(tokenObj);
         } catch (Exception e) {
-            log.warn("从默认路径提取token数量失败: {}", e.getMessage());
+            log.debug("从路径 {} 提取token数量失败: {}", path, e.getMessage());
+            return null;
         }
+    }
 
-
+    private Integer convertToInteger(Object tokenObj) {
+        if (tokenObj instanceof Number) {
+            return ((Number) tokenObj).intValue();
+        } else if (tokenObj instanceof String) {
+            try {
+                return Integer.parseInt((String) tokenObj);
+            } catch (NumberFormatException e) {
+                log.warn("token数量字符串格式错误: {}", tokenObj);
+                return null;
+            }
+        }
+        log.warn("提取的token数量类型不支持: {}, 类型: {}", tokenObj, tokenObj.getClass().getSimpleName());
         return null;
     }
 
@@ -306,5 +276,92 @@ public class ApiBusinessService {
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.OPERATION_ERROR, "认证处理失败: " + e.getMessage());
         }
+    }
+
+
+    private String callApiSafely(DynamicApiSetting setting, Map<String, Object> params,
+                                 ApiMarket apiMarket, String appId) {
+        try {
+            return callHttpApi(setting, params, apiMarket);
+        } catch (Exception e) {
+            log.error("API调用失败,不扣费, appId: {}, apiKey: {}, error: {}", appId, setting.getKeyName(), e.getMessage());
+            throw e;
+        }
+    }
+
+    private void processBilling(String appId, DynamicApiSetting setting, Integer billingModel,
+                                BigDecimal unitPrice, String response) {
+
+        // 计算使用量和费用
+        BillingResult billingResult = calculateBillingResult(billingModel, unitPrice, response);
+
+        // 执行扣费
+        Long userId = getUserIdByAppId(appId);
+        boolean deductSuccess = userBalanceService.deductBalance(userId, billingResult.getTotalAmount());
+        // 不是免费,并扣费是否成功
+        if (!isFreeBilling(billingModel) && !deductSuccess) {
+            throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
+        }
+
+        // 记录日志
+        recordBillingLog(appId, setting, billingModel, billingResult);
+    }
+
+    private void recordBillingLog(String appId, DynamicApiSetting setting, Integer billingModel, BillingResult result) {
+        apiBillingService.recordBilling(appId, setting.getMarketId(), setting.getId(), billingModel, result.getQuantity(), result.getTotalAmount());
+        log.info("API调用计费成功, appId: {}, apiKey: {}, billingModel: {}, quantity: {}, totalAmount: {}", appId, setting.getKeyName(), billingModel, result.getQuantity(), result.getTotalAmount());
+    }
+
+    /**
+     * 计费-算用量/价格
+     */
+    private BillingResult calculateBillingResult(Integer billingModel, BigDecimal unitPrice, String response) {
+        Integer quantity = extractQuantity(billingModel, response);
+        BigDecimal totalAmount = apiBillingService.calculateAmount(billingModel, quantity, unitPrice);
+
+        return BillingResult.builder()
+                .quantity(quantity)
+                .totalAmount(totalAmount)
+                .build();
+    }
+
+    /**
+     * 计费-用量
+     */
+    private Integer extractQuantity(Integer billingModel, String response) {
+        if (isPerCallBilling(billingModel) || isFreeBilling(billingModel)) {
+            return 1;
+        } else if (isPerTokenBilling(billingModel)) {
+            return extractTokenCount(response, null);
+        }
+        return 0;
+    }
+
+    /**
+     * 按次计费
+     */
+    private boolean isPerCallBilling(Integer billingModel) {
+        return billingModel != null && billingModel == 1;
+    }
+
+    /**
+     * 按token计费
+     */
+    private boolean isPerTokenBilling(Integer billingModel) {
+        return billingModel != null && billingModel == 2;
+    }
+
+    /**
+     * 免费
+     */
+    private boolean isFreeBilling(Integer billingModel) {
+        return billingModel == null || billingModel == 0;
+    }
+
+    /**
+     * 账户余额是否够用
+     */
+    private boolean hasSufficientBalance(String appId, BigDecimal amount) {
+        return checkUserBalance(appId, amount);
     }
 }
