@@ -149,7 +149,7 @@ CREATE TABLE `aipexbase`.`delay_task_app_info` (
 
 
 DROP TABLE IF EXISTS `aipexbase`.`dynamic_api_setting`;
-CREATE TABLE `aipexbase`.`dynamic_api_setting` (
+CREATE TABLE `dynamic_api_setting` (
   `id` int NOT NULL AUTO_INCREMENT,
   `app_id` varchar(255) NOT NULL,
   `key_name` varchar(255) NOT NULL,
@@ -158,24 +158,25 @@ CREATE TABLE `aipexbase`.`dynamic_api_setting` (
   `token` varchar(255) DEFAULT NULL,
   `method` varchar(255) DEFAULT NULL,
   `body_type` varchar(255) DEFAULT NULL,
-  `body_template` varchar(255) DEFAULT NULL,
-  `header` varchar(255) DEFAULT NULL,
+  `body_template` text,
+  `header` text,
   `protocol` varchar(255) DEFAULT NULL,
   `data_path` varchar(255) DEFAULT '',
   `data_type` varchar(255) DEFAULT '',
   `show` tinyint DEFAULT '0',
   `data_raw` text,
   `var_raw` text,
+  `market_id` int DEFAULT '0',
   PRIMARY KEY (`id`),
   KEY `idx_app_id` (`app_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=26683 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=33745 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
 
 
 
 DROP TABLE IF EXISTS `aipexbase`.`users`;
-CREATE TABLE `aipexbase`.`users` (
+CREATE TABLE `users` (
   `id` bigint NOT NULL AUTO_INCREMENT,
   `email` varchar(255) NOT NULL,
   `phone` varchar(255) DEFAULT NULL,
@@ -184,5 +185,77 @@ CREATE TABLE `aipexbase`.`users` (
   `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   `nick_name` varchar(255) DEFAULT NULL,
   `avator` varchar(255) DEFAULT NULL,
+  `codeflying_user_id` varchar(255) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_codeflying_user_id` (`codeflying_user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=105 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `aipexbase`.`api_billing_record`;
+CREATE TABLE `api_billing_record` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `app_id` varchar(255) DEFAULT NULL,
+  `api_id` int DEFAULT NULL,
+  `dynamic_api_id` int DEFAULT NULL,
+  `billing_model` int DEFAULT NULL,
+  `quantity` int DEFAULT NULL,
+  `unit_price` decimal(10,2) DEFAULT NULL,
+  `total_amount` decimal(10,2) DEFAULT NULL,
+  `called_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_app_id` (`app_id`),
+  KEY `idx_api_id` (`api_id`),
+  KEY `idx_dynameic_id` (`dynamic_api_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=57 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+DROP TABLE IF EXISTS `aipexbase`.`api_market`;
+CREATE TABLE `api_market` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `provider_id` int DEFAULT NULL,
+  `name` varchar(255) NOT NULL,
+  `description` varchar(1000) NOT NULL,
+  `category` varchar(255) DEFAULT NULL,
+  `url` varchar(1000) NOT NULL,
+  `method` int NOT NULL,
+  `protocol` int NOT NULL,
+  `auth_type` varchar(255) DEFAULT NULL,
+  `auth_config` varchar(2000) DEFAULT NULL,
+  `token` varchar(255) DEFAULT NULL,
+  `body_type` int DEFAULT NULL,
+  `body_template` varchar(1000) DEFAULT NULL,
+  `headers` varchar(1000) DEFAULT NULL,
+  `data_path` varchar(255) DEFAULT NULL,
+  `data_type` int DEFAULT NULL,
+  `data_row` varchar(1000) DEFAULT NULL,
+  `var_row` varchar(1000) DEFAULT NULL,
+  `status` int DEFAULT '0',
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=41 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+DROP TABLE IF EXISTS `aipexbase`.`api_pricing`;
+CREATE TABLE `api_pricing` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `market_id` int NOT NULL,
+  `pricing_model` int DEFAULT '0',
+  `unit_price` decimal(10,2) DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=62 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+DROP TABLE IF EXISTS `aipexbase`.`user_balance`;
+CREATE TABLE `user_balance` (
+  `id` int NOT NULL AUTO_INCREMENT,
+  `user_id` int NOT NULL,
+  `balance` decimal(12,2) DEFAULT '0.00',
+  `frozen_balance` decimal(12,2) DEFAULT '0.00',
+  `status` int DEFAULT NULL,
+  `created_at` datetime DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+
+
