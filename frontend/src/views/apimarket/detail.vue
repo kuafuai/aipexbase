@@ -71,6 +71,10 @@
               <h3 class="text-sm text-white/50 mb-1">{{ t('page.apimarket.detail_unit_price') }}</h3>
               <p class="text-white">{{ formatPrice(apiInfo.unitPrice) }}</p>
             </div>
+            <div>
+              <h3 class="text-sm text-white/50 mb-1">{{ t('page.apimarket.form_is_billing') }}</h3>
+              <p class="text-white">{{ apiInfo.isBilling === 0 ? t('page.apimarket.form_is_billing_option_yes') : t('page.apimarket.form_is_billing_option_no') }}</p>
+            </div>
           </div>
         </div>
 

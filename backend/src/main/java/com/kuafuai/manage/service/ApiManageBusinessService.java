@@ -46,6 +46,7 @@ public class ApiManageBusinessService {
                 .dataRow(marketVo.getDataRow())
                 .varRow(marketVo.getVarRow())
                 .status(marketVo.getStatus())
+                .isBilling(marketVo.getIsBilling()) // 添加isBilling字段
                 .build();
         apiMarketService.save(market);
         Integer marketId = market.getId();
@@ -95,6 +96,7 @@ public class ApiManageBusinessService {
                 .dataRow(marketVo.getDataRow())
                 .varRow(marketVo.getVarRow())
                 .status(marketVo.getStatus())
+                .isBilling(marketVo.getIsBilling()) // 添加isBilling字段
                 .build();
 
         apiMarketService.updateById(updateMarket);

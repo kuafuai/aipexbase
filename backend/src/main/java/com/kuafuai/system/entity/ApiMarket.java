@@ -50,6 +50,9 @@ public class ApiMarket {
 
     private Integer status;
     private Date createdAt;
+    
+    // 添加isBilling字段，0：计费，1：不计费
+    private Integer isBilling;
 
     @TableField(exist = false)
     private boolean owner;
