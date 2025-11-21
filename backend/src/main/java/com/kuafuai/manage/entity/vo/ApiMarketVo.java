@@ -33,4 +33,7 @@ public class ApiMarketVo extends PageRequest {
 
     private Integer pricingModel;
     private Double unitPrice;
+    
+    // 添加isBilling字段
+    private Integer isBilling;
 }

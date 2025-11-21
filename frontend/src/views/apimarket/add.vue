@@ -143,6 +143,13 @@
                 class="w-full"
             />
           </el-form-item>
+          
+          <el-form-item :label="t('page.apimarket.form_is_billing')">
+            <el-select v-model="formData.isBilling" :placeholder="t('page.apimarket.form_is_billing_placeholder')">
+              <el-option :label="t('page.apimarket.form_is_billing_option_yes')" :value="0"/>
+              <el-option :label="t('page.apimarket.form_is_billing_option_no')" :value="1"/>
+            </el-select>
+          </el-form-item>
         </div>
 
         <!-- 响应数据配置 -->
@@ -287,7 +294,7 @@ const isEdit = ref(false);
 const testing = ref(false);
 const testResult = ref(null);
 const showTestResult = ref(false);
-const nameError = ref('');
+const nameError = '';
 
 // 提取的变量列表
 const extractedVars = ref([]);
@@ -311,7 +318,8 @@ const formData = ref({
   varRow: '',
   status: 1,
   pricingModel: 0,
-  unitPrice: 0
+  unitPrice: 0,
+  isBilling: 0
 });
 
 onMounted(() => {

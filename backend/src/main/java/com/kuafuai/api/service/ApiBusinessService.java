@@ -308,8 +308,16 @@ public class ApiBusinessService {
     }
 
     private void recordBillingLog(String appId, DynamicApiSetting setting, Integer billingModel, BillingResult result) {
-        apiBillingService.recordBilling(appId, setting.getMarketId(), setting.getId(), billingModel, result.getQuantity(), result.getTotalAmount());
-        log.info("API调用计费成功, appId: {}, apiKey: {}, billingModel: {}, quantity: {}, totalAmount: {}", appId, setting.getKeyName(), billingModel, result.getQuantity(), result.getTotalAmount());
+        // 获取API市场信息以检查isBilling字段
+        ApiMarket apiMarket = getApiMarket(setting.getMarketId());
+        
+        // 如果apiMarket为null或者isBilling字段为0，则记录计费日志
+        if (apiMarket == null || Integer.valueOf(0).equals(apiMarket.getIsBilling())) {
+            apiBillingService.recordBilling(appId, setting.getMarketId(), setting.getId(), billingModel, result.getQuantity(), result.getTotalAmount());
+            log.info("API调用计费成功, appId: {}, apiKey: {}, billingModel: {}, quantity: {}, totalAmount: {}", appId, setting.getKeyName(), billingModel, result.getQuantity(), result.getTotalAmount());
+        } else {
+            log.info("API调用计费已跳过(根据isBilling设置)，appId: {}, apiKey: {}, billingModel: {}, quantity: {}, totalAmount: {}", appId, setting.getKeyName(), billingModel, result.getQuantity(), result.getTotalAmount());
+        }
     }
 
     /**
