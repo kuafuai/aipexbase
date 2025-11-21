@@ -71,6 +71,11 @@
               <h3 class="text-sm text-white/50 mb-1">{{ t('page.apimarket.detail_unit_price') }}</h3>
               <p class="text-white">{{ formatPrice(apiInfo.unitPrice) }}</p>
             </div>
+            <!-- 添加 isBilling 显示 -->
+            <div>
+              <h3 class="text-sm text-white/50 mb-1">{{ t('page.apimarket.detail_is_billing') }}</h3>
+              <p class="text-white">{{ apiInfo.isBilling === 0 ? t('page.apimarket.billing_enabled') : t('page.apimarket.billing_disabled') }}</p>
+            </div>
           </div>
         </div>
 
@@ -175,7 +180,9 @@ const apiInfo = ref({
   varRow: '',
   status: 1,
   pricingModel: 0,
-  unitPrice: 0
+  unitPrice: 0,
+  // 添加 isBilling 字段
+  isBilling: 0
 });
 
 onMounted(() => {

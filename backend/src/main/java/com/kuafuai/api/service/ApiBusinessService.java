@@ -186,10 +186,14 @@ public class ApiBusinessService {
             throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
         }
 
-        // 7. 记录计费日志
-        apiBillingService.recordBilling(appId, setting.getMarketId(), setting.getId(), billingModel, quantity, unitPrice);
-
-        log.info("API调用计费成功, appId: {}, apiKey: {}, billingModel: {}, quantity: {}, totalAmount: {}", appId, setting.getKeyName(), billingModel, quantity, totalAmount);
+        // 7. 记录计费日志 (新增逻辑：根据isBilling字段判断是否记录计费)
+        // 如果apiMarket.isBilling为null或者为0，则记录计费；如果为1，则不记录计费
+        if (apiMarket == null || apiMarket.getIsBilling() == null || apiMarket.getIsBilling() == 0) {
+            apiBillingService.recordBilling(appId, setting.getMarketId(), setting.getId(), billingModel, quantity, unitPrice);
+            log.info("API调用计费成功, appId: {}, apiKey: {}, billingModel: {}, quantity: {}, totalAmount: {}", appId, setting.getKeyName(), billingModel, quantity, totalAmount);
+        } else {
+            log.info("API调用成功但不记录计费, appId: {}, apiKey: {}, billingModel: {}, quantity: {}, totalAmount: {}", appId, setting.getKeyName(), billingModel, quantity, totalAmount);
+        }
 
         return response;
     }

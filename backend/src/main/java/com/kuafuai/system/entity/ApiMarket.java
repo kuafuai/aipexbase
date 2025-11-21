@@ -1,6 +1,5 @@
 package com.kuafuai.system.entity;
 
-
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
@@ -50,6 +49,9 @@ public class ApiMarket {
 
     private Integer status;
     private Date createdAt;
+    
+    // 添加isBilling字段，0：计费，1：不计费
+    private Integer isBilling;
 
     @TableField(exist = false)
     private boolean owner;

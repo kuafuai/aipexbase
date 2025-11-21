@@ -154,12 +154,21 @@ export default {
             form_var_row: "变量行配置",
             form_var_row_placeholder: "变量映射配置，JSON格式",
             form_pricing_info: "计价信息",
-            form_pricing_model: "计费模式",
-            form_pricing_model_placeholder: "请选择计费模式",
+            form_pricing_model: "计价模式",
+            form_pricing_model_placeholder: "请选择计价模式",
             pricing_per_call: "按次计费",
             pricing_per_token: "按Token计费",
             form_unit_price: "单价",
             form_unit_price_placeholder: "请输入单价",
+            // 添加 isBilling 相关翻译
+            form_is_billing: '是否计费',
+            billing_enabled: '计费',
+            billing_disabled: '不计费',
+            form_is_billing_help: '开启时将记录计费信息，关闭时不记录',
+
+            // 添加 isBilling 相关翻译
+            detail_is_billing: '计费状态',
+            
             no_variables_detected: "未检测到变量。在URL、请求头或请求体中使用 {{变量名}} 格式来定义变量。",
             var_value_placeholder: "输入测试值",
             var_desc_placeholder: "输入变量描述（可选）",

@@ -155,11 +155,20 @@ export default {
             form_var_row_placeholder: "Variable mapping configuration, JSON format",
             form_pricing_info: "Pricing Information",
             form_pricing_model: "Pricing Model",
-            form_pricing_model_placeholder: "Select pricing model",
+            form_pricing_model_placeholder: "Please select pricing model",
             pricing_per_call: "Per Call",
             pricing_per_token: "Per Token",
             form_unit_price: "Unit Price",
-            form_unit_price_placeholder: "Enter unit price",
+            form_unit_price_placeholder: "Please enter unit price",
+            // 添加 isBilling 相关翻译
+            form_is_billing: 'Billing Status',
+            billing_enabled: 'Billable',
+            billing_disabled: 'Non-billable',
+            form_is_billing_help: 'When enabled, billing records will be logged. When disabled, no billing records will be created.',
+
+            // 添加 isBilling 相关翻译
+            detail_is_billing: 'Billing Status',
+            
             no_variables_detected: "No variables detected. Use {{variableName}} format in URL, Headers or Body Template to define variables.",
             var_value_placeholder: "Enter test value",
             var_desc_placeholder: "Enter variable description (optional)",

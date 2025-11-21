@@ -143,6 +143,20 @@
                 class="w-full"
             />
           </el-form-item>
+          
+          <!-- 添加 isBilling 开关 -->
+          <el-form-item :label="t('page.apimarket.form_is_billing')">
+            <el-switch 
+                v-model="formData.isBilling" 
+                :active-value="0" 
+                :inactive-value="1"
+                :active-text="t('page.apimarket.billing_enabled')"
+                :inactive-text="t('page.apimarket.billing_disabled')"
+            />
+            <div class="text-white/50 text-sm mt-1">
+              {{ t('page.apimarket.form_is_billing_help') }}
+            </div>
+          </el-form-item>
         </div>
 
         <!-- 响应数据配置 -->
@@ -311,7 +325,9 @@ const formData = ref({
   varRow: '',
   status: 1,
   pricingModel: 0,
-  unitPrice: 0
+  unitPrice: 0,
+  // 添加 isBilling 字段，默认为0（计费）
+  isBilling: 0
 });
 
 onMounted(() => {
