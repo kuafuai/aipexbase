@@ -344,20 +344,25 @@ function copyInactiveAppIds() {
 
   const appIdsText = inactiveAppIds.join(' ');
 
-  // 使用Clipboard API复制到剪贴板
-  navigator.clipboard.writeText(appIdsText).then(() => {
-    proxy.$modal.msgSuccess(t('page.project.copy_inactive_success', {count: inactiveAppIds.length}));
-  }).catch(() => {
-    // 如果Clipboard API失败，使用传统方法
-    const textarea = document.createElement('textarea');
-    textarea.value = appIdsText;
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
+  copyText(appIdsText).then(() => {
     proxy.$modal.msgSuccess(t('page.project.copy_inactive_success', {count: inactiveAppIds.length}));
   });
 }
+
+const copyText = async (text) => {
+  if (navigator?.clipboard?.writeText) {
+    return navigator.clipboard.writeText(text);
+  }
+
+  const textarea = document.createElement('textarea');
+  textarea.value = text;
+  textarea.style.position = 'fixed';
+  textarea.style.opacity = '0';
+  document.body.appendChild(textarea);
+  textarea.select();
+  document.execCommand('copy');
+  document.body.removeChild(textarea);
+};
 
 </script>
 
