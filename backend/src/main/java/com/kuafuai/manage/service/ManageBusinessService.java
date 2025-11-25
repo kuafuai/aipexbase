@@ -94,6 +94,32 @@ public class ManageBusinessService {
     @Resource
     private ApplicationAPIKeysService applicationAPIKeysService;
 
+    @Transactional
+    public void recycle(String appId) {
+        AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
+        if (appInfo == null) {
+            return;
+        }
+//
+//        appInfo.setStatus("recycle");
+//        appInfoService.updateById(appInfo);
+
+        // drop database
+        databaseMapper.deleteDatabase(appId);
+
+        // delete record
+        appInfoService.deleteByAppId(appId);
+        appRequirementSQLService.deleteByAppId(appId);
+        appTableInfoService.deleteByAppId(appId);
+        appTableColumnInfoService.deleteByAppId(appId);
+        appTableRelationService.deleteByAppId(appId);
+        dynamicApiSettingService.deleteByAppId(appId);
+
+        applicationAPIKeysService.deleteByAppId(appId);
+
+        dynamicInfoCache.clean(appId);
+    }
+
     public Users getByEmail(String email) {
         LambdaQueryWrapper<Users> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Users::getEmail, email);
@@ -141,6 +167,8 @@ public class ManageBusinessService {
         appTableColumnInfoService.deleteByAppId(appId);
         appTableRelationService.deleteByAppId(appId);
         dynamicApiSettingService.deleteByAppId(appId);
+
+        applicationAPIKeysService.deleteByAppId(appId);
 
         dynamicInfoCache.clean(appId);
     }

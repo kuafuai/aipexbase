@@ -33,5 +33,12 @@ export default {
             url: "/admin/application/" + appId,
             method: "delete",
         });
+    },
+    recycle(appId, data) {
+        return request({
+            url: "/admin/application/recycle/" + appId,
+            method: "patch",
+            data: data
+        });
     }
 }

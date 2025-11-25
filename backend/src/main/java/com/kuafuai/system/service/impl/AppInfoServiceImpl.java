@@ -39,4 +39,10 @@ public class AppInfoServiceImpl extends ServiceImpl<AppInfoMapper, AppInfo> impl
     public boolean updateAppInfoByAppId(AppInfo appInfo) {
         return updateById(appInfo);
     }
+
+
+    @Override
+    public void refreshLastActive(String appId) {
+        appInfoMapper.updateLastActive(appId);
+    }
 }

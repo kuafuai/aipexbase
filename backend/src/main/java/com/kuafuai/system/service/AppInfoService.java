@@ -12,4 +12,6 @@ public interface AppInfoService extends IService<AppInfo> {
     boolean deleteByAppId(String appId);
 
     boolean updateAppInfoByAppId(AppInfo appInfo);
+
+    void refreshLastActive(String appId);
 }

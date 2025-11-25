@@ -26,6 +26,18 @@
           class="group relative bg-white/5 backdrop-blur-md rounded-2xl p-6 cursor-pointer border border-white/10 hover:border-cyan-400/30 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20"
           @click="openProject(project)"
       >
+        <!-- 回收按钮 - 悬停时显示 -->
+        <button
+            v-if="isInactive(project.updatedAt)"
+            class="absolute top-3 right-3 z-20 w-7 h-7 bg-amber-500/80 hover:bg-amber-500 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-md"
+            @click.stop="recycleProject(project)"
+            :title="t('page.project.recycle_tooltip')"
+        >
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/>
+          </svg>
+        </button>
         <!-- 悬停光效 -->
         <div
             class="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/5 to-cyan-500/0 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl"></div>
@@ -41,9 +53,40 @@
         <h2 class="text-lg font-semibold mb-2 relative z-10 text-white group-hover:text-cyan-300 transition-colors duration-300">
           {{ project.appId }}
         </h2>
-        <p class="text-sm text-white/70 mb-4 relative z-10 line-clamp-2">
+        <p class="text-sm text-white/70 mb-2 relative z-10 line-clamp-2">
           {{ project.appName }}
         </p>
+
+        <!-- 时间信息 -->
+        <div class="relative z-10 text-xs text-white/50 mb-3 space-y-1">
+          <div class="flex items-center justify-between">
+            <span class="flex items-center">
+              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/>
+              </svg>
+              创建: {{ formatDate(project.createdAt) }}
+            </span>
+          </div>
+          <div class="flex items-center justify-between">
+            <span class="flex items-center">
+              <svg class="w-3 h-3 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+              </svg>
+              活跃: {{ formatDate(project.updatedAt) }}
+            </span>
+            <span v-if="isInactive(project.updatedAt)"
+                  class="flex items-center text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded">
+              <svg class="w-3 h-3 mr-0.5" fill="currentColor" viewBox="0 0 20 20">
+                <path fill-rule="evenodd"
+                      d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z"
+                      clip-rule="evenodd"/>
+              </svg>
+              不活跃
+            </span>
+          </div>
+        </div>
 
         <div class="relative z-10 flex items-center justify-between text-sm text-white/60">
           <span class="flex items-center space-x-1">
@@ -144,6 +187,8 @@
 </template>
 
 <script setup>
+import {ElMessageBox} from 'element-plus';
+
 const {proxy} = getCurrentInstance();
 const t = proxy.$tt;
 
@@ -215,6 +260,55 @@ function submitAdd() {
 function openDialog() {
   newProject.value = {name: ''}
   showDialog.value = true
+}
+
+// 格式化日期时间
+function formatDate(dateString) {
+  if (!dateString) return '-';
+  const date = new Date(dateString);
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  const hour = String(date.getHours()).padStart(2, '0');
+  const minute = String(date.getMinutes()).padStart(2, '0');
+  return `${year}-${month}-${day} ${hour}:${minute}`;
+}
+
+// 判断项目是否不活跃（超过15天未活跃）
+function isInactive(updatedAt) {
+  if (!updatedAt) return false;
+  const updateDate = new Date(updatedAt);
+  const now = new Date();
+  const diffTime = now - updateDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return diffDays > 15;
+}
+
+// 回收项目
+async function recycleProject(project) {
+  try {
+    await ElMessageBox.confirm(
+        t('page.project.recycle_confirm_msg', {appName: project.appName || project.appId}),
+        t('page.project.recycle_confirm_title'),
+        {
+          confirmButtonText: t('page.project.recycle_confirm_btn'),
+          cancelButtonText: t('page.project.cancel'),
+          type: "warning",
+        }
+    );
+
+    const loadingInstance = proxy.$loading({text: t('page.project.recycle_processing')})
+
+    try {
+      await proxy.$api.project.recycle(project.appId, {appId: project.appId})
+      proxy.$modal.msgSuccess(t('page.project.recycle_success'))
+      refresh()
+    } finally {
+      loadingInstance.close()
+    }
+  } catch (e) {
+    // 用户取消
+  }
 }
 
 </script>

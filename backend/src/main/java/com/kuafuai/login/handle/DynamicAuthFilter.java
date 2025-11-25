@@ -19,6 +19,8 @@ import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.lang.reflect.Type;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.*;
 
 
@@ -71,6 +73,8 @@ public class DynamicAuthFilter extends OncePerRequestFilter {
             unauthorizedResponse(response, "error.code.not_found");
             return;
         }
+
+        refreshLastActive(appInfo);
 
         // 需要APP_ID,不要验证，直接放行
         if (isUrlMatched(WHITE_URLS, requestUri)) {
@@ -149,6 +153,17 @@ public class DynamicAuthFilter extends OncePerRequestFilter {
         queryWrapper.eq(AppInfo::getAppId, appId);
 
         return appInfoService.getOne(queryWrapper);
+    }
+
+    private void refreshLastActive(AppInfo appInfo) {
+        LocalDate today = LocalDate.now();
+        LocalDate last = appInfo.getUpdatedAt().toInstant().atZone(ZoneId.systemDefault()).toLocalDate();
+        if (!last.isBefore(today)) {
+            return;
+        }
+
+        AppInfoService appInfoService = SpringUtils.getBean(AppInfoService.class);
+        appInfoService.refreshLastActive(appInfo.getAppId());
     }
 
     private LoginUser getLoginUser(HttpServletRequest request) {

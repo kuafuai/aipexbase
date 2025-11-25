@@ -68,7 +68,15 @@ export default {
             create_app: "Create Application",
             creating_warning: "This application is being created, please try again later",
             input_project_name: "Please enter project name",
-            create_success: "Application created successfully"
+            create_success: "Application created successfully",
+            // Recycling
+            recycle_tooltip: "Recycle Application",
+            recycle_confirm_title: "Recycle Application",
+            recycle_confirm_msg: "Are you sure you want to recycle application \"{appName}\"? Inactive application data will be cleaned up. This action cannot be undone.",
+            recycle_confirm_btn: "Confirm Recycle",
+            recycle_processing: "Recycling...",
+            recycle_success: "Application recycled successfully",
+            recycle_failed: "Recycle failed"
         },
         apimarket: {
             list_title: "API Market",

@@ -59,6 +59,13 @@ public class ApplicationController {
         return ResultUtils.success(appInfo);
     }
 
+    @PatchMapping("/recycle/{id}")
+    public BaseResponse recycle(@PathVariable(value = "id") String appId) {
+        //todo 临时方案，后续走定时任务
+        manageBusinessService.recycle(appId);
+        return ResultUtils.success();
+    }
+
     /**
      * 删除应用
      */

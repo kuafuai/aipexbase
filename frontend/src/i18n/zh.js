@@ -68,7 +68,15 @@ export default {
             create_app: "创建应用",
             creating_warning: "该应用正在创建中，请稍后再试",
             input_project_name: "请输入项目名称",
-            create_success: "应用创建成功"
+            create_success: "应用创建成功",
+            // 回收
+            recycle_tooltip: "回收应用",
+            recycle_confirm_title: "回收应用",
+            recycle_confirm_msg: "确定要回收应用\"{appName}\"吗？不活跃的应用数据将被清理，此操作不可撤销。",
+            recycle_confirm_btn: "确认回收",
+            recycle_processing: "回收中...",
+            recycle_success: "应用回收成功",
+            recycle_failed: "回收失败"
         },
         apimarket: {
             list_title: "API市场",
