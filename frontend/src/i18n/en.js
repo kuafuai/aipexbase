@@ -76,7 +76,12 @@ export default {
             recycle_confirm_btn: "Confirm Recycle",
             recycle_processing: "Recycling...",
             recycle_success: "Application recycled successfully",
-            recycle_failed: "Recycle failed"
+            recycle_failed: "Recycle failed",
+            // Copy inactive projects
+            copy_inactive_btn: "Copy Inactive Projects",
+            copy_inactive_tooltip: "Copy all inactive project AppIDs",
+            copy_inactive_success: "Successfully copied {count} inactive project AppIDs",
+            no_inactive_projects: "No inactive projects"
         },
         apimarket: {
             list_title: "API Market",

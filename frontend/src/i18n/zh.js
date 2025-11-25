@@ -76,7 +76,12 @@ export default {
             recycle_confirm_btn: "确认回收",
             recycle_processing: "回收中...",
             recycle_success: "应用回收成功",
-            recycle_failed: "回收失败"
+            recycle_failed: "回收失败",
+            // 复制不活跃项目
+            copy_inactive_btn: "复制不活跃项目",
+            copy_inactive_tooltip: "复制所有不活跃项目的 AppID",
+            copy_inactive_success: "已成功复制 {count} 个不活跃项目的 AppID",
+            no_inactive_projects: "没有不活跃的项目"
         },
         apimarket: {
             list_title: "API市场",

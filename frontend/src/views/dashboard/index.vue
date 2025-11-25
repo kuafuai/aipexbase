@@ -7,16 +7,31 @@
         </h2>
         <p class="text-white/60 mt-2">{{ t('page.project.list_sub') }}</p>
       </div>
-      <el-button
-          type="primary"
-          class="bg-gradient-to-r from-cyan-500 to-blue-500 border-0 text-white hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 shadow-lg shadow-cyan-500/25"
-          @click="openDialog"
-      >
-        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
-        </svg>
-        {{ t('page.project.add_app') }}
-      </el-button>
+      <div class="flex space-x-3">
+        <el-button
+            v-if="hasInactiveProjects"
+            type="warning"
+            class="bg-gradient-to-r from-amber-500 to-orange-500 border-0 text-white hover:from-amber-600 hover:to-orange-600 transition-all duration-300 shadow-lg shadow-amber-500/25"
+            @click="copyInactiveAppIds"
+            :title="t('page.project.copy_inactive_tooltip')"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+          {{ t('page.project.copy_inactive_btn') }}
+        </el-button>
+        <el-button
+            type="primary"
+            class="bg-gradient-to-r from-cyan-500 to-blue-500 border-0 text-white hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 shadow-lg shadow-cyan-500/25"
+            @click="openDialog"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/>
+          </svg>
+          {{ t('page.project.add_app') }}
+        </el-button>
+      </div>
     </div>
 
     <div v-loading="loading" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -204,6 +219,11 @@ const newProject = ref({
   name: '',
 })
 
+// 检查是否有不活跃的项目
+const hasInactiveProjects = computed(() => {
+  return pageRes.value.records.some(project => isInactive(project.updatedAt));
+})
+
 onMounted(() => {
   refresh();
 });
@@ -309,6 +329,34 @@ async function recycleProject(project) {
   } catch (e) {
     // 用户取消
   }
+}
+
+// 复制所有不活跃的appId
+function copyInactiveAppIds() {
+  const inactiveAppIds = pageRes.value.records
+      .filter(project => isInactive(project.updatedAt))
+      .map(project => project.appId);
+
+  if (inactiveAppIds.length === 0) {
+    proxy.$modal.msgWarning(t('page.project.no_inactive_projects'));
+    return;
+  }
+
+  const appIdsText = inactiveAppIds.join(' ');
+
+  // 使用Clipboard API复制到剪贴板
+  navigator.clipboard.writeText(appIdsText).then(() => {
+    proxy.$modal.msgSuccess(t('page.project.copy_inactive_success', {count: inactiveAppIds.length}));
+  }).catch(() => {
+    // 如果Clipboard API失败，使用传统方法
+    const textarea = document.createElement('textarea');
+    textarea.value = appIdsText;
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+    proxy.$modal.msgSuccess(t('page.project.copy_inactive_success', {count: inactiveAppIds.length}));
+  });
 }
 
 </script>
