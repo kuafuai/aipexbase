@@ -26,10 +26,9 @@
 Now Supporting: <a href="https://www.codeflying.app/"><strong>CodeFlying</strong></a> | Cursor | Claude Code | Trae and more. Together advancing the new era of AI CODING
 </p> 
 
-<p align="center">
-<img height="600" weight="348" src="docs/aipexbase_en.png">
-</p>
+## 🎥 Feature Demo
 
+https://github.com/user-attachments/assets/c30ef027-1473-4736-9333-daae07f4aae0
 
 
 ## 🚀 Core Philosophy
@@ -138,10 +137,6 @@ AIPEXBASE is committed to becoming the infrastructure and industry standard for 
 
 ## Chinese Version
 [中文文档](./docs/zh/README_zh.md)
-
-## 🎥 Feature Demo
-
-https://github.com/user-attachments/assets/c30ef027-1473-4736-9333-daae07f4aae0
 
 
 
