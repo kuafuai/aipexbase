@@ -28,7 +28,9 @@ Now Supporting: <a href="https://www.codeflying.app/"><strong>CodeFlying</strong
 
 ## 🎥 Feature Demo
 
-https://github.com/user-attachments/assets/c30ef027-1473-4736-9333-daae07f4aae0
+https://github.com/user-attachments/assets/d66201d1-e513-4547-a731-1def32c5076e
+
+
 
 
 ## 🚀 Core Philosophy
