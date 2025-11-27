@@ -12,7 +12,7 @@ public class UpdateSqlBuilder {
     }
 
     public String build() {
-        ColumnValueChecker.normalizeAndValidate(ctx.getColumns(), ctx.getConditions());
+        // ColumnValueChecker.normalizeAndValidate(ctx.getColumns(), ctx.getConditions());
 
         return new UpdateClauseBuilder(ctx).build();
     }
