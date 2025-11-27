@@ -9,6 +9,7 @@ import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.login.LoginUser;
 import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.text.Convert;
+import com.kuafuai.common.util.DateUtils;
 import com.kuafuai.common.util.RandomStringUtils;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.dynamic.service.DynamicInterfaceService;
@@ -188,11 +189,11 @@ public class LoginBusinessService {
                 String type = columnInfo.getColumnType();
 
                 if ("datetime".equalsIgnoreCase(dsl)) {
-                    defaultMap.put(colName, "2025-06-01 00:00:00");
+                    defaultMap.put(colName, DateUtils.getTime());
                 } else if ("date".equalsIgnoreCase(dsl)) {
-                    defaultMap.put(colName, "2025-06-01");
+                    defaultMap.put(colName, DateUtils.getDate());
                 } else if ("time".equalsIgnoreCase(dsl)) {
-                    defaultMap.put(colName, "12:00:00");
+                    defaultMap.put(colName, DateUtils.getHhMmSs());
                 } else if (Arrays.asList("number", "quote", "boolean", "decimal").contains(dsl)
                         || Arrays.asList("int", "float", "double").contains(type.toLowerCase())) {
                     defaultMap.put(colName, "1");
