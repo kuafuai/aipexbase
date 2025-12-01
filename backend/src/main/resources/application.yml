@@ -85,6 +85,11 @@ storage:
 
 delayTaskWorkerName: ${HOSTNAME:worker_name}
 
+sensitive:
+  enable: ${SENSITIVE_ENABLE:false}
+  app_key: ${AK:x}
+  secret_key: ${SK:x}
+
 
 error-report:
   reportUrl: ${ERROR_REPORT_URL:xxxxxxxxxxxxx}

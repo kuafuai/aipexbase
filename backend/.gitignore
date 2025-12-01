@@ -13,6 +13,7 @@ target/
 *.ipr
 
 logs
+test
 
 ### Eclipse ###
 .apt_generated

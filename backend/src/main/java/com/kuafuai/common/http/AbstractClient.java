@@ -76,8 +76,23 @@ public abstract class AbstractClient {
                 throw new BusinessException("Failed to generate multipart." + e.getMessage());
             }
         } else if (httpRequestMethod.equals("POST")) {
-            requestPayload = AbstractModel.toJsonString(request).getBytes(StandardCharsets.UTF_8);
-            contentType = "application/json; charset=utf-8";
+            // Check if Content-Type header is set to application/x-www-form-urlencoded
+            boolean useUrlEncoded = false;
+            if (request.GetHeader() != null && request.GetHeader().containsKey("Content-Type")) {
+                String headerContentType = request.GetHeader().get("Content-Type");
+                useUrlEncoded = headerContentType.toLowerCase().contains("application/x-www-form-urlencoded");
+            }
+
+            if (useUrlEncoded) {
+                // Use x-www-form-urlencoded format
+                String queryString = getUrlEncodedPayload(request.any());
+                requestPayload = queryString.getBytes(StandardCharsets.UTF_8);
+                contentType = "application/x-www-form-urlencoded; charset=utf-8";
+            } else {
+                // Default to JSON format
+                requestPayload = AbstractModel.toJsonString(request).getBytes(StandardCharsets.UTF_8);
+                contentType = "application/json; charset=utf-8";
+            }
         }
 
         String canonicalQueryString = this.getCanonicalQueryString(params, httpRequestMethod);
@@ -86,7 +101,9 @@ public abstract class AbstractClient {
         hb.add("Content-Type", contentType);
         if (null != request.GetHeader()) {
             for (Map.Entry<String, String> entry : request.GetHeader().entrySet()) {
-                hb.add(entry.getKey(), entry.getValue());
+                if (!entry.getKey().equalsIgnoreCase("Content-Type")) {
+                    hb.add(entry.getKey(), entry.getValue());
+                }
             }
         }
 
@@ -102,9 +119,6 @@ public abstract class AbstractClient {
 
     private String getCanonicalQueryString(HashMap<String, String> params, String method)
             throws BusinessException {
-//        if (method != null && method.equals("POST")) {
-//            return "";
-//        }
         StringBuilder queryString = new StringBuilder("");
         for (Map.Entry<String, String> entry : params.entrySet()) {
             String v;
@@ -120,6 +134,29 @@ public abstract class AbstractClient {
         } else {
             return queryString.toString().substring(1);
         }
+    }
+
+    private String getUrlEncodedPayload(HashMap<String, Object> params) throws BusinessException {
+        StringBuilder queryString = new StringBuilder("");
+        for (Map.Entry<String, Object> entry : params.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+
+            if (value != null) {
+                String encodedValue;
+                try {
+                    encodedValue = URLEncoder.encode(value.toString(), "UTF8");
+                } catch (UnsupportedEncodingException e) {
+                    throw new BusinessException("UTF8 is not supported." + e.getMessage());
+                }
+
+                if (queryString.length() > 0) {
+                    queryString.append("&");
+                }
+                queryString.append(key).append("=").append(encodedValue);
+            }
+        }
+        return queryString.toString();
     }
 
     private byte[] getMultipartPayload(AbstractModel request, String boundary) throws Exception {

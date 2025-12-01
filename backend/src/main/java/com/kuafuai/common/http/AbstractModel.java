@@ -129,6 +129,10 @@ public abstract class AbstractModel {
         return header;
     }
 
+    public void setHeaderContentType(String value) {
+        this.header.put("Content-Type", value);
+    }
+
     public void SetHeader(Map<String, String> header) {
         this.header = header;
     }
