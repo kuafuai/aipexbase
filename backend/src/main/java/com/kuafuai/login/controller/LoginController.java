@@ -72,21 +72,17 @@ public class LoginController {
     public Object register(
             @RequestParam(value = "table", required = false) String table,
             @RequestBody Map<String, Object> data) {
-        try {
-            String appId = GlobalAppIdFilter.getAppId();
-            if (StringUtils.isEmpty(table)) {
-                table = DynamicAuthFilter.getAppInfo().getAuthTable();
-            }
+        String appId = GlobalAppIdFilter.getAppId();
+        if (StringUtils.isEmpty(table)) {
+            table = DynamicAuthFilter.getAppInfo().getAuthTable();
+        }
 
-            BaseResponse response = dynamicService.add(appId, table, data);
-            Object id = response.getData();
-            if (id != null) {
-                return ResultUtils.success(loginBusinessService.getUserById(id, appId, table));
-            } else {
-                return response;
-            }
-        } catch (Exception e) {
-            return ResultUtils.error(e.getMessage());
+        BaseResponse response = dynamicService.add(appId, table, data);
+        Object id = response.getData();
+        if (id != null) {
+            return ResultUtils.success(loginBusinessService.getUserById(id, appId, table));
+        } else {
+            return response;
         }
     }
 
