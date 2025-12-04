@@ -12,6 +12,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 import javax.servlet.AsyncContext;
 import javax.servlet.AsyncEvent;
@@ -335,7 +336,7 @@ public class HttpServletSseServerTransportProvider extends HttpServlet implement
 
             String token = request.getParameter("token");
             // Process the message through the session's handle method
-            session.handle(message, token).block(); // Block for Servlet compatibility
+            session.handle(message, token).subscribeOn(Schedulers.boundedElastic()).block(); // Block for Servlet compatibility
 
             response.setStatus(HttpServletResponse.SC_OK);
         } catch (Exception e) {
