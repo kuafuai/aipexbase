@@ -1,7 +1,7 @@
 version: '3'
 services:
   backend-new:
-    image: swr.cn-east-3.myhuaweicloud.com/kuafuai/aipexbase-backend:20251114-01
+    image: swr.cn-east-3.myhuaweicloud.com/kuafuai/aipexbase-backend:20251209-1
     container_name: aipexbase-backend
     environment:
       - DB_PASSWORD=coding123
@@ -30,7 +30,7 @@ services:
 
   # Nginx 服务
   nginx-new:
-    image: swr.cn-east-3.myhuaweicloud.com/kuafuai/aipexbase-nginx:20251114-01
+    image: swr.cn-east-3.myhuaweicloud.com/kuafuai/aipexbase-nginx:20251209-1
     container_name: aipexbase-nginx
     environment:
       - VITE_APP_TYPE=PC
