@@ -108,6 +108,9 @@ public class ApiBusinessService {
         if (!StringUtils.equalsIgnoreCase(apiMarket.getDataPath(), setting.getDataPath())) {
             setting.setDataPath(apiMarket.getDataPath());
         }
+        if (!StringUtils.equalsIgnoreCase(apiMarket.getUrl(), setting.getUrl())) {
+            setting.setUrl(apiMarket.getUrl());
+        }
     }
 
     /**

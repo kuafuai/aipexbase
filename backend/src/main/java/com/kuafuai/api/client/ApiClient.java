@@ -72,7 +72,10 @@ public class ApiClient {
         if ("GET".equalsIgnoreCase(apiDef.method)) {
             HttpUrl.Builder urlBuilder = HttpUrl.parse(urlWithParams).newBuilder();
             for (Map.Entry<String, String> e : templateMaps.entrySet()) {
-                urlBuilder.addQueryParameter(e.getKey(), e.getValue());
+                if(!StringUtils.equalsAnyIgnoreCase(e.getKey(),"token","ip")){
+                    urlBuilder.addQueryParameter(e.getKey(), e.getValue());
+                }
+
             }
             requestBuilder = new Request.Builder().url(urlBuilder.build()).get();
         } else if ("POST".equalsIgnoreCase(apiDef.method)) {
