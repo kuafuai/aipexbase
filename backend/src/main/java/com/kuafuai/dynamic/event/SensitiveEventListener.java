@@ -70,7 +70,7 @@ public class SensitiveEventListener {
 
         String model = event.getModel();
 
-        if (StringUtils.equalsIgnoreCase(model, "add")) {
+        if (StringUtils.equalsAnyIgnoreCase(model, "add", "update")) {
             if (sensitiveConfig.isEnable()) {
                 process(event);
             }

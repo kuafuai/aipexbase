@@ -90,6 +90,9 @@ public class DynamicService {
                                String table,
                                Map<String, Object> conditions) {
         int value = dynamicInterfaceService.update(database, table, conditions);
+
+        eventService.publishEvent(EventVo.builder().appId(database).model("update").tableName(table).data(conditions).build());
+
         return ResultUtils.success(value);
     }
 
