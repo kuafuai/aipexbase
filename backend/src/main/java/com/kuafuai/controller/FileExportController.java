@@ -175,6 +175,7 @@ public class FileExportController {
      */
     private Map<String, Object> removeListFields(Map<String, Object> dataMap) {
         return dataMap.entrySet().stream()
+                .filter(e -> e.getValue() != null)
                 .filter(entry -> !(entry.getValue() instanceof List))
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
     }
