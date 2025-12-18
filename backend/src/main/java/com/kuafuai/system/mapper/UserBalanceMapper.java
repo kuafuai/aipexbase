@@ -20,4 +20,14 @@ public interface UserBalanceMapper extends BaseMapper<UserBalance> {
     @Update("UPDATE user_balance SET balance = balance - #{amount}, updated_at = NOW() " +
             "WHERE user_id = #{userId} AND balance >= #{amount} AND status = 1")
     int deductBalance(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
+    
+    /**
+     * 增加用户余额
+     * @param userId 用户ID
+     * @param amount 增加金额
+     * @return 影响行数
+     */
+    @Update("UPDATE user_balance SET balance = balance + #{amount}, updated_at = NOW() " +
+            "WHERE user_id = #{userId} AND status = 1")
+    int increaseBalance(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
 }
