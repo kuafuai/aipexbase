@@ -39,7 +39,10 @@ public class UpdateClauseBuilder {
 
             // ============ WHERE (Map 类型) ============
             if (v instanceof Map) {
-                whereCond.put(k, v);
+                Map<?, ?> mapVal = (Map<?, ?>) v;
+                if (!mapVal.isEmpty()) {
+                    whereCond.put(k, v);
+                }
                 continue;
             }
 
