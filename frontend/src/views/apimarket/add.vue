@@ -18,6 +18,23 @@
       </h1>
 
       <el-form :model="formData" label-width="140px" v-loading="loading">
+        <!-- 导入文档按钮 -->
+        <div class="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 mb-6">
+          <h2 class="text-xl font-bold text-white mb-6">{{ t('page.apimarket.import_from_document') }}</h2>
+          
+          <el-form-item>
+            <div class="flex justify-start">
+              <el-button 
+                type="primary" 
+                @click="showDocumentDialog = true"
+                class="bg-gradient-to-r from-cyan-500 to-blue-500 border-0 text-white hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 shadow-lg shadow-cyan-500/25"
+              >
+                {{ t('page.apimarket.paste_document_content') }}
+              </el-button>
+            </div>
+          </el-form-item>
+        </div>
+
         <!-- 基本信息 -->
         <div class="bg-white/5 backdrop-blur-md rounded-2xl p-8 border border-white/10 mb-6">
           <h2 class="text-xl font-bold text-white mb-6">{{ t('page.apimarket.form_basic_info') }}</h2>
@@ -257,6 +274,46 @@
     </div>
   </div>
 
+  <!-- 文档粘贴弹窗 -->
+  <el-dialog
+    v-model="showDocumentDialog"
+    :title="t('page.apimarket.import_from_document')"
+    width="600px"
+    :close-on-click-modal="false"
+  >
+    <div class="flex flex-col space-y-4">
+      <el-input
+        v-model="documentContent"
+        type="textarea"
+        :rows="10"
+        :placeholder="t('page.apimarket.paste_document_tip')"
+      />
+      <div class="flex justify-end">
+        <el-button 
+          type="primary" 
+          :disabled="!documentContent || parsing"
+          @click="parseDocumentContent"
+          class="bg-gradient-to-r from-cyan-500 to-blue-500 border-0 text-white hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 shadow-lg shadow-cyan-500/25"
+        >
+          <span v-if="parsing" class="flex items-center space-x-2">
+            <svg class="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+              <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+              <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            <span>{{ t('page.apimarket.parsing_content') }}</span>
+          </span>
+          <span v-else>{{ t('page.apimarket.parse_content') }}</span>
+        </el-button>
+      </div>
+    </div>
+    
+    <template #footer>
+      <span class="dialog-footer">
+        <el-button @click="showDocumentDialog = false">{{ t('page.apimarket.cancel') }}</el-button>
+      </span>
+    </template>
+  </el-dialog>
+
   <!-- 测试结果弹窗 -->
   <el-dialog
       v-model="showTestResult"
@@ -294,7 +351,10 @@ const isEdit = ref(false);
 const testing = ref(false);
 const testResult = ref(null);
 const showTestResult = ref(false);
-const nameError = '';
+const nameError = ref('');
+const parsing = ref(false);
+const documentContent = ref('');
+const showDocumentDialog = ref(false);
 
 // 提取的变量列表
 const extractedVars = ref([]);
@@ -499,6 +559,93 @@ function formatJson(jsonString) {
     return JSON.stringify(parsed, null, 2);
   } catch (e) {
     return jsonString;
+  }
+}
+
+// 解析文档内容
+async function parseDocumentContent() {
+  if (!documentContent.value || documentContent.value.trim() === '') {
+    proxy.$modal.msgWarning(t('page.apimarket.content_required'));
+    return;
+  }
+
+  parsing.value = true;
+  try {
+    const res = await proxy.$api.apimarket.parseDocumentContent(documentContent.value);
+    if (res.success) {
+      proxy.$modal.msgSuccess(t('page.apimarket.document_parse_success'));
+      
+      // 填充表单数据
+      const parsedData = res.data.parsedData;
+      const apiMarketData = res.data.apiMarketData;
+      
+      // 填充基本信息
+      if (apiMarketData.name) formData.value.name = apiMarketData.name;
+      if (apiMarketData.description) formData.value.description = apiMarketData.description;
+      if (apiMarketData.category) formData.value.category = apiMarketData.category;
+      
+      // 填充API配置
+      if (apiMarketData.url) formData.value.url = apiMarketData.url;
+      if (apiMarketData.protocol) formData.value.protocol = apiMarketData.protocol;
+      if (apiMarketData.method !== undefined) formData.value.method = apiMarketData.method;
+      if (apiMarketData.headers) formData.value.headers = JSON.stringify(apiMarketData.headers, null, 2);
+      
+      // 填充认证配置
+      if (apiMarketData.authType) formData.value.authType = apiMarketData.authType;
+      if (apiMarketData.token) formData.value.token = apiMarketData.token;
+      
+      // 填充请求体配置
+      if (apiMarketData.bodyType !== undefined) formData.value.bodyType = apiMarketData.bodyType;
+      if (apiMarketData.bodyTemplate) formData.value.bodyTemplate = JSON.stringify(apiMarketData.bodyTemplate, null, 2);
+      
+      // 填充响应数据配置
+      if (apiMarketData.dataPath) formData.value.dataPath = apiMarketData.dataPath;
+      if (apiMarketData.dataType !== undefined) formData.value.dataType = apiMarketData.dataType;
+      if (apiMarketData.dataRow) {
+        // 检查是否已经是字符串，如果不是则转换为JSON字符串
+        if (typeof apiMarketData.dataRow === 'string') {
+          formData.value.dataRow = apiMarketData.dataRow;
+        } else {
+          try {
+            formData.value.dataRow = JSON.stringify(apiMarketData.dataRow, null, 2);
+          } catch {
+            // 如果转换失败，直接使用原始值
+            formData.value.dataRow = String(apiMarketData.dataRow);
+          }
+        }
+      }
+      
+      // 填充计价信息
+      if (apiMarketData.pricingModel !== undefined) formData.value.pricingModel = apiMarketData.pricingModel;
+      if (apiMarketData.unitPrice) formData.value.unitPrice = apiMarketData.unitPrice;
+      if (apiMarketData.isBilling !== undefined) formData.value.isBilling = apiMarketData.isBilling;
+      
+      // 重新提取变量
+      extractVariables();
+      
+      // 验证名称
+      validateName(formData.value.name);
+      
+      // 清空文档内容
+      documentContent.value = '';
+      
+      // 关闭弹窗
+      showDocumentDialog.value = false;
+    } else {
+      proxy.$modal.msgError(res.message || t('page.apimarket.document_parse_failed'));
+    }
+  } catch (err) {
+    console.error('解析API文档时发生错误:', err);
+    // 更好地处理不同类型的错误
+    if (err.response && err.response.status === 405) {
+      proxy.$modal.msgError('后端接口配置错误：请求方法不被允许 (405)');
+    } else if (err.message) {
+      proxy.$modal.msgError(t('page.apimarket.document_parse_failed') + ': ' + err.message);
+    } else {
+      proxy.$modal.msgError(t('page.apimarket.document_parse_failed'));
+    }
+  } finally {
+    parsing.value = false;
   }
 }
 

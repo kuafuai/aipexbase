@@ -50,5 +50,17 @@ export default {
             url: '/admin/api/market/list',
             method: 'get'
         });
+    },
+
+    // 通过粘贴内容解析API文档
+    parseDocumentContent(documentContent) {
+        // 根据后端接口要求，传递包含documentContent字段的对象
+        return request({
+            url: '/admin/api/market/parse-document-content',
+            method: 'post',
+            data: {
+                documentContent: documentContent
+            }
+        });
     }
 };
