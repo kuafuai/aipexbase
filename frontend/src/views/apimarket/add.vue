@@ -317,16 +317,17 @@
   <!-- 测试结果弹窗 -->
   <el-dialog
       v-model="showTestResult"
-      title="测试结果"
+      :title="t('page.apimarket.test') + ' ' + t('page.apimarket.result_label')"
       width="50%"
   >
     <div v-if="testResult" class="p-4">
       <div class="mb-4">
-        <p class="text-gray-700 mb-1">状态码: <span class="font-mono font-bold">{{ testResult.statusCode }}</span></p>
-        <p class="text-gray-700 mb-1">消息: <span class="font-mono">{{ testResult.message }}</span></p>
+        <p class="text-gray-700 mb-1">{{ t('page.apimarket.test_status_code') }}: <span class="font-mono font-bold">{{ testResult.statusCode }}</span></p>
+        <p class="text-gray-700 mb-1">{{ t('page.apimarket.test_message') }}: <span class="font-mono">{{ testResult.message }}</span></p>
+        <p class="text-gray-700 mb-1">{{ t('page.apimarket.test_success') }}: <span class="font-mono">{{ testResult.success ? t('page.apimarket.test_success_yes') : t('page.apimarket.test_success_no') }}</span></p>
       </div>
       <div>
-        <p class="text-gray-700 mb-1">响应体:</p>
+        <p class="text-gray-700 mb-1">{{ t('page.apimarket.test_response_body') }}:</p>
         <pre class="bg-gray-100 p-3 rounded text-xs overflow-auto max-h-60">{{
             formatJson(testResult.responseBody)
           }}</pre>
@@ -334,7 +335,7 @@
     </div>
     <template #footer>
       <span class="dialog-footer">
-        <el-button @click="showTestResult = false">关闭</el-button>
+        <el-button @click="showTestResult = false">{{ t('page.system.system_cancel') }}</el-button>
       </span>
     </template>
   </el-dialog>
@@ -449,7 +450,8 @@ function loadExistingVars() {
 
 // 提取变量
 function extractVariables() {
-  const varPattern = /\$?\{\{([^}]+)\}\}/g;
+  // 修正正则表达式以匹配 {{var}} 和 ${{var}} 格式
+  const varPattern = /\$?\{\{([^}]+)\}\}|\$([a-zA-Z0-9_]+)/g;
   const allVars = new Set();
 
   // 从url、headers、bodyTemplate中提取变量
@@ -460,9 +462,15 @@ function extractVariables() {
   ];
 
   sources.forEach(source => {
+    // 重置正则表达式的lastIndex，确保能够匹配所有变量
+    varPattern.lastIndex = 0;
     let match;
     while ((match = varPattern.exec(source)) !== null) {
-      allVars.add(match[1].trim());
+      // 处理两种匹配格式：{{var}}/${{var}} 格式 (match[1]) 和 $var 格式 (match[2])
+      const varName = (match[1] || match[2]).trim();
+      if (varName) {
+        allVars.add(varName);
+      }
     }
   });
 
@@ -649,6 +657,29 @@ async function parseDocumentContent() {
   }
 }
 
+// 替换模板变量的函数
+function replaceTemplateVars(str, varValues) {
+  if (!str || typeof str !== 'string') return str;
+  
+  // 替换变量格式，支持 {{var}}、${{var}} 和 $var 格式
+  return str.replace(/\$?\{\{([^}]+)\}\}|\$([a-zA-Z0-9_]+)/g, (match, curlyBraceVar, dollarSignVar) => {
+    const varName = (curlyBraceVar || dollarSignVar).trim();
+    
+    // 如果是token变量，使用formData中的token值
+    if (varName === 'token' && formData.value.token) {
+      return formData.value.token;
+    }
+    
+    // 对于其他变量，使用varValues中的值
+    if (varValues && varValues[varName] !== undefined && varValues[varName] !== '') {
+      return varValues[varName];
+    }
+    
+    // 如果没有找到变量值，返回原字符串
+    return match;
+  });
+}
+
 // 测试API功能
 async function testApi() {
   // 表单验证
@@ -667,75 +698,66 @@ async function testApi() {
   testResult.value = null;
 
   try {
-    // 解析headers和body
-    let headers = {};
-    let body = {};
+    // 准备测试数据，使用formData的完整副本
+    const testData = { ...formData.value };
     
-    try {
-      // 只有当headers不为空时才尝试解析
-      if (formData.value.headers && formData.value.headers.trim() !== '') {
-        // 先替换变量再解析
-        let headerStr = formData.value.headers;
-        headerStr = replaceTemplateVars(headerStr);
-        headers = JSON.parse(headerStr);
-      }
-      
-      // 只有当bodyTemplate不为空时才尝试解析
-      if (formData.value.bodyTemplate && formData.value.bodyTemplate.trim() !== '') {
-        // 兼容不同的变量格式
-        let bodyStr = formData.value.bodyTemplate;
-        bodyStr = replaceTemplateVars(bodyStr);
-        body = JSON.parse(bodyStr);
-      }
-    } catch (e) {
-      proxy.$modal.msgError(t('page.dynamicapi.json_invalid'));
-      testing.value = false;
-      return;
-    }
-
-    // 根据认证类型处理认证头
-    if (formData.value.authType === 'Bearer' && formData.value.token) {
-      headers['Authorization'] = `Bearer ${formData.value.token}`;
-    }
-
-    // 替换模板变量的函数
-    function replaceTemplateVars(str) {
-      return str.replace(/\$?\{\{([^}]+)\}\}|\$([a-zA-Z0-9_]+)/g, (_, curlyBraceVar, dollarSignVar) => {
-        const varName = (curlyBraceVar || dollarSignVar).trim();
-        // 对于token变量，使用表单中的token值
-        if (varName === 'token' && formData.value.token) {
-          return formData.value.token;
-        }
-        // 对于其他变量，尝试从extractedVars中获取值
-        const varItem = extractedVars.value.find(v => v.name === varName);
-        return varItem && varItem.value ? varItem.value : '';
+    // 创建变量映射对象，包含变量名和其值
+    const varValues = {};
+    if (extractedVars.value && extractedVars.value.length > 0) {
+      extractedVars.value.forEach(varItem => {
+        varValues[varItem.name] = varItem.value || '';
       });
     }
-
-    // 发起请求
-    const response = await fetch(formData.value.url, {
-      method: formData.value.method === 0 ? 'GET' : 'POST',
-      headers,
-      body: formData.value.method === 1 && Object.keys(body).length > 0 ? JSON.stringify(body) : undefined
-    });
-
-    const data = await response.text();
-    let responseBody;
-    try {
-      responseBody = JSON.stringify(JSON.parse(data), null, 2);
-    } catch {
-      responseBody = data;
-    }
-
-    testResult.value = {
-      statusCode: response.status,
-      message: response.statusText,
-      responseBody: responseBody
-    };
     
-    showTestResult.value = true;
+    console.log('原始请求头:', testData.headers);
+    console.log('提取的变量:', extractedVars.value);
+    console.log('变量映射:', varValues);
+    
+    // 前端替换参数
+    if (testData.url) {
+      testData.url = replaceTemplateVars(testData.url, varValues);
+    }
+    
+    // 特别处理请求头，确保变量被正确替换
+    if (testData.headers) {
+      // 如果headers是JSON字符串，先解析为对象再替换变量，最后转回字符串
+      let processedHeaders = testData.headers;
+      try {
+        const headersObj = JSON.parse(testData.headers);
+        // 遍历header对象，对每个值进行变量替换
+        for (const headerName in headersObj) {
+          if (typeof headersObj[headerName] === 'string') {
+            headersObj[headerName] = replaceTemplateVars(headersObj[headerName], varValues);
+          }
+        }
+        processedHeaders = JSON.stringify(headersObj, null, 2);
+      } catch (e) {
+        // 如果不是JSON格式，直接进行字符串替换
+        processedHeaders = replaceTemplateVars(testData.headers, varValues);
+      }
+      testData.headers = processedHeaders;
+    }
+    
+    console.log('处理后的请求头:', testData.headers);
+    
+    if (testData.bodyTemplate) {
+      testData.bodyTemplate = replaceTemplateVars(testData.bodyTemplate, varValues);
+    }
+    
+    console.log('发送到后端的测试数据:', testData); // 调试日志
+    
+    // 发起请求到后端测试接口
+    const res = await proxy.$api.apimarket.test(testData);
+    
+    if (res.success && res.data) {
+      testResult.value = res.data;
+      showTestResult.value = true;
+    } else {
+      proxy.$modal.msgError(res.message || t('page.apimarket.document_parse_failed'));
+    }
   } catch (err) {
-    proxy.$modal.msgError(t('page.dynamicapi.request_failed_prefix') + err.message);
+    console.error('测试API时发生错误:', err);
+    proxy.$modal.msgError(t('page.dynamicapi.request_failed_prefix') + (err.message || '未知错误'));
   } finally {
     testing.value = false;
   }

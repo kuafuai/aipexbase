@@ -199,6 +199,13 @@ export default {
             parse_content: "解析内容",
             parsing_content: "解析中...",
             content_required: "文档内容不能为空",
+            test_status_code: "状态码",
+            test_message: "消息",
+            test_success: "成功",
+            test_success_yes: "是",
+            test_success_no: "否",
+            test_response_body: "响应体",
+            result_label: "结果",
         },
         project_detail: {
             title: "概览",

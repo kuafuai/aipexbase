@@ -62,5 +62,14 @@ export default {
                 documentContent: documentContent
             }
         });
+    },
+
+    // 测试API
+    test(data) {
+        return request({
+            url: '/admin/api/market/test',
+            method: 'post',
+            data
+        });
     }
 };

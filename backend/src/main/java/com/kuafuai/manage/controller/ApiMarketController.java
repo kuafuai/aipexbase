@@ -8,6 +8,7 @@ import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.manage.entity.vo.ApiDocumentParsedVo;
 import com.kuafuai.manage.entity.vo.ApiMarketVo;
+import com.kuafuai.manage.entity.vo.ApiTestResultVo;
 import com.kuafuai.manage.service.ApiManageBusinessService;
 import com.kuafuai.system.entity.ApiMarket;
 import com.kuafuai.system.entity.ApiPricing;
@@ -321,11 +322,14 @@ public class ApiMarketController {
         // 变量配置转换为头部信息和URL参数 (简化处理)
         StringBuilder headersBuilder = new StringBuilder();
         StringBuilder urlParamsBuilder = new StringBuilder();
+        Map<String, String> varMap = new HashMap<>(); // 用于存储变量映射
         if (parsedVo.getVariables_config() != null && !parsedVo.getVariables_config().isEmpty()) {
             boolean isFirstParam = true;
             for (ApiDocumentParsedVo.VariableConfig varConfig : parsedVo.getVariables_config()) {
                 if ("header".equalsIgnoreCase(varConfig.getLocation())) {
                     headersBuilder.append(varConfig.getName()).append(": ").append(varConfig.getDefault_value()).append("\n");
+                    // 将头部变量也添加到变量映射中
+                    varMap.put(varConfig.getName(), varConfig.getDefault_value());
                 } else if ("url".equalsIgnoreCase(varConfig.getLocation())) {
                     // 处理URL参数
                     if (isFirstParam) {
@@ -334,6 +338,11 @@ public class ApiMarketController {
                     } else {
                         urlParamsBuilder.append("&").append(varConfig.getName()).append("=${").append(varConfig.getName()).append("}");
                     }
+                    // 将URL参数添加到变量映射中
+                    varMap.put(varConfig.getName(), varConfig.getDefault_value());
+                } else if ("body".equalsIgnoreCase(varConfig.getLocation())) {
+                    // 处理请求体变量
+                    varMap.put(varConfig.getName(), varConfig.getDefault_value());
                 }
             }
             
@@ -348,6 +357,25 @@ public class ApiMarketController {
         }
         apiMarketVo.setHeaders(headersBuilder.toString());
         
+        // 将变量映射转换为JSON字符串并设置到varRow字段
+        if (!varMap.isEmpty()) {
+            try {
+                String varRowJson = objectMapper.writeValueAsString(varMap);
+                apiMarketVo.setVarRow(varRowJson);
+            } catch (JsonProcessingException e) {
+                log.error("转换变量映射为JSON字符串时发生错误", e);
+                // 如果转换失败，使用空字符串
+                apiMarketVo.setVarRow("{}");
+            }
+        } else {
+            apiMarketVo.setVarRow("{}");
+        }
+        
         return apiMarketVo;
+    }
+
+    @PostMapping("/test")
+    public BaseResponse testApi(@RequestBody ApiMarketVo apiMarketVo) {
+        return ResultUtils.success(apiManageBusinessService.testApi(apiMarketVo));
     }
 }

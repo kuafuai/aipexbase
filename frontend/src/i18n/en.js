@@ -207,6 +207,13 @@ export default {
             parse_content: "Parse Content",
             parsing_content: "Parsing...",
             content_required: "Document content cannot be empty",
+            test_status_code: "Status Code",
+            test_message: "Message",
+            test_success: "Success",
+            test_success_yes: "Yes",
+            test_success_no: "No",
+            test_response_body: "Response Body",
+            result_label: "Result",
         },
         project_detail: {
             title: "Overview",
