@@ -202,7 +202,7 @@ export default {
             market_load_failed: "Failed to load API market",
             import_success: "API imported successfully, please fill in variable values and test",
             import_selected: "Import Selected API",
-            paste_document_content: "Paste Document Content",
+            ai_add_api: "AI ADD API",
             paste_document_tip: "Paste Swagger, OpenAPI, or other API document content here",
             parse_content: "Parse Content",
             parsing_content: "Parsing...",
@@ -213,6 +213,7 @@ export default {
             test_success_yes: "Yes",
             test_success_no: "No",
             test_response_body: "Response Body",
+            test_failed: "Test Failed",
             result_label: "Result",
         },
         project_detail: {

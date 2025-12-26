@@ -20,7 +20,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.DefaultUriBuilderFactory;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.regex.Matcher;
@@ -50,9 +52,11 @@ public class ApiManageBusinessService {
         factory.setReadTimeout(120000);    // 120秒读取超时
         this.restTemplate.setRequestFactory(factory);
         // 禁用URI模板变量替换以避免Spring处理URL中的${}格式变量
-        this.restTemplate.setUriTemplateHandler(new org.springframework.web.util.DefaultUriBuilderFactory("http://example.com") {{
-            setEncodingMode(org.springframework.web.util.DefaultUriBuilderFactory.EncodingMode.NONE);
-        }});
+        DefaultUriBuilderFactory uriFactory = new DefaultUriBuilderFactory();
+        uriFactory.setEncodingMode(DefaultUriBuilderFactory.EncodingMode.VALUES_ONLY);
+        // 设置不解析模板变量
+        uriFactory.setParsePath(false);
+        this.restTemplate.setUriTemplateHandler(uriFactory);
     }
 
 
@@ -93,12 +97,129 @@ public class ApiManageBusinessService {
         return apiPricingService.save(apiPricing);
     }
 
+    @Transactional
+    public Map<String, Object> createApiMarketWithTest(ApiMarketVo marketVo) {
+        // 首先进行API测试
+        log.info("开始API测试，URL: {}", marketVo.getUrl());
+        ApiTestResultVo testResult = testApi(marketVo);
+        
+        Map<String, Object> result = new HashMap<>();
+        result.put("testResult", testResult);
+        
+        if (testResult.getSuccess()) {
+            log.info("API测试成功，开始保存API");
+            // 测试成功，保存API
+            boolean saveSuccess = createApiMarket(marketVo);
+            result.put("saved", saveSuccess);
+            result.put("message", saveSuccess ? "API测试成功，已自动保存" : "API测试成功，但保存失败");
+            if (saveSuccess) {
+                log.info("API已成功保存");
+            } else {
+                log.warn("API测试成功，但保存失败");
+            }
+        } else {
+            log.warn("API测试失败，不保存，状态码: {}, 消息: {}", testResult.getStatusCode(), testResult.getMessage());
+            // 测试失败，不保存
+            result.put("saved", false);
+            result.put("message", "API测试失败，未保存");
+            
+            // 分析可能缺少的内容
+            List<String> missingFields = analyzeMissingFields(marketVo, testResult);
+            result.put("missingFields", missingFields);
+            log.warn("可能缺少的字段: {}", missingFields);
+        }
+        
+        return result;
+    }
+    
+    /**
+     * 分析API测试失败时可能缺少的内容
+     * @param marketVo API市场对象
+     * @param testResult 测试结果
+     * @return 缺少的字段列表
+     */
+    private List<String> analyzeMissingFields(ApiMarketVo marketVo, ApiTestResultVo testResult) {
+        List<String> missingFields = new ArrayList<>();
+        
+        // 检查URL是否为空
+        if (marketVo.getUrl() == null || marketVo.getUrl().trim().isEmpty()) {
+            missingFields.add("API请求URL");
+        }
+        
+        // 检查认证信息是否完整
+        if (marketVo.getAuthType() != null && !marketVo.getAuthType().equalsIgnoreCase("None")) {
+            if (marketVo.getToken() == null || marketVo.getToken().trim().isEmpty()) {
+                missingFields.add("认证Token");
+            }
+        }
+        
+        // 检查请求方法
+        if (marketVo.getMethod() == null) {
+            missingFields.add("请求方法");
+        }
+        
+        // 检查响应体中的具体错误信息
+        if (testResult.getResponseBody() != null && !testResult.getResponseBody().trim().isEmpty()) {
+            try {
+                // 解析响应体以获取更具体的错误信息
+                Map<String, Object> responseMap = objectMapper.readValue(testResult.getResponseBody(), Map.class);
+                
+                // 检查reason字段（如示例中的 "reason":"错误的请求KEY"）
+                Object reason = responseMap.get("reason");
+                if (reason != null) {
+                    missingFields.add(reason.toString());
+                    return missingFields; // 直接返回具体的错误信息，不添加其他通用提示
+                }
+                
+                // 检查其他可能的错误信息字段
+                Object message = responseMap.get("message");
+                if (message != null) {
+                    missingFields.add(message.toString());
+                    return missingFields;
+                }
+                
+                Object msg = responseMap.get("msg");
+                if (msg != null) {
+                    missingFields.add(msg.toString());
+                    return missingFields;
+                }
+                
+            } catch (Exception e) {
+                log.warn("解析响应体JSON失败，无法提取具体错误信息: {}", e.getMessage());
+            }
+        }
+        
+        // 根据HTTP状态码分析问题
+        if (testResult.getStatusCode() != null) {
+            if (testResult.getStatusCode() == 401) {
+                missingFields.add("认证信息（状态码401表示未授权）");
+            } else if (testResult.getStatusCode() == 403) {
+                missingFields.add("访问权限（状态码403表示禁止访问）");
+            } else if (testResult.getStatusCode() == 404) {
+                missingFields.add("API端点路径（状态码404表示资源不存在）");
+            } else if (testResult.getStatusCode() == 422 || testResult.getStatusCode() == 400) {
+                missingFields.add("必需的请求参数或请求体（状态码400/422表示请求参数错误）");
+            } else if (testResult.getStatusCode() >= 500) {
+                missingFields.add("服务器内部问题（状态码5xx表示服务器错误）");
+            }
+        }
+        
+        // 如果没有识别出特定问题，添加一般性提示
+        if (missingFields.isEmpty()) {
+            missingFields.add("有效的API端点、正确的认证信息或合适的请求参数");
+        }
+        
+        return missingFields;
+    }
+
     public ApiPricing getByMarketId(Integer marketId) {
         return apiPricingService.lambdaQuery().eq(ApiPricing::getMarketId, marketId).one();
     }
 
     public ApiTestResultVo testApi(ApiMarketVo marketVo) {
         try {
+            log.debug("Testing API with URL: {}, varRow: {}", marketVo.getUrl(), marketVo.getVarRow());
+            
             // 解析headers
             HttpHeaders headers = new HttpHeaders();
             if (marketVo.getHeaders() != null && !marketVo.getHeaders().trim().isEmpty()) {
@@ -214,13 +335,35 @@ public class ApiManageBusinessService {
                 requestBody = null;
             }
 
-            // 前端已经处理了URL中的模板变量，直接使用传入的URL
-            String processedUrl = marketVo.getUrl();
+            // 处理URL中的模板变量 - 这是关键部分，需要确保URL不包含任何未替换的模板变量
+            log.debug("Original URL: {}", marketVo.getUrl());
+            String processedUrl = replaceTemplateVars(marketVo.getUrl(), marketVo);
+            log.debug("Processed URL: {}", processedUrl);
+            
+            // 如果URL在变量替换后为空或无效，使用原始URL作为备选
+            if (processedUrl == null || processedUrl.trim().isEmpty()) {
+                processedUrl = marketVo.getUrl();
+            }
+
+            // 确保URL是有效的（不包含任何模板格式）
+            // 验证URL中是否还有模板格式
+            if (processedUrl != null && (processedUrl.contains("${") || processedUrl.contains("{{") || processedUrl.contains("{"))) {
+                // 如果还有模板格式，说明变量替换失败，记录错误
+                log.error("URL still contains template variables after processing: " + processedUrl);
+                // 返回错误结果
+                ApiTestResultVo errorResult = new ApiTestResultVo();
+                errorResult.setStatusCode(400);
+                errorResult.setMessage("URL contains unresolved template variables: " + processedUrl);
+                errorResult.setResponseBody("");
+                errorResult.setSuccess(false);
+                return errorResult;
+            }
 
             // 创建请求实体
             HttpEntity<Object> requestEntity = new HttpEntity<>(requestBody, headers);
 
             // 发送请求 - 使用处理后的URL，RestTemplate已配置为不处理模板变量
+            log.debug("Sending request to: {}", processedUrl);
             ResponseEntity<String> response = restTemplate.exchange(
                     processedUrl,
                     httpMethod,
@@ -233,7 +376,18 @@ public class ApiManageBusinessService {
             result.setStatusCode(response.getStatusCodeValue());
             result.setMessage(response.getStatusCode().getReasonPhrase());
             result.setResponseBody(response.getBody());
-            result.setSuccess(response.getStatusCode().is2xxSuccessful());
+            
+            // 检查HTTP状态码和响应体中的业务逻辑错误
+            boolean httpSuccess = response.getStatusCode().is2xxSuccessful();
+            boolean businessSuccess = checkBusinessSuccess(response.getBody());
+            result.setSuccess(httpSuccess && businessSuccess);
+            
+            // 记录API测试结果到控制台
+            log.info("API测试结果 - 状态码: {}, HTTP成功: {}, 业务成功: {}, 总体成功: {}, 消息: {}", 
+                result.getStatusCode(), httpSuccess, businessSuccess, result.getSuccess(), result.getMessage());
+            if (result.getResponseBody() != null) {
+                log.debug("API测试响应体: {}", result.getResponseBody());
+            }
 
             return result;
         } catch (Exception e) {
@@ -245,70 +399,60 @@ public class ApiManageBusinessService {
             result.setSuccess(false);
             
             log.error("API测试请求失败", e);
+            // 记录失败的测试结果到控制台
+            log.info("API测试结果 - 状态码: {}, 成功: {}, 消息: {}", 
+                result.getStatusCode(), result.getSuccess(), result.getMessage());
             return result;
         }
     }
-    
+
+    private static final Pattern TEMPLATE_PATTERN =
+            Pattern.compile(
+                    "\\$\\{\\{\\s*([a-zA-Z][a-zA-Z0-9_]*)\\s*}}" + // ${{var}}
+                    "|\\$\\{\\s*([a-zA-Z][a-zA-Z0-9_]*)\\s*}" +     // ${var}
+                    "|\\{\\{\\s*([a-zA-Z][a-zA-Z0-9_]*)\\s*}}"     // {{var}}
+            );
+
+
     private String replaceTemplateVars(String str, ApiMarketVo marketVo) {
         if (str == null || str.isEmpty()) {
             return str;
         }
-        
-        // 解析varRow字段获取变量映射
+
+        log.debug("Processing string for variable replacement: {}", str);
+
+        // 解析 varRow
         Map<String, String> varMapping = parseVarRow(marketVo.getVarRow());
-        
-        // 替换变量格式，支持 {{var}}、{var}、${var} 和 $var 格式
-        // 使用正则表达式匹配模板变量，不使用单词边界以确保URL参数中的变量也能被匹配
-        Pattern pattern = Pattern.compile("\\$\\{([^}]+)\\}|\\{\\{([^}]+)\\}\\}|\\{([^}]+)\\}|\\$([a-zA-Z0-9_]+)");
-        Matcher matcher = pattern.matcher(str);
-        
+        log.debug("Variable mapping from varRow: {}", varMapping);
+
+        Matcher matcher = TEMPLATE_PATTERN.matcher(str);
         StringBuffer result = new StringBuffer();
+
         while (matcher.find()) {
-            // 获取匹配的变量名 (支持四种格式: ${var}, {{var}}, {var}, $var)
-            String varName = matcher.group(1); // ${var} 格式
-            if (varName == null) {
-                varName = matcher.group(2); // {{var}} 格式
-            }
-            if (varName == null) {
-                varName = matcher.group(3); // {var} 格式
-            }
-            if (varName == null) {
-                varName = matcher.group(4); // $var 格式
-            }
-            
-            if (varName == null) {
+            String varName =
+                    matcher.group(1) != null ? matcher.group(1) :
+                    matcher.group(2) != null ? matcher.group(2) :
+                    matcher.group(3);
+
+
+            log.debug("Found variable to replace: {}", varName);
+
+            String value = varMapping.get(varName);
+
+            if (value == null) {
+                log.warn("No value found for variable '{}', keeping original", varName);
                 matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group(0)));
-                continue;
+            } else {
+                matcher.appendReplacement(result, Matcher.quoteReplacement(value));
             }
-            varName = varName.trim();
-            
-            // 防止路径遍历或其他安全问题，只允许字母数字下划线
-            if (!varName.matches("^[a-zA-Z0-9_]+$")) {
-                matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group(0)));
-                continue;
-            }
-            
-            // 优先使用varRow中的变量映射值
-            String replacement = varMapping.get(varName);
-            
-            // 如果varRow中没有该变量，则检查其他特殊变量
-            if (replacement == null) {
-                if ("token".equals(varName) && marketVo.getToken() != null) {
-                    replacement = marketVo.getToken();
-                } else {
-                    // 变量未找到，保留原样
-                    matcher.appendReplacement(result, Matcher.quoteReplacement(matcher.group(0)));
-                    continue;
-                }
-            }
-            
-            // 需要对replacement进行转义，防止特殊字符被误解释
-            matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
         }
+
         matcher.appendTail(result);
-        
+
+        log.debug("Final result after variable replacement: {}", result);
         return result.toString();
     }
+
     
     /**
      * 解析varRow字段，将其转换为变量映射Map
@@ -326,13 +470,29 @@ public class ApiManageBusinessService {
             // 尝试解析JSON格式的varRow - 首先尝试作为对象映射
             Map<String, Object> jsonMap = objectMapper.readValue(varRow, Map.class);
             
-            // 将Object类型的值转换为String
+            // 检查是否为简单的键值对格式（如 {"search": "奥迪A6L"}）
+            // 或复杂格式（如 {"search": {"value": "奥迪A6L", "desc": ""}}）
             for (Map.Entry<String, Object> entry : jsonMap.entrySet()) {
-                if (entry.getValue() != null) {
-                    varMapping.put(entry.getKey(), entry.getValue().toString());
+                Object value = entry.getValue();
+                
+                if (value instanceof Map) {
+                    // 复杂格式：{"search": {"value": "奥迪A6L", "desc": ""}}
+                    Map<String, Object> valueMap = (Map<String, Object>) value;
+                    Object valueObj = valueMap.get("value");
+                    if (valueObj != null) {
+                        varMapping.put(entry.getKey(), valueObj.toString());
+                    } else {
+                        // 如果没有value字段，尝试使用整个对象的字符串表示
+                        varMapping.put(entry.getKey(), value.toString());
+                    }
+                } else {
+                    // 简单格式：{"search": "奥迪A6L"}
+                    varMapping.put(entry.getKey(), value.toString());
                 }
             }
+            log.debug("Parsed varRow successfully: {}", varMapping); // 添加调试日志
         } catch (Exception e) {
+            log.warn("Failed to parse varRow as JSON object, trying alternative format", e);
             // 如果作为简单对象映射解析失败，尝试作为对象数组解析
             try {
                 // 尝试解析为包含name和value字段的对象数组
@@ -401,6 +561,83 @@ public class ApiManageBusinessService {
                     headers.add(key, value);
                 }
             }
+        }
+    }
+
+    /**
+     * 检查响应体中的业务逻辑是否成功
+     * @param responseBody 响应体字符串
+     * @return 如果业务逻辑成功返回true，否则返回false
+     */
+    private boolean checkBusinessSuccess(String responseBody) {
+        if (responseBody == null || responseBody.trim().isEmpty()) {
+            return false;
+        }
+        
+        try {
+            // 解析响应体为JSON
+            Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
+            
+            // 检查常见的错误标识字段
+            // 检查 error_code 字段（如示例中的 "error_code":10001）
+            Object errorCode = responseMap.get("error_code");
+            if (errorCode != null) {
+                try {
+                    int code = Integer.parseInt(errorCode.toString());
+                    // 通常 0 表示成功，非0表示错误
+                    if (code != 0) {
+                        log.debug("检测到业务错误码: {}", code);
+                        return false;
+                    }
+                } catch (NumberFormatException e) {
+                    // 如果不是数字，只要存在error_code字段就认为是错误
+                    log.debug("检测到错误码字段: {}", errorCode);
+                    return false;
+                }
+            }
+            
+            // 检查 resultcode 字段（如示例中的 "resultcode":"101"）
+            Object resultCode = responseMap.get("resultcode");
+            if (resultCode != null) {
+                // 常见的成功码是 "200", "0", "100" 等，错误码可能是 "101", "10001" 等
+                String code = resultCode.toString();
+                // 一般认为 "101" 是错误码，"200" 或 "0" 是成功码
+                if ("101".equals(code)) {
+                    log.debug("检测到错误结果码: {}", code);
+                    return false;
+                }
+            }
+            
+            // 检查 success 字段
+            Object success = responseMap.get("success");
+            if (success != null) {
+                if (success instanceof Boolean) {
+                    return (Boolean) success;
+                } else if (success instanceof String) {
+                    return Boolean.parseBoolean((String) success);
+                } else {
+                    return "true".equals(success.toString());
+                }
+            }
+            
+            // 检查 status 字段
+            Object status = responseMap.get("status");
+            if (status != null) {
+                if ("success".equalsIgnoreCase(status.toString()) || 
+                    "ok".equalsIgnoreCase(status.toString())) {
+                    return true;
+                } else if ("error".equalsIgnoreCase(status.toString()) || 
+                           "fail".equalsIgnoreCase(status.toString())) {
+                    return false;
+                }
+            }
+            
+            // 如果没有找到明确的错误标识，认为是成功的
+            return true;
+        } catch (Exception e) {
+            log.warn("解析响应体JSON失败，无法检查业务逻辑: {}", e.getMessage());
+            // 如果无法解析JSON，仍认为HTTP成功即为成功
+            return true;
         }
     }
 

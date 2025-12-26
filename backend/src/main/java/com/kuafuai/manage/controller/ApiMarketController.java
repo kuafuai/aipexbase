@@ -22,7 +22,11 @@ import org.springframework.web.client.RestTemplate;
 
 import java.util.Objects;
 import java.util.HashMap;
+import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -168,10 +172,14 @@ public class ApiMarketController {
                 // 转换为ApiMarketVo对象
                 ApiMarketVo apiMarketVo = convertToApiMarketVo(parsedVo);
                 
+                // 使用新的业务方法进行测试和保存
+                Map<String, Object> testAndSaveResult = apiManageBusinessService.createApiMarketWithTest(apiMarketVo);
+                
                 Map<String, Object> result = new HashMap<>();
                 result.put("parsedData", parsedVo);
                 result.put("apiMarketData", apiMarketVo);
-                result.put("message", "文档解析成功");
+                result.putAll(testAndSaveResult); // 包含测试结果、保存状态和消息
+                
                 return ResultUtils.success(result);
             } else {
                 return ResultUtils.error("文档解析失败，状态码: " + response.getStatusCode());
@@ -322,37 +330,109 @@ public class ApiMarketController {
         // 变量配置转换为头部信息和URL参数 (简化处理)
         StringBuilder headersBuilder = new StringBuilder();
         StringBuilder urlParamsBuilder = new StringBuilder();
-        Map<String, String> varMap = new HashMap<>(); // 用于存储变量映射
+        Map<String, Object> varMap = new HashMap<>(); // 用于存储变量映射，使用Object类型以支持复杂对象
         if (parsedVo.getVariables_config() != null && !parsedVo.getVariables_config().isEmpty()) {
             boolean isFirstParam = true;
             for (ApiDocumentParsedVo.VariableConfig varConfig : parsedVo.getVariables_config()) {
                 if ("header".equalsIgnoreCase(varConfig.getLocation())) {
                     headersBuilder.append(varConfig.getName()).append(": ").append(varConfig.getDefault_value()).append("\n");
                     // 将头部变量也添加到变量映射中
-                    varMap.put(varConfig.getName(), varConfig.getDefault_value());
+                    Map<String, String> varValueMap = new HashMap<>();
+                    varValueMap.put("value", varConfig.getDefault_value());
+                    varValueMap.put("desc", varConfig.getDescription() != null ? varConfig.getDescription() : "");
+                    varMap.put(varConfig.getName(), varValueMap);
                 } else if ("url".equalsIgnoreCase(varConfig.getLocation())) {
-                    // 处理URL参数
-                    if (isFirstParam) {
-                        urlParamsBuilder.append(varConfig.getName()).append("=${").append(varConfig.getName()).append("}");
-                        isFirstParam = false;
-                    } else {
-                        urlParamsBuilder.append("&").append(varConfig.getName()).append("=${").append(varConfig.getName()).append("}");
-                    }
+                    // 处理URL参数 - 这里构建URL参数字符串，但不直接添加到URL，而是依赖变量替换
                     // 将URL参数添加到变量映射中
-                    varMap.put(varConfig.getName(), varConfig.getDefault_value());
+                    // 优先使用参数说明中的示例值，如果为空则使用默认值，如果默认值也为空则使用占位符
+                    String varValue = null;
+                    
+                    // 从description中提取示例值（如果description包含示例）
+                    String description = varConfig.getDescription();
+                    if (description != null) {
+                        // 尝试从description中提取示例值，例如 "例如奥迪A6L、小米su7" 中的示例
+                        varValue = extractExampleFromDescription(description);
+                    }
+                    
+                    // 如果从描述中没有提取到示例值，则使用default_value
+                    if (varValue == null || varValue.trim().isEmpty()) {
+                        varValue = varConfig.getDefault_value();
+                    }
+                    
+                    // 如果default_value也为空，则使用占位符值
+                    if (varValue == null || varValue.trim().isEmpty()) {
+                        varValue = "test_value"; // 为测试目的提供默认值
+                    }
+                    
+                    // 确保变量映射中包含URL参数的值
+                    Map<String, String> varValueMap = new HashMap<>();
+                    varValueMap.put("value", varValue);
+                    varValueMap.put("desc", varConfig.getDescription() != null ? varConfig.getDescription() : "");
+                    varMap.put(varConfig.getName(), varValueMap);
                 } else if ("body".equalsIgnoreCase(varConfig.getLocation())) {
                     // 处理请求体变量
-                    varMap.put(varConfig.getName(), varConfig.getDefault_value());
+                    Map<String, String> varValueMap = new HashMap<>();
+                    varValueMap.put("value", varConfig.getDefault_value());
+                    varValueMap.put("desc", varConfig.getDescription() != null ? varConfig.getDescription() : "");
+                    varMap.put(varConfig.getName(), varValueMap);
                 }
             }
             
-            // 如果URL中没有参数占位符但有URL变量，则将它们附加到URL
-            if (parsedVo.getApi_config() != null && !urlParamsBuilder.toString().isEmpty()) {
-                String currentUrl = apiMarketVo.getUrl();
-                if (currentUrl != null && !currentUrl.contains("${")) {
-                    // 在URL后面添加参数
-                    apiMarketVo.setUrl(currentUrl + (currentUrl.contains("?") ? "&" : "?") + urlParamsBuilder.toString());
+            // 将URL中的 $var 格式转换为 ${var} 格式，以便变量替换逻辑能正确处理
+            if (apiMarketVo.getUrl() != null) {
+                String url = apiMarketVo.getUrl();
+                log.debug("Original URL from parser: {}", url);
+                
+                // 检查是否包含$字符
+                if (url.contains("$")) {
+                    log.debug("URL contains $ character, proceeding with replacement");
+                } else {
+                    log.debug("URL does not contain $ character");
                 }
+                
+                // 将 $var 格式转换为 ${var} 格式
+                // 使用正则表达式匹配 $ 后跟字母开头、后跟字母数字下划线的变量名
+                Pattern urlVarPattern = Pattern.compile("\\$([a-zA-Z][a-zA-Z0-9_]*)");
+                Matcher urlVarMatcher = urlVarPattern.matcher(url);
+                StringBuffer sb = new StringBuffer();
+                boolean foundMatch = false;
+                while (urlVarMatcher.find()) {
+                    foundMatch = true;
+                    String varName = urlVarMatcher.group(1); // 获取变量名
+                    if (varName != null) {
+                        log.debug("Found variable in URL: {}", varName);
+                        // 使用Matcher.quoteReplacement来正确转义替换字符串
+                        urlVarMatcher.appendReplacement(sb, Matcher.quoteReplacement("${" + varName + "}"));
+                    }
+                }
+                urlVarMatcher.appendTail(sb);
+                String convertedUrl = sb.toString();
+                if (!foundMatch) {
+                    log.debug("No variables found in URL for conversion");
+                }
+                log.debug("URL after $var to ${{var}} conversion: {}", convertedUrl);
+                apiMarketVo.setUrl(convertedUrl);
+            
+                // 确保URL中没有不完整的模板变量，避免RestTemplate解析错误
+                String finalUrl = apiMarketVo.getUrl();
+                // 移除任何不完整的模板格式，如以$或{结尾的不完整模板
+                finalUrl = finalUrl.replaceAll("\\$\\{[^}]*$", "");
+                finalUrl = finalUrl.replaceAll("\\{[^}]*$", "");
+                finalUrl = finalUrl.replaceAll("\\{\\{[^}]*$", "");
+                finalUrl = finalUrl.replaceAll("\\$[a-zA-Z0-9_]*$", "");
+                // 特别处理URL参数部分的不完整模板格式
+                finalUrl = finalUrl.replaceAll("\\?[^#&]*\\$\\{[^}]*$", "?"); // 处理以不完整模板结尾的查询参数
+                finalUrl = finalUrl.replaceAll("\\?[^#&]*\\{[^}]*$", "?"); // 处理以不完整模板结尾的查询参数
+                finalUrl = finalUrl.replaceAll("\\?[^#&]*\\{\\{[^}]*$", "?"); // 处理以不完整模板结尾的查询参数
+                // 处理URL参数中间的不完整模板
+                finalUrl = finalUrl.replaceAll("\\$\\{[^}]*\\&", "&");
+                finalUrl = finalUrl.replaceAll("\\{[^}]*\\&", "&");
+                finalUrl = finalUrl.replaceAll("\\{\\{[^}]*\\&", "&");
+                // 最后确保URL末尾没有多余的符号
+                finalUrl = finalUrl.replaceAll("\\?&", "?");
+                finalUrl = finalUrl.replaceAll("\\?\\?+", "?");
+                log.debug("Final URL after cleaning: {}", finalUrl);
+                apiMarketVo.setUrl(finalUrl);
             }
         }
         apiMarketVo.setHeaders(headersBuilder.toString());
@@ -362,6 +442,7 @@ public class ApiMarketController {
             try {
                 String varRowJson = objectMapper.writeValueAsString(varMap);
                 apiMarketVo.setVarRow(varRowJson);
+                log.debug("Setting varRow to: {}", varRowJson); // 添加调试日志
             } catch (JsonProcessingException e) {
                 log.error("转换变量映射为JSON字符串时发生错误", e);
                 // 如果转换失败，使用空字符串
@@ -374,8 +455,49 @@ public class ApiMarketController {
         return apiMarketVo;
     }
 
+    /**
+     * 从参数描述中提取示例值
+     * @param description 参数描述
+     * @return 提取的示例值，如果没有找到则返回null
+     */
+    private String extractExampleFromDescription(String description) {
+        if (description == null || description.trim().isEmpty()) {
+            return null;
+        }
+
+        // 查找描述中的示例关键词，如"例如"、"如"等
+        // 匹配模式：例如 奥迪A6L、小米su7 或 如 奥迪A6L，小米su7
+        java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("例如[\\s\\u4e00-\\u9fa5a-zA-Z0-9_\\-\\.,，。、]+|如[\\s\\u4e00-\\u9fa5a-zA-Z0-9_\\-\\.,，。、]+");
+        java.util.regex.Matcher matcher = pattern.matcher(description);
+
+        if (matcher.find()) {
+            String exampleText = matcher.group();
+            // 提取关键词后的示例值
+            if (exampleText.contains("例如")) {
+                exampleText = exampleText.substring(exampleText.indexOf("例如") + 2).trim();
+            } else if (exampleText.contains("如")) {
+                exampleText = exampleText.substring(exampleText.indexOf("如") + 1).trim();
+            }
+
+            // 从示例文本中提取第一个值（通常第一个示例是最合适的测试值）
+            String[] examples = exampleText.split("[\\s\\.,，。、]");
+            for (String example : examples) {
+                example = example.trim();
+                if (!example.isEmpty() && !example.equals("、")) {
+                    // 去除可能的引号和其他标点
+                    example = example.replaceAll("^[\"'\\(\\[\\{\\s]+|[\"'\\)\\]\\}\\s]+$", "");
+                    return example;
+                }
+            }
+        }
+
+        return null;
+    }
+
     @PostMapping("/test")
     public BaseResponse testApi(@RequestBody ApiMarketVo apiMarketVo) {
         return ResultUtils.success(apiManageBusinessService.testApi(apiMarketVo));
     }
+    
+
 }

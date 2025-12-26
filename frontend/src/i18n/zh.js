@@ -194,7 +194,7 @@ export default {
             document_parse_success: "文档解析成功",
             document_parse_failed: "文档解析失败",
             import_from_document: "从文档导入",
-            paste_document_content: "粘贴文档内容",
+            ai_add_api: "AI导入API",
             paste_document_tip: "在此粘贴Swagger、OpenAPI或其他API文档内容",
             parse_content: "解析内容",
             parsing_content: "解析中...",
@@ -205,6 +205,7 @@ export default {
             test_success_yes: "是",
             test_success_no: "否",
             test_response_body: "响应体",
+            test_failed: "测试失败",
             result_label: "结果",
         },
         project_detail: {
