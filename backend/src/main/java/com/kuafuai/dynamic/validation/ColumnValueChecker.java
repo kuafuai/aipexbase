@@ -26,7 +26,7 @@ public class ColumnValueChecker {
     /**
      * 跟新时-对数据进行类型判断与是否超出范围
      */
-    public static void normalizeByUpdateValidate(List<AppTableColumnInfo> columns, Map<String, Object> conditions) {
+    public static void normalizeByUpdateValidate(String table, List<AppTableColumnInfo> columns, Map<String, Object> conditions) {
 
         for (AppTableColumnInfo columnInfo : columns) {
             if (columnInfo.isPrimary()) {
@@ -50,47 +50,47 @@ public class ColumnValueChecker {
                 case "number":
                 case "quote":
                 case "int":
-                    validateNumeric(value, columnName);
+                    validateNumeric(value, columnName, table);
                     break;
                 case "date":
-                    validateDate(value, columnName, "yyyy-MM-dd");
+                    validateDate(value, columnName, "yyyy-MM-dd", table);
                     break;
                 case "datetime":
-                    validateDate(value, columnName, "yyyy-MM-dd HH:mm:ss");
+                    validateDate(value, columnName, "yyyy-MM-dd HH:mm:ss", table);
                     break;
                 case "time":
-                    validateDate(value, columnName, "HH:mm:ss");
+                    validateDate(value, columnName, "HH:mm:ss", table);
                     break;
                 case "decimal":
                 case "float":
                 case "double":
-                    validateDecimal(value, columnName);
+                    validateDecimal(value, columnName, table);
                     break;
                 default:
                     if ("int".equals(columnType)) {
-                        validateNumeric(value, columnName);
+                        validateNumeric(value, columnName, table);
                     }
                     break;
             }
         }
     }
 
-    private static void validateNumeric(Object value, String columName) {
+    private static void validateNumeric(Object value, String columName, String table) {
         String strValue = Convert.toStr(value);
         if (!NumberUtil.isNumber(strValue)) {
-            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", columName));
+            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
         }
         try {
             long valueLong = Long.parseLong(strValue);
             if (valueLong > Integer.MAX_VALUE || valueLong < Integer.MIN_VALUE) {
-                throw new BusinessException(I18nUtils.get("dynamic.update.value_out_range", columName));
+                throw new BusinessException(I18nUtils.get("dynamic.update.value_out_range", table + ":" + columName));
             }
         } catch (NumberFormatException e) {
-            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", columName));
+            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
         }
     }
 
-    private static void validateDate(Object value, String columName, String format) {
+    private static void validateDate(Object value, String columName, String format, String table) {
         try {
             String timeStr = Convert.toStr(value);
             if (StringUtils.isEmpty(timeStr)) {
@@ -103,7 +103,7 @@ public class ColumnValueChecker {
         }
     }
 
-    private static void validateDecimal(Object value, String columName) {
+    private static void validateDecimal(Object value, String columName, String table) {
         String strValue = Convert.toStr(value);
         if (!NumberUtil.isNumber(strValue)) {
             throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", columName));
