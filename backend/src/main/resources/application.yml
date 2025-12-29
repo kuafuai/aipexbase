@@ -25,6 +25,13 @@ mcp:
     message-endpoint: ${MCP_MESSAGE_ENDPOINT:/mcp/message}
     sse-endpoint: ${MCP_SSE_ENDPOINT:/mcp/sse}
 
+# API文档解析服务配置
+api:
+  document:
+    parser:
+      url: ${API_DOCUMENT_PARSER_URL:http://60.204.199.245:6680/v1/chat-messages}
+      api-key: ${API_DOCUMENT_PARSER_API_KEY:app-2iAVpxBM8ezDgWi0aTe8tYsB}
+
 #mysql
 spring:
   profiles:
