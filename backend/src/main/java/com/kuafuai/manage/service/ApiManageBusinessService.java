@@ -127,6 +127,9 @@ public class ApiManageBusinessService {
             List<String> missingFields = analyzeMissingFields(marketVo, testResult);
             result.put("missingFields", missingFields);
             log.warn("可能缺少的字段: {}", missingFields);
+            
+            // 将marketVo也返回，以便前端可以跳转到添加界面并填充数据
+            result.put("apiMarketData", marketVo);
         }
         
         return result;

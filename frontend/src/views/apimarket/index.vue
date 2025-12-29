@@ -324,10 +324,35 @@ async function parseDocumentContent() {
           if (res.data.missingFields && res.data.missingFields.length > 0) {
             errorMessage += '。可能缺少以下字段：' + res.data.missingFields.join(', ');
           }
-          proxy.$modal.msgError(errorMessage);
           
-          // 不再跳转到添加页面，只关闭弹窗
-          showDocumentDialog.value = false;
+          // 显示错误信息并询问用户是否跳转到添加页面
+          proxy.$confirm(
+            errorMessage + '，是否跳转到添加API页面进行修正？',
+            'API测试失败',
+            {
+              confirmButtonText: '跳转到添加页面',
+              cancelButtonText: '关闭',
+              type: 'error',
+              distinguishCancelAndClose: true
+            }
+          ).then(() => {
+            // 跳转到添加页面并传递解析的数据
+            const parsedData = res.data.parsedData;
+            const apiMarketData = res.data.apiMarketData;
+            // 传递解析的数据和测试结果信息
+            const encodedData = encodeURIComponent(JSON.stringify({ parsedData, apiMarketData }));
+            proxy.$router.push({ 
+              name: 'ApiMarketAdd', 
+              query: { 
+                fromParsed: 'true', 
+                parsedData: encodedData,
+                shouldShowTestResult: 'false' // 不自动显示测试结果，因为已经失败了
+              } 
+            });
+          }).catch((action) => {
+            // 用户点击了'关闭'或取消
+            showDocumentDialog.value = false;
+          });
         }
       } else {
         // 如果后端没有返回测试结果，进行前端测试

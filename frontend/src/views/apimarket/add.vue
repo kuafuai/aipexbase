@@ -345,7 +345,14 @@ onMounted(() => {
       if (apiMarketData.url) formData.value.url = apiMarketData.url;
       if (apiMarketData.protocol) formData.value.protocol = apiMarketData.protocol;
       if (apiMarketData.method !== undefined) formData.value.method = apiMarketData.method;
-      if (apiMarketData.headers) formData.value.headers = JSON.stringify(apiMarketData.headers, null, 2);
+      if (apiMarketData.headers) {
+        // 如果headers是字符串，直接赋值；如果是对象，转换为格式化的JSON字符串
+        if (typeof apiMarketData.headers === 'string') {
+          formData.value.headers = apiMarketData.headers;
+        } else {
+          formData.value.headers = JSON.stringify(apiMarketData.headers, null, 2);
+        }
+      }
       
       // 填充认证配置
       if (apiMarketData.authType) formData.value.authType = apiMarketData.authType;
@@ -353,7 +360,14 @@ onMounted(() => {
       
       // 填充请求体配置
       if (apiMarketData.bodyType !== undefined) formData.value.bodyType = apiMarketData.bodyType;
-      if (apiMarketData.bodyTemplate) formData.value.bodyTemplate = JSON.stringify(apiMarketData.bodyTemplate, null, 2);
+      if (apiMarketData.bodyTemplate) {
+        // 如果bodyTemplate是字符串，直接赋值；如果是对象，转换为格式化的JSON字符串
+        if (typeof apiMarketData.bodyTemplate === 'string') {
+          formData.value.bodyTemplate = apiMarketData.bodyTemplate;
+        } else {
+          formData.value.bodyTemplate = JSON.stringify(apiMarketData.bodyTemplate, null, 2);
+        }
+      }
       
       // 填充响应数据配置
       if (apiMarketData.dataPath) formData.value.dataPath = apiMarketData.dataPath;
@@ -376,6 +390,11 @@ onMounted(() => {
       if (apiMarketData.pricingModel !== undefined) formData.value.pricingModel = apiMarketData.pricingModel;
       if (apiMarketData.unitPrice) formData.value.unitPrice = apiMarketData.unitPrice;
       if (apiMarketData.isBilling !== undefined) formData.value.isBilling = apiMarketData.isBilling;
+      
+      // 填充变量配置
+      if (apiMarketData.varRow) {
+        formData.value.varRow = apiMarketData.varRow;
+      }
       
       // 重新提取变量
       extractVariables();
