@@ -1,6 +1,7 @@
 package com.kuafuai.dynamic.validation;
 
 import cn.hutool.core.util.NumberUtil;
+import com.google.common.collect.Lists;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.text.Convert;
 import com.kuafuai.common.util.DateUtils;
@@ -58,13 +59,13 @@ public class ColumnValueChecker {
                     validateNumeric(value, columnName, table);
                     break;
                 case "date":
-                    validateDate(value, columnName, "yyyy-MM-dd", table);
+                    validateDate(value, columnName, Lists.newArrayList("yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss"), table);
                     break;
                 case "datetime":
-                    validateDate(value, columnName, "yyyy-MM-dd HH:mm:ss", table);
+                    validateDate(value, columnName, Lists.newArrayList("yyyy-MM-dd HH:mm:ss"), table);
                     break;
                 case "time":
-                    validateDate(value, columnName, "HH:mm:ss", table);
+                    validateDate(value, columnName, Lists.newArrayList("HH:mm:ss"), table);
                     break;
                 case "decimal":
                 case "float":
@@ -95,31 +96,35 @@ public class ColumnValueChecker {
         }
     }
 
-    private static void validateDate(Object value, String columName, String format, String table) {
-        try {
-            String timeStr = Convert.toStr(value);
-            if (StringUtils.isEmpty(timeStr)) {
-                throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", columName));
-            }
-            DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format).withResolverStyle(ResolverStyle.STRICT);
-            formatter.parse(timeStr);
-        } catch (DateTimeParseException e) {
-            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", columName));
+    private static void validateDate(Object value, String columName, List<String> formats, String table) {
+        String timeStr = Convert.toStr(value);
+        if (StringUtils.isEmpty(timeStr)) {
+            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
         }
+
+        for (String format : formats) {
+            try {
+                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format).withResolverStyle(ResolverStyle.STRICT);
+                formatter.parse(timeStr);
+                return;
+            } catch (DateTimeParseException ignored) {
+            }
+        }
+        throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
     }
 
     private static void validateDecimal(Object value, String columName, String table) {
         String strValue = Convert.toStr(value);
         if (!NumberUtil.isNumber(strValue)) {
-            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", columName));
+            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
         }
         try {
             double val = Double.parseDouble(strValue);
             if (val > Integer.MAX_VALUE || val < Integer.MIN_VALUE) {
-                throw new BusinessException(I18nUtils.get("dynamic.update.value_out_range", columName));
+                throw new BusinessException(I18nUtils.get("dynamic.update.value_out_range", table + ":" + columName));
             }
         } catch (NumberFormatException e) {
-            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", columName));
+            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
         }
     }
 
