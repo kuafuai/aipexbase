@@ -46,6 +46,11 @@ public class ColumnValueChecker {
                 continue;
             }
 
+            if (value instanceof Map) {
+                // 如果value是Map，说明是修改条件
+                continue;
+            }
+
             switch (dslType) {
                 case "number":
                 case "quote":
