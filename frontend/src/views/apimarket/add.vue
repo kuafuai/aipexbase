@@ -408,6 +408,13 @@ onMounted(() => {
         nextTick(() => {
           testApi();
         });
+      } else if (route.query.fromParsed && route.query.parsedData) {
+        // 如果是从解析文档过来的，且解析结果中包含测试结果，直接显示
+        const parsedData = JSON.parse(decodeURIComponent(route.query.parsedData));
+        if (parsedData.testResult) {
+          testResult.value = parsedData.testResult;
+          showTestResult.value = true;
+        }
       }
     }
   }

@@ -244,64 +244,10 @@ async function parseDocumentContent() {
   try {
     const res = await proxy.$api.apimarket.parseDocumentContent(documentContent.value);
     if (res.success) {
-      // 解析成功后直接测试API
+      // 解析成功后直接使用后端的测试结果
       if (!res.data || !res.data.parsedData || !res.data.apiMarketData) {
         proxy.$modal.msgError('解析API文档失败：返回的数据格式不正确');
         return;
-      }
-      
-      const parsedData = res.data.parsedData;
-      const apiMarketData = res.data.apiMarketData;
-      
-      // 准备测试数据
-      let testData = { ...apiMarketData };
-      
-      // 创建变量映射对象，包含变量名和其值
-      let varValues = {};
-      if (apiMarketData.varRow) {
-        try {
-          const varObj = JSON.parse(apiMarketData.varRow);
-          for (const key in varObj) {
-            // 修复变量映射逻辑，确保处理包含value和desc的对象格式
-            const varValue = varObj[key];
-            if (typeof varValue === 'object' && varValue.value !== undefined) {
-              varValues[key] = varValue.value;
-            } else {
-              varValues[key] = varValue;
-            }
-          }
-        } catch (e) {
-          console.error('解析varRow失败:', e);
-        }
-      }
-
-      // 前端替换参数，类似于add.vue中的testApi方法
-      if (testData.url) {
-        testData.url = replaceTemplateVars(testData.url, varValues);
-      }
-      
-      // 特别处理请求头，确保变量被正确替换
-      if (testData.headers) {
-        // 如果headers是JSON字符串，先解析为对象再替换变量，最后转回字符串
-        let processedHeaders = testData.headers;
-        try {
-          const headersObj = JSON.parse(testData.headers);
-          // 遍历header对象，对每个值进行变量替换
-          for (const headerName in headersObj) {
-            if (typeof headersObj[headerName] === 'string') {
-              headersObj[headerName] = replaceTemplateVars(headersObj[headerName], varValues);
-            }
-          }
-          processedHeaders = JSON.stringify(headersObj, null, 2);
-        } catch (e) {
-          // 如果不是JSON格式，直接进行字符串替换
-          processedHeaders = replaceTemplateVars(testData.headers, varValues);
-        }
-        testData.headers = processedHeaders;
-      }
-      
-      if (testData.bodyTemplate) {
-        testData.bodyTemplate = replaceTemplateVars(testData.bodyTemplate, varValues);
       }
       
       // 检查后端的测试结果
@@ -321,6 +267,26 @@ async function parseDocumentContent() {
         } else {
           // 测试失败，显示错误信息和缺失字段
           let errorMessage = res.data.testResult.message || t('page.apimarket.test_failed');
+          
+          // 优先使用AI分析结果中的错误信息，特别是error_message字段
+          if (res.data.testResult.responseBody) {
+            try {
+              const responseObj = JSON.parse(res.data.testResult.responseBody);
+              // 检查AI分析结果中的error_info结构
+              if (responseObj.error_info && responseObj.error_info.error_message) {
+                errorMessage = responseObj.error_info.error_message;
+              } else if (responseObj.error_message) {
+                errorMessage = responseObj.error_message;
+              } else if (responseObj.msg) {
+                errorMessage = responseObj.msg;
+              } else if (responseObj.message) {
+                errorMessage = responseObj.message;
+              }
+            } catch (e) {
+              console.log('无法解析响应体JSON，使用原始错误信息');
+            }
+          }
+          
           if (res.data.missingFields && res.data.missingFields.length > 0) {
             errorMessage += '。可能缺少以下字段：' + res.data.missingFields.join(', ');
           }
@@ -355,29 +321,7 @@ async function parseDocumentContent() {
           });
         }
       } else {
-        // 如果后端没有返回测试结果，进行前端测试
-        const testRes = await proxy.$api.apimarket.test(testData);
-        if (testRes.success && testRes.data && testRes.data.success) {
-          // 测试成功，自动保存API
-          const saveRes = await proxy.$api.apimarket.add(testData);
-          if (saveRes.success) {
-            proxy.$modal.msgSuccess(t('page.apimarket.add_success'));
-            // 清空文档内容
-            documentContent.value = '';
-            // 关闭弹窗
-            showDocumentDialog.value = false;
-            // 刷新列表
-            refresh();
-          } else {
-            proxy.$modal.msgError(saveRes.message || t('page.apimarket.document_parse_failed'));
-          }
-        } else {
-          // 测试失败，显示错误信息
-          proxy.$modal.msgError(testRes.message || t('page.apimarket.test_failed'));
-          
-          // 不再跳转到添加页面，只关闭弹窗
-          showDocumentDialog.value = false;
-        }
+        proxy.$modal.msgError('解析失败：未收到测试结果');
       }
     } else {
       proxy.$modal.msgError(res.message || t('page.apimarket.document_parse_failed'));

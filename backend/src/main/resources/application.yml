@@ -29,8 +29,11 @@ mcp:
 api:
   document:
     parser:
-      url: ${API_DOCUMENT_PARSER_URL:http://60.204.199.245:6680/v1/chat-messages}
-      api-key: ${API_DOCUMENT_PARSER_API_KEY:app-2iAVpxBM8ezDgWi0aTe8tYsB}
+      url: ${API_DOCUMENT_PARSER_URL:http://124.71.176.202:6680/v1/chat-messages}
+      api-key: ${API_DOCUMENT_PARSER_API_KEY:app-ty6qpAKP8fsSOyfD0K7lYdTo}
+      # 用于测试后分析的API配置
+      analysis_url: ${API_DOCUMENT_ANALYSIS_URL:http://124.71.176.202:6680/v1/chat-messages}
+      analysis_api_key: ${API_DOCUMENT_ANALYSIS_API_KEY:app-8noHD9vy2OgCdUZ5A0MGlQ2p}
 
 #mysql
 spring:

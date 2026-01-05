@@ -50,6 +50,9 @@ public class ApiMarketController {
     @Autowired
     @Qualifier("apiDocumentParserRestTemplate")
     private RestTemplate restTemplate;
+    @Autowired
+    @Qualifier("apiAnalysisRestTemplate")
+    private RestTemplate analysisRestTemplate;
 
     @PostMapping("/page")
     public BaseResponse page(@RequestBody ApiMarketVo marketVo) {
@@ -147,8 +150,14 @@ public class ApiMarketController {
                     // 检查是否存在answer字段（根据用户提供的示例数据结构）
                     if (wrapperResponse.containsKey("answer")) {
                         String answerContent = (String) wrapperResponse.get("answer");
-                        // 解析answer字段中的实际内容
-                        parsedVo = objectMapper.readValue(answerContent, ApiDocumentParsedVo.class);
+                        // 检查answerContent是否是JSON格式还是包含API信息的字符串
+                        if (answerContent.trim().startsWith("{") || answerContent.trim().startsWith("[")) {
+                            // 如果是JSON格式，直接解析
+                            parsedVo = objectMapper.readValue(answerContent, ApiDocumentParsedVo.class);
+                        } else {
+                            // 如果是包含API信息的字符串格式，如 "url,method,headers,body"，需要解析成ApiDocumentParsedVo对象
+                            parsedVo = parseApiInfoFromString(answerContent);
+                        }
                     } else if (wrapperResponse.containsKey("text")) {
                         String textContent = (String) wrapperResponse.get("text");
                         // 解析text字段中的实际内容
@@ -158,11 +167,17 @@ public class ApiMarketController {
                         parsedVo = objectMapper.readValue(responseBody, ApiDocumentParsedVo.class);
                     }
                 } catch (JsonProcessingException e) {
-                    log.warn("Failed to parse response, trying alternative parsing approach", e);
+                    log.warn("Failed to parse response as JSON, trying alternative parsing approach", e);
                     // 如果常规解析失败，尝试其他方式
                     try {
-                        // 直接将响应体解析为ApiDocumentParsedVo
-                        parsedVo = objectMapper.readValue(responseBody, ApiDocumentParsedVo.class);
+                        // 检查是否是包含API信息的字符串格式
+                        if (responseBody.trim().startsWith("{") || responseBody.trim().startsWith("[")) {
+                            // 直接将响应体解析为ApiDocumentParsedVo
+                            parsedVo = objectMapper.readValue(responseBody, ApiDocumentParsedVo.class);
+                        } else {
+                            // 解析包含API信息的字符串格式
+                            parsedVo = parseApiInfoFromString(responseBody);
+                        }
                     } catch (Exception innerException) {
                         log.error("Failed to parse response even with alternative approach", innerException);
                         return ResultUtils.error("文档解析响应格式不符合预期: " + innerException.getMessage());
@@ -172,13 +187,36 @@ public class ApiMarketController {
                 // 转换为ApiMarketVo对象
                 ApiMarketVo apiMarketVo = convertToApiMarketVo(parsedVo);
                 
-                // 使用新的业务方法进行测试和保存
-                Map<String, Object> testAndSaveResult = apiManageBusinessService.createApiMarketWithTest(apiMarketVo);
+                // 现在根据解析的API信息进行测试
+                // 使用解析得到的API信息构造测试请求
+                ApiTestResultVo testResult = apiManageBusinessService.testApi(apiMarketVo);
                 
+                // 不在代码中检测响应体的测试结果，而是直接使用外部AI分析接口返回的值来判断
+                // 调用AI分析接口来评估测试结果
+                testResult = analyzeTestFailureWithAI(testResult, apiMarketVo);
+                // AI分析结果将决定最终的成功状态
+                
+                // 构建返回结果
                 Map<String, Object> result = new HashMap<>();
                 result.put("parsedData", parsedVo);
                 result.put("apiMarketData", apiMarketVo);
-                result.putAll(testAndSaveResult); // 包含测试结果、保存状态和消息
+                result.put("testResult", testResult);
+                
+                if (testResult.getSuccess()) {
+                    // 测试成功，自动保存API
+                    boolean saveSuccess = apiManageBusinessService.createApiMarket(apiMarketVo);
+                    result.put("saved", saveSuccess);
+                    result.put("message", saveSuccess ? "API测试成功，已自动保存" : "API测试成功，但保存失败");
+                } else {
+                    // 测试失败，不保存
+                    result.put("saved", false);
+                    result.put("message", "API测试失败，未保存");
+                    
+                    // 分析可能缺少的内容
+                    List<String> missingFields = apiManageBusinessService.analyzeMissingFields(apiMarketVo, testResult);
+                    result.put("missingFields", missingFields);
+                    log.warn("可能缺少的字段: {}", missingFields);
+                }
                 
                 return ResultUtils.success(result);
             } else {
@@ -249,23 +287,49 @@ public class ApiMarketController {
                 apiMarketVo.setToken(parsedVo.getApi_config().getAuth_config().getToken());
             }
             
-            // 请求体转换
+            // 请求体转换 - 需要正确处理从字符串解析的headers和body
             if (parsedVo.getApi_config().getRequest_body() != null) {
                 String bodyType = parsedVo.getApi_config().getRequest_body().getBody_type();
-                if ("json".equalsIgnoreCase(bodyType)) {
+                if (bodyType != null && bodyType.equalsIgnoreCase("json")) {
                     apiMarketVo.setBodyType(0); // json
-                } else if ("form".equalsIgnoreCase(bodyType) || "form-data".equalsIgnoreCase(bodyType)) {
+                } else if (bodyType != null && ("form".equalsIgnoreCase(bodyType) || "form-data".equalsIgnoreCase(bodyType))) {
                     apiMarketVo.setBodyType(1); // form-data
-                } else if ("urlencoded".equalsIgnoreCase(bodyType) || "x-www-form-urlencoded".equalsIgnoreCase(bodyType)) {
+                } else if (bodyType != null && ("urlencoded".equalsIgnoreCase(bodyType) || "x-www-form-urlencoded".equalsIgnoreCase(bodyType))) {
                     apiMarketVo.setBodyType(2); // url-encoded
-                } else if ("xml".equalsIgnoreCase(bodyType)) {
+                } else if (bodyType != null && "xml".equalsIgnoreCase(bodyType)) {
                     apiMarketVo.setBodyType(3); // xml
-                } else if ("text".equalsIgnoreCase(bodyType)) {
+                } else if (bodyType != null && "text".equalsIgnoreCase(bodyType)) {
                     apiMarketVo.setBodyType(4); // text
                 } else {
                     apiMarketVo.setBodyType(0); // 默认json
                 }
-                apiMarketVo.setBodyTemplate(parsedVo.getApi_config().getRequest_body().getBody_template());
+                
+                // 从body_template获取请求体内容
+                String bodyTemplate = parsedVo.getApi_config().getRequest_body().getBody_template();
+                if (bodyTemplate != null) {
+                    // 检查bodyTemplate是否是空对象或表示headers的格式
+                    if ("{}".equals(bodyTemplate.trim()) || bodyTemplate.trim().isEmpty()) {
+                        // 空的body，可能是headers信息被错误地放在了这里
+                        apiMarketVo.setBodyTemplate(null);
+                    } else {
+                        // 检查是否是headers格式
+                        if (bodyTemplate.contains("Content-Type") || bodyTemplate.contains("Authorization") || 
+                            bodyTemplate.startsWith("{") && bodyTemplate.contains(":")) {
+                            // 这可能是headers信息
+                            try {
+                                Map<String, Object> headersMap = objectMapper.readValue(bodyTemplate, Map.class);
+                                apiMarketVo.setHeaders(objectMapper.writeValueAsString(headersMap));
+                                apiMarketVo.setBodyTemplate(null); // headers不是body
+                            } catch (Exception e) {
+                                // 如果不是有效的JSON headers，作为body处理
+                                apiMarketVo.setBodyTemplate(bodyTemplate);
+                            }
+                        } else {
+                            // 作为body template处理
+                            apiMarketVo.setBodyTemplate(bodyTemplate);
+                        }
+                    }
+                }
             }
         }
         
@@ -288,7 +352,7 @@ public class ApiMarketController {
             apiMarketVo.setIsBilling(isBilling != null && isBilling ? 1 : 0);
         } else {
             // 默认计费模式设为免费
-            apiMarketVo.setPricingModel(1); // 免费
+            apiMarketVo.setPricingModel(0); // 免费
             apiMarketVo.setUnitPrice(0.0);
             apiMarketVo.setIsBilling(0); // 不计费
         }
@@ -456,6 +520,125 @@ public class ApiMarketController {
     }
 
     /**
+     * 从字符串格式解析API信息，格式为 "url,method,headers,body"
+     * @param apiInfoString API信息字符串
+     * @return 解析后的ApiDocumentParsedVo对象
+     */
+    private ApiDocumentParsedVo parseApiInfoFromString(String apiInfoString) {
+        log.debug("解析API信息字符串: {}", apiInfoString);
+        
+        // 创建默认的ApiDocumentParsedVo对象
+        ApiDocumentParsedVo parsedVo = new ApiDocumentParsedVo();
+        ApiDocumentParsedVo.ApiConfig apiConfig = new ApiDocumentParsedVo.ApiConfig();
+        ApiDocumentParsedVo.BasicInfo basicInfo = new ApiDocumentParsedVo.BasicInfo();
+        ApiDocumentParsedVo.ApiConfig.RequestBody requestBody = new ApiDocumentParsedVo.ApiConfig.RequestBody();
+        
+        // 按逗号分割字符串
+        String[] parts = apiInfoString.split(",");
+        if (parts.length >= 4) {
+            // 第一部分是URL
+            String url = parts[0].trim();
+            apiConfig.setRequest_url(url);
+            
+            // 第二部分是方法
+            String method = parts[1].trim();
+            apiConfig.setMethod(method);
+            
+            // 第三部分是headers
+            String headersStr = parts[2].trim();
+            // 将headers信息存储到变量配置中或直接设置为headers
+            Map<String, String> headersMap = new HashMap<>();
+            if (headersStr.startsWith("{") && headersStr.endsWith("}")) {
+                try {
+                    // 解析JSON格式的headers
+                    headersMap = objectMapper.readValue(headersStr, Map.class);
+                } catch (Exception e) {
+                    log.warn("解析headers JSON失败: {}", e.getMessage());
+                    // 如果不是JSON格式，尝试简单解析，如 {"Content-Type":"application/json"}
+                    headersStr = headersStr.replaceAll("[{}\"]", ""); // 移除大括号和引号
+                    String[] headerParts = headersStr.split(",");
+                    for (String headerPart : headerParts) {
+                        String[] keyValue = headerPart.split(":");
+                        if (keyValue.length == 2) {
+                            headersMap.put(keyValue[0].trim(), keyValue[1].trim());
+                        }
+                    }
+                }
+            } else {
+                // 尝试解析非JSON格式的headers
+                headersStr = headersStr.replaceAll("[{}\"]", ""); // 移除可能的大括号和引号
+                String[] headerParts = headersStr.split(",");
+                for (String headerPart : headerParts) {
+                    String[] keyValue = headerPart.split(":");
+                    if (keyValue.length == 2) {
+                        headersMap.put(keyValue[0].trim(), keyValue[1].trim());
+                    }
+                }
+            }
+            
+            // 第四部分是body
+            String bodyStr = parts[3].trim();
+            requestBody.setBody_template(bodyStr);
+            requestBody.setBody_type("json"); // 默认JSON类型
+            
+            apiConfig.setRequest_body(requestBody);
+            
+            // 设置协议
+            if (url.toLowerCase().startsWith("http://") || url.toLowerCase().startsWith("https://")) {
+                apiConfig.setProtocol("HTTP");
+            } else {
+                apiConfig.setProtocol("HTTP"); // 默认HTTP
+            }
+            
+            // 设置基本信息
+            String apiName = extractApiNameFromUrl(url); // 从URL中提取API名称
+            basicInfo.setApi_name(apiName);
+            basicInfo.setApi_description("API parsed from document: " + url);
+            basicInfo.setEnabled(true);
+        } else {
+            // 如果格式不符合预期，创建一个基本的ApiDocumentParsedVo对象
+            basicInfo.setApi_name("Parsed API");
+            basicInfo.setApi_description("API parsed from document");
+            basicInfo.setEnabled(true);
+            apiConfig.setRequest_url(apiInfoString.trim()); // 将整个字符串作为URL
+            apiConfig.setMethod("GET"); // 默认GET
+            apiConfig.setProtocol("HTTP"); // 默认HTTP
+            apiConfig.setRequest_body(new ApiDocumentParsedVo.ApiConfig.RequestBody());
+            //apiConfig.setRequest_body().setBody_type("json");
+        }
+        
+        parsedVo.setBasic_info(basicInfo);
+        parsedVo.setApi_config(apiConfig);
+        
+        log.debug("解析结果: {}", parsedVo);
+        return parsedVo;
+    }
+    
+    /**
+     * 从URL中提取API名称
+     * @param url API URL
+     * @return 提取的API名称
+     */
+    private String extractApiNameFromUrl(String url) {
+        try {
+            // 从URL中提取最后一个路径段作为API名称
+            String path = new java.net.URL(url).getPath();
+            String[] pathParts = path.split("/");
+            if (pathParts.length > 0) {
+                String name = pathParts[pathParts.length - 1];
+                if (!name.isEmpty()) {
+                    return name;
+                }
+            }
+            // 如果无法从路径提取，使用域名的路径部分
+            return "API_" + path.replace("/", "_").replaceFirst("^_", "");
+        } catch (Exception e) {
+            // 如果URL解析失败，使用默认名称
+            return "Parsed_API";
+        }
+    }
+
+    /**
      * 从参数描述中提取示例值
      * @param description 参数描述
      * @return 提取的示例值，如果没有找到则返回null
@@ -491,6 +674,214 @@ public class ApiMarketController {
             }
         }
 
+        return null;
+    }
+
+    private ApiTestResultVo analyzeTestFailureWithAI(ApiTestResultVo testResult, ApiMarketVo apiMarketVo) {
+        try {
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.setBearerAuth(apiDocumentParserConfig.getAnalysisApiKey());
+
+            Map<String, Object> payload = new HashMap<>();
+
+            // 1️⃣ 把失败响应体拼成 prompt（关键）
+            String query = String.format(
+                    "以下是一次API调用的响应结果，请分析API调用是否成功。如果API调用成功，返回 success=true；如果失败，返回 success=false 并给出失败原因。\n\n" +
+                            "API名称：%s\n" +
+                            "HTTP状态码：%s\n" +
+                            "响应体：\n%s",
+                    apiMarketVo.getName(),
+                    testResult.getStatusCode(),
+                    testResult.getResponseBody()
+            );
+
+            payload.put("query", query);
+
+            // 2️⃣ inputs 必须是 Map（可以为空）
+            payload.put("inputs", new HashMap<>());
+
+            payload.put("response_mode", "blocking");
+            payload.put("user", String.valueOf(SecurityUtils.getUserId()));
+
+            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, headers);
+
+            ResponseEntity<String> response = analysisRestTemplate.postForEntity(
+                    apiDocumentParserConfig.getAnalysisUrl(),
+                    entity,
+                    String.class
+            );
+
+            if (response.getStatusCode().is2xxSuccessful() && response.getBody() != null) {
+                log.info("Received response from analysis service: {}", response.getBody());
+
+                String extracted = extractErrorMessageFromAnalysis(response.getBody());
+                if (extracted != null && !extracted.isEmpty()) {
+                    testResult.setMessage(extracted);
+                }
+                
+                // 根据AI分析的结果来决定success状态
+                // 直接解析AI分析返回的完整结构，根据success字段判断
+                try {
+                    Map<String, Object> analysisResult = objectMapper.readValue(response.getBody(), Map.class);
+                    
+                    // 检查AI分析结果中是否包含success字段
+                    if (analysisResult.containsKey("success")) {
+                        boolean aiSuccess = (Boolean) analysisResult.get("success");
+                        testResult.setSuccess(aiSuccess);
+                    } else if (analysisResult.containsKey("answer")) {
+                        // 如果没有success字段，尝试解析answer字段
+                        String answerContent = (String) analysisResult.get("answer");
+                        // 检查answerContent是否为JSON格式，可能是包含error_info等结构的响应
+                        if (answerContent.trim().startsWith("{") && answerContent.trim().endsWith("}")) {
+                            try {
+                                Map<String, Object> answerObj = objectMapper.readValue(answerContent, Map.class);
+                                // 检查是否有success字段
+                                if (answerObj.containsKey("success")) {
+                                    boolean answerSuccess = (Boolean) answerObj.get("success");
+                                    testResult.setSuccess(answerSuccess);
+                                } else if (answerObj.containsKey("error_info")) {
+                                    // 如果有error_info结构，通常表示失败
+                                    testResult.setSuccess(false);
+                                } else if (answerObj.containsKey("status")) {
+                                    String status = (String) answerObj.get("status");
+                                    if ("fail".equalsIgnoreCase(status) || "error".equalsIgnoreCase(status)) {
+                                        testResult.setSuccess(false);
+                                    } else if ("success".equalsIgnoreCase(status) || "ok".equalsIgnoreCase(status)) {
+                                        testResult.setSuccess(true);
+                                    }
+                                }
+                            } catch (Exception e) {
+                                // 如果answerContent不是JSON格式，继续使用字符串判断
+                                if (answerContent.toLowerCase().contains("success") || answerContent.toLowerCase().contains("成功")) {
+                                    testResult.setSuccess(true);
+                                } else if (answerContent.toLowerCase().contains("fail") || answerContent.toLowerCase().contains("错误") || 
+                                           answerContent.toLowerCase().contains("失败") || answerContent.toLowerCase().contains("error")) {
+                                    testResult.setSuccess(false);
+                                }
+                            }
+                        } else {
+                            // 如果answerContent不是JSON格式，使用字符串判断
+                            if (answerContent.toLowerCase().contains("success") || answerContent.toLowerCase().contains("成功")) {
+                                testResult.setSuccess(true);
+                            } else if (answerContent.toLowerCase().contains("fail") || answerContent.toLowerCase().contains("错误") || 
+                                       answerContent.toLowerCase().contains("失败") || answerContent.toLowerCase().contains("error")) {
+                                testResult.setSuccess(false);
+                            }
+                        }
+                    } else {
+                        // 如果AI分析结果中没有success字段，检查是否有error_info结构
+                        if (analysisResult.containsKey("error_info")) {
+                            // 根据error_info的存在判断为失败
+                            testResult.setSuccess(false);
+                        } else if (analysisResult.containsKey("status")) {
+                            String status = (String) analysisResult.get("status");
+                            if ("fail".equalsIgnoreCase(status) || "error".equalsIgnoreCase(status)) {
+                                testResult.setSuccess(false);
+                            } else if ("success".equalsIgnoreCase(status) || "ok".equalsIgnoreCase(status)) {
+                                testResult.setSuccess(true);
+                            }
+                        }
+                    }
+                } catch (Exception e) {
+                    log.warn("无法解析AI分析结果来判断成功状态，默认使用当前状态", e);
+                }
+            }
+        } catch (Exception e) {
+            log.error("分析API测试响应时发生错误，使用原始错误信息", e);
+            testResult.setMessage("API测试失败：" + testResult.getResponseBody());
+            // 如果AI分析失败，保持原始测试结果的success状态
+        }
+
+        return testResult;
+    }
+
+
+    /**
+     * 从分析服务响应中提取错误信息
+     * @param analysisResponseBody 分析服务响应体
+     * @return 提取的错误信息
+     */
+    private String extractErrorMessageFromAnalysis(String analysisResponseBody) {
+        try {
+            // 尝试解析分析结果
+            Map<String, Object> analysisResult = objectMapper.readValue(analysisResponseBody, Map.class);
+            String analysisContent = null;
+            
+            // 检查分析结果结构
+            if (analysisResult.containsKey("answer")) {
+                analysisContent = (String) analysisResult.get("answer");
+            } else if (analysisResult.containsKey("text")) {
+                analysisContent = (String) analysisResult.get("text");
+            } else {
+                analysisContent = analysisResponseBody;
+            }
+            
+            // 尝试解析为JSON并提取错误信息
+            try {
+                Map<String, Object> errorResponse = objectMapper.readValue(analysisContent, Map.class);
+                
+                // 优先检查是否有error_info结构，以及其中的error_message
+                Object errorInfo = errorResponse.get("error_info");
+                if (errorInfo instanceof Map) {
+                    Map<String, Object> errorInfoMap = (Map<String, Object>) errorInfo;
+                    Object errorMessage = errorInfoMap.get("error_message");
+                    if (errorMessage != null && !"".equals(errorMessage.toString().trim())) {
+                        return errorMessage.toString();
+                    }
+                }
+                
+                // 检查直接的error_message字段
+                Object directErrorMessage = errorResponse.get("error_message");
+                if (directErrorMessage != null && !"".equals(directErrorMessage.toString().trim())) {
+                    return directErrorMessage.toString();
+                }
+                
+                // 检查msg字段
+                Object msg = errorResponse.get("msg");
+                if (msg != null && !"".equals(msg.toString().trim())) {
+                    return msg.toString();
+                }
+                
+                // 检查message字段
+                Object message = errorResponse.get("message");
+                if (message != null && !"".equals(message.toString().trim())) {
+                    return message.toString();
+                }
+                
+                // 检查conclusion字段
+                Object conclusion = errorResponse.get("conclusion");
+                if (conclusion != null && !"".equals(conclusion.toString().trim())) {
+                    return conclusion.toString();
+                }
+                
+                // 如果以上都没有，返回整个error_info对象的内容（如果存在）
+                if (errorInfo instanceof Map) {
+                    return errorInfo.toString();
+                }
+            } catch (Exception jsonException) {
+                log.debug("无法解析分析结果为JSON，使用正则表达式提取: {}", jsonException.getMessage());
+                // 如果无法解析为JSON，尝试直接查找错误信息
+                if (analysisContent.contains("error_message")) {
+                    // 尝试使用正则表达式提取error_message
+                    java.util.regex.Pattern pattern = java.util.regex.Pattern.compile("\"error_message\"\\s*:\\s*\"([^\"]+)\"");
+                    java.util.regex.Matcher matcher = pattern.matcher(analysisContent);
+                    if (matcher.find() && !matcher.group(1).isEmpty()) {
+                        return matcher.group(1);
+                    }
+                }
+                
+                // 如果正则表达式也没有找到error_message，尝试提取conclusion
+                java.util.regex.Pattern conclusionPattern = java.util.regex.Pattern.compile("\"conclusion\"\\s*:\\s*\"([^\"]+)\"");
+                java.util.regex.Matcher conclusionMatcher = conclusionPattern.matcher(analysisContent);
+                if (conclusionMatcher.find() && !conclusionMatcher.group(1).isEmpty()) {
+                    return conclusionMatcher.group(1);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Failed to parse analysis response: {}", e.getMessage());
+        }
+        
         return null;
     }
 
