@@ -39,7 +39,7 @@ public class ApiDocumentParsedVo {
         @Data
         public static class RequestBody {
             private String body_type;
-            private String body_template;
+            private Object body_template;
         }
     }
 

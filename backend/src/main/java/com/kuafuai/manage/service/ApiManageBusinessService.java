@@ -397,6 +397,22 @@ public class ApiManageBusinessService {
             result.setMessage(response.getStatusCode().getReasonPhrase());
             result.setResponseBody(response.getBody());
             
+            // 获取响应头并转换为JSON字符串
+            try {
+                Map<String, String> responseHeadersMap = new HashMap<>();
+                for (String headerName : response.getHeaders().keySet()) {
+                    List<String> headerValues = response.getHeaders().get(headerName);
+                    if (headerValues != null && !headerValues.isEmpty()) {
+                        // 如果有多个值，只取第一个
+                        responseHeadersMap.put(headerName, headerValues.get(0));
+                    }
+                }
+                result.setResponseHeaders(objectMapper.writeValueAsString(responseHeadersMap));
+            } catch (Exception e) {
+                log.warn("Failed to serialize response headers", e);
+                result.setResponseHeaders("{}");
+            }
+            
             // 只检查HTTP状态码，不检查响应体中的业务逻辑错误
             boolean httpSuccess = response.getStatusCode().is2xxSuccessful();
             result.setSuccess(httpSuccess);
