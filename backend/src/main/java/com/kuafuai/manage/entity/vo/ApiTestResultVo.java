@@ -7,5 +7,6 @@ public class ApiTestResultVo {
     private Integer statusCode;
     private String message;
     private String responseBody;
+    private String responseHeaders;
     private Boolean success;
 }

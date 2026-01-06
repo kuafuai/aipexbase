@@ -330,23 +330,59 @@ public class ApiMarketController {
                 }
                 
                 // 从body_template获取请求体内容
-                String bodyTemplate = parsedVo.getApi_config().getRequest_body().getBody_template();
-                if (bodyTemplate != null) {
-                    // 检查bodyTemplate是否是空对象或表示headers的格式
-                    if ("{}".equals(bodyTemplate.trim()) || bodyTemplate.trim().isEmpty()) {
-                        // 空的body，可能是headers信息被错误地放在了这里
-                        apiMarketVo.setBodyTemplate(null);
+                Object bodyTemplateObj = parsedVo.getApi_config().getRequest_body().getBody_template();
+                if (bodyTemplateObj != null) {
+                    String bodyTemplate = null;
+                    
+                    // 如果bodyTemplate是Map或List类型（JSON对象或数组），转换为JSON字符串
+                    if (bodyTemplateObj instanceof Map || bodyTemplateObj instanceof List) {
+                        try {
+                            bodyTemplate = objectMapper.writeValueAsString(bodyTemplateObj);
+                        } catch (Exception e) {
+                            log.error("转换body template为JSON字符串时发生错误", e);
+                            bodyTemplate = bodyTemplateObj.toString();
+                        }
                     } else {
-                        // 检查是否是headers格式
-                        if (bodyTemplate.contains("Content-Type") || bodyTemplate.contains("Authorization") || 
-                            bodyTemplate.startsWith("{") && bodyTemplate.contains(":")) {
+                        // 如果是其他类型（如字符串），直接转换
+                        bodyTemplate = bodyTemplateObj.toString();
+                    }
+                    
+                    // 检查bodyTemplate是否是空对象或表示headers的格式
+                    if (bodyTemplate.trim().isEmpty()) {
+                        // 空字符串，可能是headers信息被错误地放在了这里
+                        apiMarketVo.setBodyTemplate(null);
+                    } else if ("{}".equals(bodyTemplate.trim()) || "[]".equals(bodyTemplate.trim())) {
+                        // 空的JSON对象或数组，保留原值进行测试
+                        apiMarketVo.setBodyTemplate(bodyTemplate);
+                    } else {
+                        // 检查是否是headers格式 - 仅当bodyTemplate是简单的键值对格式（如"key1: value1\nkey2: value2"）时才认为是headers
+                        // 而不是当它是JSON对象格式时
+                        boolean isHeaderFormat = true;
+                        
+                        // 检查是否是键值对格式的headers（多行，每行是key: value格式）
+                        if (bodyTemplate.startsWith("{") || bodyTemplate.startsWith("[")) {
+                            // JSON格式，这应该是body，不是headers
+                            isHeaderFormat = false;
+                        } else {
+                            // 检查是否是多行键值对格式
+                            String[] lines = bodyTemplate.split("\n");
+                            for (String line : lines) {
+                                line = line.trim();
+                                if (!line.isEmpty() && !line.contains(":")) {
+                                    isHeaderFormat = false;
+                                    break;
+                                }
+                            }
+                        }
+                        
+                        if (isHeaderFormat) {
                             // 这可能是headers信息
                             try {
                                 Map<String, Object> headersMap = objectMapper.readValue(bodyTemplate, Map.class);
                                 apiMarketVo.setHeaders(objectMapper.writeValueAsString(headersMap));
                                 apiMarketVo.setBodyTemplate(null); // headers不是body
                             } catch (Exception e) {
-                                // 如果不是有效的JSON headers，作为body处理
+                                // 如果解析为JSON失败，可能是多行格式的headers
                                 apiMarketVo.setBodyTemplate(bodyTemplate);
                             }
                         } else {
@@ -455,7 +491,31 @@ public class ApiMarketController {
                     varValueMap.put("desc", varConfig.getDescription() != null ? varConfig.getDescription() : "");
                     varMap.put(varConfig.getName(), varValueMap);
                 } else if ("body".equalsIgnoreCase(varConfig.getLocation())) {
-                    // 处理请求体变量，不添加到变量映射中
+                    // 处理请求体变量，将其添加到变量映射中
+                    String varValue = null;
+                    
+                    // 优先使用参数说明中的示例值，如果为空则使用默认值，如果默认值也为空则使用占位符
+                    String description = varConfig.getDescription();
+                    if (description != null) {
+                        // 尝试从description中提取示例值，例如 "例如奥迪A6L、小米su7" 中的示例
+                        varValue = extractExampleFromDescription(description);
+                    }
+                    
+                    // 如果从描述中没有提取到示例值，则使用default_value
+                    if (varValue == null || varValue.trim().isEmpty()) {
+                        varValue = varConfig.getDefault_value();
+                    }
+                    
+                    // 如果default_value也为空，则使用变量名作为占位符
+                    if (varValue == null || varValue.trim().isEmpty()) {
+                        varValue = varConfig.getName(); // 使用变量名本身作为占位符，而不是'test_value'
+                    }
+                    
+                    // 确保变量映射中包含body参数的值
+                    Map<String, String> varValueMap = new HashMap<>();
+                    varValueMap.put("value", varValue);
+                    varValueMap.put("desc", varConfig.getDescription() != null ? varConfig.getDescription() : "");
+                    varMap.put(varConfig.getName(), varValueMap);
                 }
             }
             
@@ -748,14 +808,16 @@ public class ApiMarketController {
 
             Map<String, Object> payload = new HashMap<>();
 
-            // 1️⃣ 把失败响应体拼成 prompt（关键）
+            // 1️⃣ 把失败响应体和响应头拼成 prompt（关键）
             String query = String.format(
                     "以下是一次API调用的响应结果，请分析API调用是否成功。如果API调用成功，返回 success=true；如果失败，返回 success=false 并给出失败原因。\n\n" +
                             "API名称：%s\n" +
                             "HTTP状态码：%s\n" +
+                            "响应头：%s\n" +
                             "响应体：\n%s",
                     apiMarketVo.getName(),
                     testResult.getStatusCode(),
+                    testResult.getResponseHeaders(),
                     testResult.getResponseBody()
             );
 
