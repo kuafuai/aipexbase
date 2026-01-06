@@ -241,6 +241,8 @@ public class ApiManageBusinessService {
             if (marketVo.getHeaders() != null && !marketVo.getHeaders().trim().isEmpty()) {
                 String headerStr = marketVo.getHeaders().trim();
                 
+                log.debug("Parsing headers string: {}", headerStr);
+                
                 // 尝试解析JSON格式的headers
                 if (headerStr.startsWith("{")) {
                     try {
@@ -248,7 +250,9 @@ public class ApiManageBusinessService {
                         Map<String, Object> headersMap = objectMapper.readValue(headerStr, Map.class);
                         for (Map.Entry<String, Object> entry : headersMap.entrySet()) {
                             if (entry.getValue() != null) {
-                                headers.add(entry.getKey(), entry.getValue().toString());
+                                String value = entry.getValue().toString();
+                                log.debug("Adding header: {} = {}", entry.getKey(), value);
+                                headers.add(entry.getKey(), value);
                             }
                         }
                     } catch (Exception e) {

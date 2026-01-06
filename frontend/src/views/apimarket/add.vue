@@ -464,11 +464,22 @@ function loadExistingVars() {
       const varObj = JSON.parse(formData.value.varRow);
       const vars = [];
       for (const key in varObj) {
-        vars.push({
-          name: key,
-          value: varObj[key].value || '',
-          desc: varObj[key].desc || ''
-        });
+        const varValue = varObj[key];
+        // 检查varValue是否是对象，包含value和desc字段
+        if (typeof varValue === 'object' && varValue !== null) {
+          vars.push({
+            name: key,
+            value: varValue.value || '',
+            desc: varValue.desc || ''
+          });
+        } else {
+          // 如果是简单值，转换为对象格式
+          vars.push({
+            name: key,
+            value: varValue || '',
+            desc: ''
+          });
+        }
       }
       extractedVars.value = vars;
     } catch (e) {
@@ -483,11 +494,9 @@ function extractVariables() {
   const varPattern = /\$?\{\{([^}]+)\}\}|\$?\{([^}]+)\}|\$([a-zA-Z][a-zA-Z0-9_]*)/g;
   const allVars = new Set();
 
-  // 从url、headers、bodyTemplate中提取变量
+  // 从url中提取变量（只从URL中提取变量）
   const sources = [
-    formData.value.url || '',
-    formData.value.headers || '',
-    formData.value.bodyTemplate || ''
+    formData.value.url || ''
   ];
 
   sources.forEach(source => {

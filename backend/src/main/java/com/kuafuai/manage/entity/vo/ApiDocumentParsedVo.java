@@ -26,6 +26,7 @@ public class ApiDocumentParsedVo {
         private String request_url;
         private String protocol;
         private String method;
+        private Object headers;
         private AuthConfig auth_config;
         private RequestBody request_body;
 
