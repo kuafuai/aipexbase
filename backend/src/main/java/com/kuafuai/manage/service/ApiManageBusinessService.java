@@ -141,7 +141,7 @@ public class ApiManageBusinessService {
      * @param testResult 测试结果
      * @return 缺少的字段列表
      */
-    private List<String> analyzeMissingFields(ApiMarketVo marketVo, ApiTestResultVo testResult) {
+    public List<String> analyzeMissingFields(ApiMarketVo marketVo, ApiTestResultVo testResult) {
         List<String> missingFields = new ArrayList<>();
         
         // 检查URL是否为空
@@ -159,6 +159,19 @@ public class ApiManageBusinessService {
         // 检查请求方法
         if (marketVo.getMethod() == null) {
             missingFields.add("请求方法");
+        }
+        
+        // 优先检查testResult中的message字段（可能包含AI分析提取的error_message）
+        if (testResult.getMessage() != null && !testResult.getMessage().trim().isEmpty()) {
+            // 检查是否包含具体的错误信息
+            String message = testResult.getMessage().toLowerCase();
+            if (message.contains("error_message") || message.contains("非app_id请求方式") || 
+                message.contains("错误") || message.contains("失败") || message.contains("invalid") ||
+                message.contains("app_id") || message.contains("app_secret")) {
+                // 这是具体的错误信息，直接添加
+                missingFields.add(testResult.getMessage());
+                return missingFields;
+            }
         }
         
         // 检查响应体中的具体错误信息
@@ -380,14 +393,13 @@ public class ApiManageBusinessService {
             result.setMessage(response.getStatusCode().getReasonPhrase());
             result.setResponseBody(response.getBody());
             
-            // 检查HTTP状态码和响应体中的业务逻辑错误
+            // 只检查HTTP状态码，不检查响应体中的业务逻辑错误
             boolean httpSuccess = response.getStatusCode().is2xxSuccessful();
-            boolean businessSuccess = checkBusinessSuccess(response.getBody());
-            result.setSuccess(httpSuccess && businessSuccess);
+            result.setSuccess(httpSuccess);
             
             // 记录API测试结果到控制台
-            log.info("API测试结果 - 状态码: {}, HTTP成功: {}, 业务成功: {}, 总体成功: {}, 消息: {}", 
-                result.getStatusCode(), httpSuccess, businessSuccess, result.getSuccess(), result.getMessage());
+            log.info("API测试结果 - 状态码: {}, HTTP成功: {}, 总体成功: {}, 消息: {}", 
+                result.getStatusCode(), httpSuccess, result.getSuccess(), result.getMessage());
             if (result.getResponseBody() != null) {
                 log.debug("API测试响应体: {}", result.getResponseBody());
             }
@@ -564,83 +576,6 @@ public class ApiManageBusinessService {
                     headers.add(key, value);
                 }
             }
-        }
-    }
-
-    /**
-     * 检查响应体中的业务逻辑是否成功
-     * @param responseBody 响应体字符串
-     * @return 如果业务逻辑成功返回true，否则返回false
-     */
-    private boolean checkBusinessSuccess(String responseBody) {
-        if (responseBody == null || responseBody.trim().isEmpty()) {
-            return false;
-        }
-        
-        try {
-            // 解析响应体为JSON
-            Map<String, Object> responseMap = objectMapper.readValue(responseBody, Map.class);
-            
-            // 检查常见的错误标识字段
-            // 检查 error_code 字段（如示例中的 "error_code":10001）
-            Object errorCode = responseMap.get("error_code");
-            if (errorCode != null) {
-                try {
-                    int code = Integer.parseInt(errorCode.toString());
-                    // 通常 0 表示成功，非0表示错误
-                    if (code != 0) {
-                        log.debug("检测到业务错误码: {}", code);
-                        return false;
-                    }
-                } catch (NumberFormatException e) {
-                    // 如果不是数字，只要存在error_code字段就认为是错误
-                    log.debug("检测到错误码字段: {}", errorCode);
-                    return false;
-                }
-            }
-            
-            // 检查 resultcode 字段（如示例中的 "resultcode":"101"）
-            Object resultCode = responseMap.get("resultcode");
-            if (resultCode != null) {
-                // 常见的成功码是 "200", "0", "100" 等，错误码可能是 "101", "10001" 等
-                String code = resultCode.toString();
-                // 一般认为 "101" 是错误码，"200" 或 "0" 是成功码
-                if ("101".equals(code)) {
-                    log.debug("检测到错误结果码: {}", code);
-                    return false;
-                }
-            }
-            
-            // 检查 success 字段
-            Object success = responseMap.get("success");
-            if (success != null) {
-                if (success instanceof Boolean) {
-                    return (Boolean) success;
-                } else if (success instanceof String) {
-                    return Boolean.parseBoolean((String) success);
-                } else {
-                    return "true".equals(success.toString());
-                }
-            }
-            
-            // 检查 status 字段
-            Object status = responseMap.get("status");
-            if (status != null) {
-                if ("success".equalsIgnoreCase(status.toString()) || 
-                    "ok".equalsIgnoreCase(status.toString())) {
-                    return true;
-                } else if ("error".equalsIgnoreCase(status.toString()) || 
-                           "fail".equalsIgnoreCase(status.toString())) {
-                    return false;
-                }
-            }
-            
-            // 如果没有找到明确的错误标识，认为是成功的
-            return true;
-        } catch (Exception e) {
-            log.warn("解析响应体JSON失败，无法检查业务逻辑: {}", e.getMessage());
-            // 如果无法解析JSON，仍认为HTTP成功即为成功
-            return true;
         }
     }
 
