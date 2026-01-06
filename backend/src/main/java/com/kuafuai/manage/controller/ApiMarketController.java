@@ -149,14 +149,23 @@ public class ApiMarketController {
                     
                     // 检查是否存在answer字段（根据用户提供的示例数据结构）
                     if (wrapperResponse.containsKey("answer")) {
-                        String answerContent = (String) wrapperResponse.get("answer");
-                        // 检查answerContent是否是JSON格式还是包含API信息的字符串
-                        if (answerContent.trim().startsWith("{") || answerContent.trim().startsWith("[")) {
-                            // 如果是JSON格式，直接解析
-                            parsedVo = objectMapper.readValue(answerContent, ApiDocumentParsedVo.class);
+                        Object answerObj = wrapperResponse.get("answer");
+                        String answerContent = null;
+                        
+                        if (answerObj instanceof String) {
+                            answerContent = (String) answerObj;
+                            // 检查answerContent是否是JSON格式还是包含API信息的字符串
+                            if (answerContent.trim().startsWith("{") || answerContent.trim().startsWith("[")) {
+                                // 如果是JSON格式，直接解析
+                                parsedVo = objectMapper.readValue(answerContent, ApiDocumentParsedVo.class);
+                            } else {
+                                // 如果是包含API信息的字符串格式，如 "url,method,headers,body"，需要解析成ApiDocumentParsedVo对象
+                                parsedVo = parseApiInfoFromString(answerContent);
+                            }
                         } else {
-                            // 如果是包含API信息的字符串格式，如 "url,method,headers,body"，需要解析成ApiDocumentParsedVo对象
-                            parsedVo = parseApiInfoFromString(answerContent);
+                            // 如果answer不是字符串而是对象，直接解析
+                            answerContent = objectMapper.writeValueAsString(answerObj);
+                            parsedVo = objectMapper.readValue(answerContent, ApiDocumentParsedVo.class);
                         }
                     } else if (wrapperResponse.containsKey("text")) {
                         String textContent = (String) wrapperResponse.get("text");
@@ -287,6 +296,22 @@ public class ApiMarketController {
                 apiMarketVo.setToken(parsedVo.getApi_config().getAuth_config().getToken());
             }
             
+            // 处理请求头
+            if (parsedVo.getApi_config().getHeaders() != null) {
+                // 如果headers是Map类型（JSON对象），转换为JSON字符串
+                if (parsedVo.getApi_config().getHeaders() instanceof Map) {
+                    try {
+                        apiMarketVo.setHeaders(objectMapper.writeValueAsString(parsedVo.getApi_config().getHeaders()));
+                    } catch (Exception e) {
+                        log.error("转换headers为JSON字符串时发生错误", e);
+                        apiMarketVo.setHeaders(parsedVo.getApi_config().getHeaders().toString());
+                    }
+                } else {
+                    // 如果headers是其他类型（如字符串），直接设置
+                    apiMarketVo.setHeaders(parsedVo.getApi_config().getHeaders().toString());
+                }
+            }
+            
             // 请求体转换 - 需要正确处理从字符串解析的headers和body
             if (parsedVo.getApi_config().getRequest_body() != null) {
                 String bodyType = parsedVo.getApi_config().getRequest_body().getBody_type();
@@ -400,11 +425,7 @@ public class ApiMarketController {
             for (ApiDocumentParsedVo.VariableConfig varConfig : parsedVo.getVariables_config()) {
                 if ("header".equalsIgnoreCase(varConfig.getLocation())) {
                     headersBuilder.append(varConfig.getName()).append(": ").append(varConfig.getDefault_value()).append("\n");
-                    // 将头部变量也添加到变量映射中
-                    Map<String, String> varValueMap = new HashMap<>();
-                    varValueMap.put("value", varConfig.getDefault_value());
-                    varValueMap.put("desc", varConfig.getDescription() != null ? varConfig.getDescription() : "");
-                    varMap.put(varConfig.getName(), varValueMap);
+                    // 不将头部变量添加到变量映射中，只设置到headers
                 } else if ("url".equalsIgnoreCase(varConfig.getLocation())) {
                     // 处理URL参数 - 这里构建URL参数字符串，但不直接添加到URL，而是依赖变量替换
                     // 将URL参数添加到变量映射中
@@ -423,9 +444,9 @@ public class ApiMarketController {
                         varValue = varConfig.getDefault_value();
                     }
                     
-                    // 如果default_value也为空，则使用占位符值
+                    // 如果default_value也为空，则使用变量名作为占位符
                     if (varValue == null || varValue.trim().isEmpty()) {
-                        varValue = "test_value"; // 为测试目的提供默认值
+                        varValue = varConfig.getName(); // 使用变量名本身作为占位符，而不是'test_value'
                     }
                     
                     // 确保变量映射中包含URL参数的值
@@ -434,11 +455,7 @@ public class ApiMarketController {
                     varValueMap.put("desc", varConfig.getDescription() != null ? varConfig.getDescription() : "");
                     varMap.put(varConfig.getName(), varValueMap);
                 } else if ("body".equalsIgnoreCase(varConfig.getLocation())) {
-                    // 处理请求体变量
-                    Map<String, String> varValueMap = new HashMap<>();
-                    varValueMap.put("value", varConfig.getDefault_value());
-                    varValueMap.put("desc", varConfig.getDescription() != null ? varConfig.getDescription() : "");
-                    varMap.put(varConfig.getName(), varValueMap);
+                    // 处理请求体变量，不添加到变量映射中
                 }
             }
             
@@ -499,7 +516,44 @@ public class ApiMarketController {
                 apiMarketVo.setUrl(finalUrl);
             }
         }
-        apiMarketVo.setHeaders(headersBuilder.toString());
+        // 只有当headersBuilder不为空时才设置，否则保留之前解析的headers
+        if (headersBuilder.length() > 0) {
+            if (apiMarketVo.getHeaders() == null || apiMarketVo.getHeaders().isEmpty()) {
+                // 如果当前headers为空，使用从variables_config解析的headers
+                apiMarketVo.setHeaders(headersBuilder.toString());
+            } else {
+                // 如果当前headers不为空，需要将variables_config中的headers合并进去
+                String existingHeaders = apiMarketVo.getHeaders();
+                // 检查现有headers是否为JSON格式
+                if (existingHeaders.trim().startsWith("{")) {
+                    try {
+                        // 解析现有的JSON格式headers
+                        Map<String, Object> existingHeadersMap = objectMapper.readValue(existingHeaders, Map.class);
+                        // 解析headersBuilder中的多行格式
+                        String[] headerLines = headersBuilder.toString().split("\n");
+                        for (String headerLine : headerLines) {
+                            headerLine = headerLine.trim();
+                            if (!headerLine.isEmpty()) {
+                                int colonIndex = headerLine.indexOf(":");
+                                if (colonIndex > 0) {
+                                    String key = headerLine.substring(0, colonIndex).trim();
+                                    String value = headerLine.substring(colonIndex + 1).trim();
+                                    existingHeadersMap.put(key, value);
+                                }
+                            }
+                        }
+                        // 更新headers
+                        apiMarketVo.setHeaders(objectMapper.writeValueAsString(existingHeadersMap));
+                    } catch (Exception e) {
+                        log.warn("合并headers时解析JSON失败，使用变量配置的headers", e);
+                        apiMarketVo.setHeaders(headersBuilder.toString());
+                    }
+                } else {
+                    // 如果不是JSON格式，追加headers
+                    apiMarketVo.setHeaders(existingHeaders + "\n" + headersBuilder.toString());
+                }
+            }
+        }
         
         // 将变量映射转换为JSON字符串并设置到varRow字段
         if (!varMap.isEmpty()) {
@@ -574,6 +628,15 @@ public class ApiMarketController {
                         headersMap.put(keyValue[0].trim(), keyValue[1].trim());
                     }
                 }
+            }
+                        
+            // 将解析的headers设置到ApiConfig中
+            try {
+                String headersJson = objectMapper.writeValueAsString(headersMap);
+                apiConfig.setHeaders(headersMap); // 直接设置为Map对象，让Jackson处理序列化
+            } catch (Exception e) {
+                log.warn("转换headers为JSON字符串失败: {}", e.getMessage());
+                apiConfig.setHeaders(headersStr); // 使用原始字符串
             }
             
             // 第四部分是body
