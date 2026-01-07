@@ -136,4 +136,22 @@ public class ApplicationController {
         appInfo.setConfigJson(appVo.getConfigJson());
         return ResultUtils.success(appInfoService.updateAppInfoByAppId(appInfo));
     }
+
+    /**
+     * 复制应用
+     */
+    @PostMapping("/copy/{id}")
+    public BaseResponse copy(@PathVariable(value = "id") String appId) {
+        AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
+        if (appInfo == null) {
+            throw new BusinessException("error.code.not_found");
+        }
+
+        if (!Objects.equals(appInfo.getOwner(), SecurityUtils.getUserId())) {
+            throw new BusinessException("error.code.no_auth");
+        }
+
+        AppInfo copiedAppInfo = manageBusinessService.copyApp(appId);
+        return ResultUtils.success(copiedAppInfo);
+    }
 }

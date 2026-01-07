@@ -81,7 +81,15 @@ export default {
             copy_inactive_btn: "复制不活跃项目",
             copy_inactive_tooltip: "复制所有不活跃项目的 AppID",
             copy_inactive_success: "已成功复制 {count} 个不活跃项目的 AppID",
-            no_inactive_projects: "没有不活跃的项目"
+            no_inactive_projects: "没有不活跃的项目",
+            // 复制应用
+            copy_tooltip: "复制应用",
+            copy_confirm_title: "复制应用",
+            copy_confirm_msg: "确定要复制应用\"{appName}\"吗？",
+            copy_confirm_btn: "确认复制",
+            copy_processing: "复制中...",
+            copy_success: "应用复制成功",
+            copy_failed: "应用复制失败"
         },
         apimarket: {
             list_title: "API市场",

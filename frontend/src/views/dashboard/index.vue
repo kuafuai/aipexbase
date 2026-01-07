@@ -41,6 +41,17 @@
           class="group relative bg-white/5 backdrop-blur-md rounded-2xl p-6 cursor-pointer border border-white/10 hover:border-cyan-400/30 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20"
           @click="openProject(project)"
       >
+        <!-- 复制按钮 - 悬停时显示 -->
+        <button
+            class="absolute top-3 right-12 z-20 w-7 h-7 bg-blue-500/80 hover:bg-blue-500 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-md"
+            @click.stop="copyProject(project)"
+            :title="t('page.project.copy_tooltip')"
+        >
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+          </svg>
+        </button>
         <!-- 回收按钮 - 悬停时显示 -->
         <button
             v-if="isInactive(project.updatedAt)"
@@ -323,6 +334,37 @@ async function recycleProject(project) {
       await proxy.$api.project.recycle(project.appId, {appId: project.appId})
       proxy.$modal.msgSuccess(t('page.project.recycle_success'))
       refresh()
+    } finally {
+      loadingInstance.close()
+    }
+  } catch (e) {
+    // 用户取消
+  }
+}
+
+// 复制项目
+async function copyProject(project) {
+  try {
+    await ElMessageBox.confirm(
+        t('page.project.copy_confirm_msg', {appName: project.appName || project.appId}),
+        t('page.project.copy_confirm_title'),
+        {
+          confirmButtonText: t('page.project.copy_confirm_btn'),
+          cancelButtonText: t('page.project.cancel'),
+          type: "info",
+        }
+    );
+
+    const loadingInstance = proxy.$loading({text: t('page.project.copy_processing')})
+
+    try {
+      const res = await proxy.$api.project.copy(project.appId);
+      if (res.success) {
+        proxy.$modal.msgSuccess(t('page.project.copy_success'))
+        refresh()
+      } else {
+        proxy.$modal.msgError(t('page.project.copy_failed') + ': ' + (res.message || 'Unknown error'))
+      }
     } finally {
       loadingInstance.close()
     }

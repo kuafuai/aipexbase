@@ -93,6 +93,12 @@ public class Table2SQL {
                 type = "VARCHAR(255)";
             }
         }
+        
+        // 将不兼容的MySQL类型转换为兼容类型
+        if (StringUtils.equalsIgnoreCase(type, "string")) {
+            type = "VARCHAR(255)";
+        }
+        
         return type;
     }
 

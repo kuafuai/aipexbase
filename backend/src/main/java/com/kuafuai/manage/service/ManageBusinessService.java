@@ -15,6 +15,7 @@ import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.dynamic.service.DynamicInterfaceService;
 import com.kuafuai.dynamic.service.DynamicService;
 import com.kuafuai.manage.entity.vo.APIKeyVo;
+import com.kuafuai.system.entity.APIKey;
 import com.kuafuai.manage.entity.vo.AppVo;
 import com.kuafuai.manage.entity.vo.ColumnVo;
 import com.kuafuai.manage.entity.vo.TableVo;
@@ -147,6 +148,319 @@ public class ManageBusinessService {
     public AppInfo createApp(AppVo appVo) {
         Long owner = SecurityUtils.getUserId();
         return createAppInternal(appVo.getName(), owner);
+    }
+
+    /**
+     * 复制应用
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public AppInfo copyApp(String appId) {
+        // 获取原应用信息
+        AppInfo originalApp = appInfoService.getAppInfoByAppId(appId);
+        if (originalApp == null) {
+            throw new BusinessException("原应用不存在：" + appId);
+        }
+
+        // 创建新应用基本信息
+        String newAppName = originalApp.getAppName() + "_副本";
+        AppInfo newAppInfo = createApp(newAppName, originalApp.getOwner());
+        
+        String newAppId = newAppInfo.getAppId();
+        
+        try {
+            // 创建新应用的数据库
+            databaseMapper.createDatabase(newAppId);
+            
+            // 复制表结构并建立映射关系
+            List<AppTableInfo> originalTables = appTableInfoService.list(
+                new LambdaQueryWrapper<AppTableInfo>()
+                    .eq(AppTableInfo::getAppId, appId)
+            );
+            
+            // 建立原表ID到新表ID的映射
+            Map<Long, Long> tableIdMap = new HashMap<>();
+            
+            for (AppTableInfo originalTable : originalTables) {
+                // 复制表信息
+                AppTableInfo newTableInfo = new AppTableInfo();
+                newTableInfo.setAppId(newAppId);
+                newTableInfo.setTableName(originalTable.getTableName());
+                newTableInfo.setPhysicalTableName(originalTable.getPhysicalTableName());
+                newTableInfo.setDescription(originalTable.getDescription());
+                newTableInfo.setRequirementId(originalTable.getRequirementId());
+                appTableInfoService.save(newTableInfo);
+                
+                // 记录ID映射
+                tableIdMap.put(originalTable.getId(), newTableInfo.getId());
+                
+                // 复制字段信息
+                List<AppTableColumnInfo> originalColumns = appTableColumnInfoService.list(
+                    new LambdaQueryWrapper<AppTableColumnInfo>()
+                        .eq(AppTableColumnInfo::getAppId, appId)
+                        .eq(AppTableColumnInfo::getTableId, originalTable.getId())
+                );
+                
+                // 建立原列ID到新列ID的映射
+                Map<Long, Long> columnIdMap = new HashMap<>();
+                
+                for (AppTableColumnInfo originalColumn : originalColumns) {
+                    AppTableColumnInfo newColumn = new AppTableColumnInfo();
+                    newColumn.setAppId(newAppId);
+                    newColumn.setTableId(newTableInfo.getId());
+                    newColumn.setRequirementId(originalColumn.getRequirementId());
+                    newColumn.setColumnName(originalColumn.getColumnName());
+                    newColumn.setColumnType(originalColumn.getColumnType());
+                    newColumn.setDslType(originalColumn.getDslType());
+                    newColumn.setPrimary(originalColumn.isPrimary());
+                    newColumn.setNullable(originalColumn.isNullable());
+                    newColumn.setShow(originalColumn.isShow());
+                    newColumn.setColumnComment(originalColumn.getColumnComment());
+                    appTableColumnInfoService.save(newColumn);
+                    
+                    // 记录列ID映射
+                    columnIdMap.put(originalColumn.getId(), newColumn.getId());
+                }
+            }
+            
+            // 复制表关系（需要使用新的表ID和列ID）
+            List<AppTableRelation> originalRelations = appTableRelationService.list(
+                new LambdaQueryWrapper<AppTableRelation>()
+                    .eq(AppTableRelation::getAppId, appId)
+            );
+            
+            // 建立完整的列ID映射（包括所有表的列）
+            Map<Long, Long> columnIdMap = new HashMap<>();
+            for (AppTableInfo originalTable : originalTables) {
+                Long newTableId = tableIdMap.get(originalTable.getId());
+                
+                // 获取原表的列信息
+                List<AppTableColumnInfo> originalColumns = appTableColumnInfoService.list(
+                    new LambdaQueryWrapper<AppTableColumnInfo>()
+                        .eq(AppTableColumnInfo::getAppId, appId)
+                        .eq(AppTableColumnInfo::getTableId, originalTable.getId())
+                );
+                
+                // 获取对应新表的列信息
+                List<AppTableColumnInfo> newColumns = appTableColumnInfoService.list(
+                    new LambdaQueryWrapper<AppTableColumnInfo>()
+                        .eq(AppTableColumnInfo::getAppId, newAppId)
+                        .eq(AppTableColumnInfo::getTableId, newTableId)
+                );
+                
+                // 建立原列ID到新列ID的映射（按列名匹配）
+                Map<String, AppTableColumnInfo> newColumnMap = newColumns.stream()
+                    .collect(Collectors.toMap(AppTableColumnInfo::getColumnName, Function.identity()));
+                
+                for (AppTableColumnInfo originalColumn : originalColumns) {
+                    AppTableColumnInfo newColumn = newColumnMap.get(originalColumn.getColumnName());
+                    if (newColumn != null) {
+                        columnIdMap.put(originalColumn.getId(), newColumn.getId());
+                    }
+                }
+            }
+            
+            for (AppTableRelation originalRelation : originalRelations) {
+                AppTableRelation newRelation = new AppTableRelation();
+                newRelation.setAppId(newAppId);
+                newRelation.setRequirementId(originalRelation.getRequirementId());
+                
+                // 使用映射的新ID
+                Long newTableId = tableIdMap.get(originalRelation.getTableId());
+                Long newTableColumnId = columnIdMap.get(originalRelation.getTableColumnId());
+                Long newPrimaryTableId = tableIdMap.get(originalRelation.getPrimaryTableId());
+                Long newPrimaryTableColumnId = columnIdMap.get(originalRelation.getPrimaryTableColumnId());
+                
+                // 只有当映射存在时才设置，否则跳过
+                if (newTableId != null && newTableColumnId != null && 
+                    newPrimaryTableId != null && newPrimaryTableColumnId != null) {
+                    newRelation.setTableId(newTableId);
+                    newRelation.setTableColumnId(newTableColumnId);
+                    newRelation.setPrimaryTableId(newPrimaryTableId);
+                    newRelation.setPrimaryTableColumnId(newPrimaryTableColumnId);
+                    newRelation.setRelationType(originalRelation.getRelationType());
+                    appTableRelationService.save(newRelation);
+                }
+            }
+            
+            // 复制动态API设置
+            List<DynamicApiSetting> originalApis = dynamicApiSettingService.list(
+                new LambdaQueryWrapper<DynamicApiSetting>()
+                    .eq(DynamicApiSetting::getAppId, appId)
+            );
+            
+            for (DynamicApiSetting originalApi : originalApis) {
+                DynamicApiSetting newApi = new DynamicApiSetting();
+                newApi.setAppId(newAppId);
+                
+                // 确保keyName不重复
+                String newKeyName = originalApi.getKeyName();
+                LambdaQueryWrapper<DynamicApiSetting> nameCheckWrapper = new LambdaQueryWrapper<>();
+                nameCheckWrapper.eq(DynamicApiSetting::getAppId, newAppId)
+                    .eq(DynamicApiSetting::getKeyName, newKeyName);
+                int suffix = 1;
+                while (dynamicApiSettingService.count(nameCheckWrapper) > 0) {
+                    newKeyName = originalApi.getKeyName() + "_" + suffix;
+                    nameCheckWrapper.clear();
+                    nameCheckWrapper.eq(DynamicApiSetting::getAppId, newAppId)
+                        .eq(DynamicApiSetting::getKeyName, newKeyName);
+                    suffix++;
+                }
+                newApi.setKeyName(newKeyName);
+                
+                newApi.setDescription(originalApi.getDescription());
+                newApi.setUrl(originalApi.getUrl());
+                newApi.setMethod(originalApi.getMethod());
+                newApi.setProtocol(originalApi.getProtocol());
+                newApi.setBodyTemplate(originalApi.getBodyTemplate());
+                newApi.setBodyType(originalApi.getBodyType());
+                newApi.setHeader(originalApi.getHeader());
+                newApi.setDataRaw(originalApi.getDataRaw());
+                newApi.setDataType(originalApi.getDataType());
+                newApi.setDataPath(originalApi.getDataPath());
+                newApi.setVarRaw(originalApi.getVarRaw());
+                newApi.setMarketId(originalApi.getMarketId());
+                dynamicApiSettingService.save(newApi);
+            }
+            
+            // 复制API密钥
+            List<APIKey> originalApiKeys = applicationAPIKeysService.list(
+                new LambdaQueryWrapper<APIKey>()
+                    .eq(APIKey::getAppId, appId)
+            );
+            
+            for (APIKey originalApiKey : originalApiKeys) {
+                // 生成新的API密钥
+                String newKeyName = "kf_api_" + RandomStringUtils.generateRandomString(32);
+                APIKey newApiKey = new APIKey();
+                newApiKey.setAppId(newAppId);
+                // 避免名称重复
+                String newName = originalApiKey.getName() + "_副本";
+                // 检查名称是否已存在，如果存在则添加序号
+                LambdaQueryWrapper<APIKey> nameCheckWrapper = new LambdaQueryWrapper<>();
+                nameCheckWrapper.eq(APIKey::getAppId, newAppId)
+                    .eq(APIKey::getName, newName);
+                int suffix = 1;
+                while (applicationAPIKeysService.count(nameCheckWrapper) > 0) {
+                    newName = originalApiKey.getName() + "_副本" + suffix;
+                    nameCheckWrapper.clear();
+                    nameCheckWrapper.eq(APIKey::getAppId, newAppId)
+                        .eq(APIKey::getName, newName);
+                    suffix++;
+                }
+                
+                newApiKey.setName(newName);
+                newApiKey.setKeyName(newKeyName);
+                newApiKey.setDescription(originalApiKey.getDescription());
+                newApiKey.setStatus(originalApiKey.getStatus());
+                newApiKey.setExpireAt(originalApiKey.getExpireAt());
+                newApiKey.setCreateAt(DateUtils.getTime());
+                applicationAPIKeysService.save(newApiKey);
+            }
+
+            // ====== 创建数据库表结构（仅执行 DDL，不再走 createTables）======
+            List<String> ddlSQLs = new ArrayList<>();
+
+            Set<String> systemTables = new HashSet<>(Arrays.asList(
+                    TABLE_STATIC_RESOURCES,
+                    TABLE_LOGIN,
+                    TABLE_SYSTEM_CONFIG,
+                    TABLE_DELAYED_TASKS
+            ));
+
+
+            for (AppTableInfo originalTable : originalTables) {
+
+                if (systemTables.contains(originalTable.getTableName())) {
+                    continue;
+                }
+
+                // 构造 TableVo（基于“新应用”的列元数据）
+                Long newTableId = tableIdMap.get(originalTable.getId());
+                if (newTableId == null) {
+                    continue;
+                }
+
+                List<AppTableColumnInfo> newColumns = appTableColumnInfoService.list(
+                        new LambdaQueryWrapper<AppTableColumnInfo>()
+                                .eq(AppTableColumnInfo::getAppId, newAppId)
+                                .eq(AppTableColumnInfo::getTableId, newTableId)
+                );
+
+                TableVo tableVo = new TableVo();
+                tableVo.setTableName(originalTable.getTableName());
+                tableVo.setDescription(originalTable.getDescription());
+
+                List<ColumnVo> columnVos = new ArrayList<>();
+                for (AppTableColumnInfo col : newColumns) {
+                    ColumnVo vo = new ColumnVo();
+                    vo.setColumnName(col.getColumnName());
+                    vo.setColumnType(col.getDslType());
+                    vo.setDslType(col.getDslType());
+                    vo.setColumnComment(col.getColumnComment());
+                    vo.setIsPrimary(col.isPrimary());
+                    vo.setIsNullable(!col.isNullable());
+                    vo.setIsShow(col.isShow());
+
+                    // quote 引用表
+                    if ("quote".equalsIgnoreCase(col.getDslType())) {
+                        AppTableRelation rel = appTableRelationService.getOne(
+                                new LambdaQueryWrapper<AppTableRelation>()
+                                        .eq(AppTableRelation::getAppId, newAppId)
+                                        .eq(AppTableRelation::getTableColumnId, col.getId())
+                                        .last("LIMIT 1")
+                        );
+                        if (rel != null) {
+                            AppTableInfo refTable = appTableInfoService.getById(rel.getPrimaryTableId());
+                            if (refTable != null) {
+                                vo.setReferenceTableName(refTable.getTableName());
+                            }
+                        }
+                    }
+
+                    columnVos.add(vo);
+                }
+                tableVo.setColumns(columnVos);
+
+                // 防御性 drop + create
+                ddlSQLs.add("DROP TABLE IF EXISTS `" + newAppId + "`.`" + tableVo.getTableName() + "`;");
+                ddlSQLs.add(Table2SQL.table2SQL(newAppId, tableVo));
+            }
+
+// 执行建表 DDL
+            if (!ddlSQLs.isEmpty()) {
+                boolean executed = manageSQLBusinessService.execute(newAppId, ddlSQLs);
+                if (!executed) {
+                    throw new BusinessException("复制应用失败：创建物理表失败");
+                }
+            }
+
+
+            // 复制其他配置
+            newAppInfo.setNeedAuth(originalApp.getNeedAuth());
+            newAppInfo.setAuthTable(originalApp.getAuthTable());
+            newAppInfo.setEnablePermission(originalApp.getEnablePermission());
+            newAppInfo.setEnableWebConsole(originalApp.getEnableWebConsole());
+            newAppInfo.setDescription(originalApp.getDescription());
+            newAppInfo.setConfigJson(originalApp.getConfigJson());
+            
+            // 更新状态为活跃
+            newAppInfo.setStatus(STATUS_ACTIVE);
+            appInfoService.updateById(newAppInfo);
+            
+            // 清除缓存
+            dynamicInfoCache.clean(newAppId);
+            
+            return newAppInfo;
+        } catch (Exception e) {
+            // 如果复制过程中出现异常，删除已创建的应用
+            try {
+                deleteApp(newAppId);
+            } catch (Exception ex) {
+                // 记录错误但继续抛出原始异常
+                System.out.println("删除复制失败的应用时出错：" + ex.getMessage());
+            }
+            throw new BusinessException("复制应用失败：" + e.getMessage());
+        }
     }
 
     public AppInfo createApp(String name, Long owner) {
