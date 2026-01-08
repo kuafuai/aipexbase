@@ -227,7 +227,7 @@ public class ManageBusinessService {
      * 从应用结构创建应用表
      */
     @Transactional(rollbackFor = Exception.class)
-    protected void createAppTablesFromStructure(String targetAppId, AppInfo originalApp, Map<String, Object> appStructure) {
+    public void createAppTablesFromStructure(String targetAppId, AppInfo originalApp, Map<String, Object> appStructure) {
         List<AppTableInfo> originalTables = (List<AppTableInfo>) appStructure.get("tables");
         List<AppTableColumnInfo> originalColumns = (List<AppTableColumnInfo>) appStructure.get("columns");
         Map<Long, List<AppTableColumnInfo>> tableColumnMap = (Map<Long, List<AppTableColumnInfo>>) appStructure.get("tableColumnMap");
