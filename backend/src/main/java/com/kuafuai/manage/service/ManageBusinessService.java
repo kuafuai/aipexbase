@@ -151,7 +151,48 @@ public class ManageBusinessService {
     }
 
     /**
-     * 复制应用（先解析表结构，再复制）
+     * 获取应用的表结构信息
+     */
+    public Map<String, Object> getAppStructure(String appId) {
+        // 校验应用
+        AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
+        if (appInfo == null) {
+            throw new BusinessException("应用不存在：" + appId);
+        }
+
+        // 获取表数据结构
+        List<AppTableInfo> tables = appTableInfoService.list(
+                new LambdaQueryWrapper<AppTableInfo>()
+                        .eq(AppTableInfo::getAppId, appId)
+        );
+
+        List<AppTableColumnInfo> columns = appTableColumnInfoService.list(
+                new LambdaQueryWrapper<AppTableColumnInfo>()
+                        .eq(AppTableColumnInfo::getAppId, appId)
+        );
+
+        Map<Long, List<AppTableColumnInfo>> tableColumnMap =
+                columns.stream()
+                        .collect(Collectors.groupingBy(AppTableColumnInfo::getTableId));
+
+        List<AppTableRelation> relations = appTableRelationService.list(
+                new LambdaQueryWrapper<AppTableRelation>()
+                        .eq(AppTableRelation::getAppId, appId)
+        );
+
+        // 组装返回数据
+        Map<String, Object> result = new HashMap<>();
+        result.put("appInfo", appInfo);
+        result.put("tables", tables);
+        result.put("columns", columns);
+        result.put("tableColumnMap", tableColumnMap);
+        result.put("relations", relations);
+
+        return result;
+    }
+
+    /**
+     * 复制应用
      */
     @Transactional(rollbackFor = Exception.class)
     public AppInfo copyApp(String appId) {
@@ -163,24 +204,11 @@ public class ManageBusinessService {
         }
 
         // ===== 2. 解析原应用表数据结构 =====
-        List<AppTableInfo> originalTables = appTableInfoService.list(
-                new LambdaQueryWrapper<AppTableInfo>()
-                        .eq(AppTableInfo::getAppId, appId)
-        );
-
-        List<AppTableColumnInfo> originalColumns = appTableColumnInfoService.list(
-                new LambdaQueryWrapper<AppTableColumnInfo>()
-                        .eq(AppTableColumnInfo::getAppId, appId)
-        );
-
-        Map<Long, List<AppTableColumnInfo>> tableColumnMap =
-                originalColumns.stream()
-                        .collect(Collectors.groupingBy(AppTableColumnInfo::getTableId));
-
-        List<AppTableRelation> originalRelations = appTableRelationService.list(
-                new LambdaQueryWrapper<AppTableRelation>()
-                        .eq(AppTableRelation::getAppId, appId)
-        );
+        Map<String, Object> appStructure = getAppStructure(appId);
+        List<AppTableInfo> originalTables = (List<AppTableInfo>) appStructure.get("tables");
+        List<AppTableColumnInfo> originalColumns = (List<AppTableColumnInfo>) appStructure.get("columns");
+        Map<Long, List<AppTableColumnInfo>> tableColumnMap = (Map<Long, List<AppTableColumnInfo>>) appStructure.get("tableColumnMap");
+        List<AppTableRelation> originalRelations = (List<AppTableRelation>) appStructure.get("relations");
 
         // ===== 3. 创建新应用 =====
         AppInfo newAppInfo = createApp(originalApp.getAppName() + "_副本", originalApp.getOwner());
@@ -320,11 +348,18 @@ public class ManageBusinessService {
                     new LambdaQueryWrapper<AppRequirementSQL>()
                             .eq(AppRequirementSQL::getAppId, appId)
             );
-
+            
+            // 收集所有SQL内容并替换appId后批量执行，避免重复插入
+            List<String> processedSqls = new ArrayList<>();
             for (AppRequirementSQL sql : sqls) {
                 String content = sql.getContent().replace(appId, newAppId);
-                if (!manageSQLBusinessService.execute(newAppId, content)) {
-                    throw new BusinessException("SQL 执行失败");
+                processedSqls.add(content);
+            }
+            
+            // 批量执行处理后的SQL，只插入一次记录
+            if (!processedSqls.isEmpty()) {
+                if (!manageSQLBusinessService.execute(newAppId, processedSqls)) {
+                    throw new BusinessException("SQL 批量执行失败");
                 }
             }
 
