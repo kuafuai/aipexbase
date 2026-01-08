@@ -214,19 +214,32 @@ public class ManageBusinessService {
         AppInfo newAppInfo = createApp(originalApp.getAppName() + "_副本", originalApp.getOwner());
         String newAppId = newAppInfo.getAppId();
 
+        // 执行复制操作
+        copyAppData(appId, newAppId, originalApp, originalTables, originalColumns, tableColumnMap, originalRelations);
+
+        return newAppInfo;
+    }
+
+    /**
+     * 复制应用数据
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public void copyAppData(String sourceAppId, String targetAppId, AppInfo originalApp,
+                            List<AppTableInfo> originalTables, List<AppTableColumnInfo> originalColumns,
+                            Map<Long, List<AppTableColumnInfo>> tableColumnMap, List<AppTableRelation> originalRelations) {
         // ===== ID 映射 =====
         Map<Long, Long> tableIdMap = new HashMap<>();
         Map<Long, Long> columnIdMap = new HashMap<>();
 
         try {
             // 创建新数据库
-            databaseMapper.createDatabase(newAppId);
+            databaseMapper.createDatabase(targetAppId);
 
             // ===== 4. 复制表 & 字段（一次构建映射）=====
             for (AppTableInfo oldTable : originalTables) {
 
                 AppTableInfo newTable = new AppTableInfo();
-                newTable.setAppId(newAppId);
+                newTable.setAppId(targetAppId);
                 newTable.setTableName(oldTable.getTableName());
                 newTable.setPhysicalTableName(oldTable.getPhysicalTableName());
                 newTable.setDescription(oldTable.getDescription());
@@ -240,7 +253,7 @@ public class ManageBusinessService {
 
                 for (AppTableColumnInfo oldCol : cols) {
                     AppTableColumnInfo newCol = new AppTableColumnInfo();
-                    newCol.setAppId(newAppId);
+                    newCol.setAppId(targetAppId);
                     newCol.setTableId(newTable.getId());
                     newCol.setRequirementId(oldCol.getRequirementId());
                     newCol.setColumnName(oldCol.getColumnName());
@@ -270,7 +283,7 @@ public class ManageBusinessService {
                 }
 
                 AppTableRelation newRel = new AppTableRelation();
-                newRel.setAppId(newAppId);
+                newRel.setAppId(targetAppId);
                 newRel.setRequirementId(oldRel.getRequirementId());
                 newRel.setTableId(newTableId);
                 newRel.setTableColumnId(newColumnId);
@@ -280,90 +293,28 @@ public class ManageBusinessService {
                 appTableRelationService.save(newRel);
             }
 
-            // ===== 6. 复制动态 API =====
-            List<DynamicApiSetting> originalApis = dynamicApiSettingService.list(
-                    new LambdaQueryWrapper<DynamicApiSetting>()
-                            .eq(DynamicApiSetting::getAppId, appId)
-            );
-
-            for (DynamicApiSetting oldApi : originalApis) {
-                DynamicApiSetting newApi = new DynamicApiSetting();
-                newApi.setAppId(newAppId);
-
-                String keyName = oldApi.getKeyName();
-                int i = 1;
-                while (dynamicApiSettingService.count(
-                        new LambdaQueryWrapper<DynamicApiSetting>()
-                                .eq(DynamicApiSetting::getAppId, newAppId)
-                                .eq(DynamicApiSetting::getKeyName, keyName)) > 0) {
-                    keyName = oldApi.getKeyName() + "_" + i++;
-                }
-
-                newApi.setKeyName(keyName);
-                newApi.setDescription(oldApi.getDescription());
-                newApi.setUrl(oldApi.getUrl());
-                newApi.setMethod(oldApi.getMethod());
-                newApi.setProtocol(oldApi.getProtocol());
-                newApi.setBodyTemplate(oldApi.getBodyTemplate());
-                newApi.setBodyType(oldApi.getBodyType());
-                newApi.setHeader(oldApi.getHeader());
-                newApi.setDataRaw(oldApi.getDataRaw());
-                newApi.setDataType(oldApi.getDataType());
-                newApi.setDataPath(oldApi.getDataPath());
-                newApi.setVarRaw(oldApi.getVarRaw());
-                newApi.setMarketId(oldApi.getMarketId());
-                dynamicApiSettingService.save(newApi);
-            }
-
-            // ===== 7. 复制 API Key =====
-            List<APIKey> apiKeys = applicationAPIKeysService.list(
-                    new LambdaQueryWrapper<APIKey>()
-                            .eq(APIKey::getAppId, appId)
-            );
-
-            for (APIKey oldKey : apiKeys) {
-                APIKey newKey = new APIKey();
-                newKey.setAppId(newAppId);
-                newKey.setKeyName("kf_api_" + RandomStringUtils.generateRandomString(32));
-
-                String name = oldKey.getName() + "_副本";
-                int i = 1;
-                while (applicationAPIKeysService.count(
-                        new LambdaQueryWrapper<APIKey>()
-                                .eq(APIKey::getAppId, newAppId)
-                                .eq(APIKey::getName, name)) > 0) {
-                    name = oldKey.getName() + "_副本" + i++;
-                }
-
-                newKey.setName(name);
-                newKey.setDescription(oldKey.getDescription());
-                newKey.setStatus(oldKey.getStatus());
-                newKey.setExpireAt(oldKey.getExpireAt());
-                newKey.setCreateAt(DateUtils.getTime());
-                applicationAPIKeysService.save(newKey);
-            }
-
-            // ===== 8. 执行 SQL（替换 appId）=====
+            // ===== 6. 执行 SQL（替换 appId）=====
             List<AppRequirementSQL> sqls = appRequirementSQLService.list(
                     new LambdaQueryWrapper<AppRequirementSQL>()
-                            .eq(AppRequirementSQL::getAppId, appId)
+                            .eq(AppRequirementSQL::getAppId, sourceAppId)
             );
             
             // 收集所有SQL内容并替换appId后批量执行，避免重复插入
             List<String> processedSqls = new ArrayList<>();
             for (AppRequirementSQL sql : sqls) {
-                String content = sql.getContent().replace(appId, newAppId);
+                String content = sql.getContent().replace(sourceAppId, targetAppId);
                 processedSqls.add(content);
             }
             
             // 批量执行处理后的SQL，只插入一次记录
             if (!processedSqls.isEmpty()) {
-                if (!manageSQLBusinessService.execute(newAppId, processedSqls)) {
+                if (!manageSQLBusinessService.execute(targetAppId, processedSqls)) {
                     throw new BusinessException("SQL 批量执行失败");
                 }
             }
 
-            // ===== 9. 复制应用配置 =====
+            // ===== 7. 复制应用配置 =====
+            AppInfo newAppInfo = appInfoService.getAppInfoByAppId(targetAppId);
             newAppInfo.setNeedAuth(originalApp.getNeedAuth());
             newAppInfo.setAuthTable(originalApp.getAuthTable());
             newAppInfo.setEnablePermission(originalApp.getEnablePermission());
@@ -373,11 +324,10 @@ public class ManageBusinessService {
             newAppInfo.setStatus(STATUS_ACTIVE);
             appInfoService.updateById(newAppInfo);
 
-            dynamicInfoCache.clean(newAppId);
-            return newAppInfo;
+            dynamicInfoCache.clean(targetAppId);
 
         } catch (Exception e) {
-            deleteApp(newAppId);
+            deleteApp(targetAppId);
             throw new BusinessException("复制应用失败：" + e.getMessage(), e);
         }
     }
