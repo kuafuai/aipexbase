@@ -154,6 +154,38 @@ public class ManageBusinessService {
      * 获取应用的表结构信息
      */
     public Map<String, Object> getAppStructure(String appId) {
+        return parseAppStructure(appId);
+    }
+
+    /**
+     * 复制应用
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public AppInfo copyApp(String appId) {
+
+        // ===== 1. 校验原应用 =====
+        AppInfo originalApp = appInfoService.getAppInfoByAppId(appId);
+        if (originalApp == null) {
+            throw new BusinessException("原应用不存在：" + appId);
+        }
+
+        // ===== 2. 解析原应用表数据结构 =====
+        Map<String, Object> appStructure = parseAppStructure(appId);
+
+        // ===== 3. 创建新应用 =====
+        AppInfo newAppInfo = createApp(originalApp.getAppName() + "_副本", originalApp.getOwner());
+        String newAppId = newAppInfo.getAppId();
+
+        // ===== 4. 执行创建库表操作 =====
+        createAppTablesFromStructure(newAppId, originalApp, appStructure);
+
+        return newAppInfo;
+    }
+
+    /**
+     * 解析应用结构
+     */
+    public Map<String, Object> parseAppStructure(String appId) {
         // 校验应用
         AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
         if (appInfo == null) {
@@ -192,41 +224,15 @@ public class ManageBusinessService {
     }
 
     /**
-     * 复制应用
+     * 从应用结构创建应用表
      */
     @Transactional(rollbackFor = Exception.class)
-    public AppInfo copyApp(String appId) {
-
-        // ===== 1. 校验原应用 =====
-        AppInfo originalApp = appInfoService.getAppInfoByAppId(appId);
-        if (originalApp == null) {
-            throw new BusinessException("原应用不存在：" + appId);
-        }
-
-        // ===== 2. 解析原应用表数据结构 =====
-        Map<String, Object> appStructure = getAppStructure(appId);
+    protected void createAppTablesFromStructure(String targetAppId, AppInfo originalApp, Map<String, Object> appStructure) {
         List<AppTableInfo> originalTables = (List<AppTableInfo>) appStructure.get("tables");
         List<AppTableColumnInfo> originalColumns = (List<AppTableColumnInfo>) appStructure.get("columns");
         Map<Long, List<AppTableColumnInfo>> tableColumnMap = (Map<Long, List<AppTableColumnInfo>>) appStructure.get("tableColumnMap");
         List<AppTableRelation> originalRelations = (List<AppTableRelation>) appStructure.get("relations");
 
-        // ===== 3. 创建新应用 =====
-        AppInfo newAppInfo = createApp(originalApp.getAppName() + "_副本", originalApp.getOwner());
-        String newAppId = newAppInfo.getAppId();
-
-        // 执行复制操作
-        copyAppData(appId, newAppId, originalApp, originalTables, originalColumns, tableColumnMap, originalRelations);
-
-        return newAppInfo;
-    }
-
-    /**
-     * 复制应用数据
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public void copyAppData(String sourceAppId, String targetAppId, AppInfo originalApp,
-                            List<AppTableInfo> originalTables, List<AppTableColumnInfo> originalColumns,
-                            Map<Long, List<AppTableColumnInfo>> tableColumnMap, List<AppTableRelation> originalRelations) {
         // ===== ID 映射 =====
         Map<Long, Long> tableIdMap = new HashMap<>();
         Map<Long, Long> columnIdMap = new HashMap<>();
@@ -235,7 +241,7 @@ public class ManageBusinessService {
             // 创建新数据库
             databaseMapper.createDatabase(targetAppId);
 
-            // ===== 4. 复制表 & 字段（一次构建映射）=====
+            // ===== 复制表 & 字段（一次构建映射）=====
             for (AppTableInfo oldTable : originalTables) {
 
                 AppTableInfo newTable = new AppTableInfo();
@@ -269,7 +275,7 @@ public class ManageBusinessService {
                 }
             }
 
-            // ===== 5. 复制表关系（完全使用映射）=====
+            // ===== 复制表关系（完全使用映射）=====
             for (AppTableRelation oldRel : originalRelations) {
 
                 Long newTableId = tableIdMap.get(oldRel.getTableId());
@@ -293,16 +299,16 @@ public class ManageBusinessService {
                 appTableRelationService.save(newRel);
             }
 
-            // ===== 6. 执行 SQL（替换 appId）=====
+            // ===== 执行 SQL（替换 appId）=====
             List<AppRequirementSQL> sqls = appRequirementSQLService.list(
                     new LambdaQueryWrapper<AppRequirementSQL>()
-                            .eq(AppRequirementSQL::getAppId, sourceAppId)
+                            .eq(AppRequirementSQL::getAppId, originalApp.getAppId())
             );
             
             // 收集所有SQL内容并替换appId后批量执行，避免重复插入
             List<String> processedSqls = new ArrayList<>();
             for (AppRequirementSQL sql : sqls) {
-                String content = sql.getContent().replace(sourceAppId, targetAppId);
+                String content = sql.getContent().replace(originalApp.getAppId(), targetAppId);
                 processedSqls.add(content);
             }
             
@@ -313,7 +319,7 @@ public class ManageBusinessService {
                 }
             }
 
-            // ===== 7. 复制应用配置 =====
+            // ===== 设置应用配置 =====
             AppInfo newAppInfo = appInfoService.getAppInfoByAppId(targetAppId);
             newAppInfo.setNeedAuth(originalApp.getNeedAuth());
             newAppInfo.setAuthTable(originalApp.getAuthTable());
@@ -331,7 +337,6 @@ public class ManageBusinessService {
             throw new BusinessException("复制应用失败：" + e.getMessage(), e);
         }
     }
-
 
     public AppInfo createApp(String name, Long owner) {
         return createAppInternal(name, owner);
