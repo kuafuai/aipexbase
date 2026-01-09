@@ -89,7 +89,20 @@ export default {
             copy_confirm_btn: "确认复制",
             copy_processing: "复制中...",
             copy_success: "应用复制成功",
-            copy_failed: "应用复制失败"
+            copy_failed: "应用复制失败",
+            // 导入应用
+            import_app: "导入应用",
+            import_tooltip: "导入应用",
+            dialog_import_title: "导入应用",
+            import_file_label: "应用文件",
+            import_file_placeholder: "请选择应用文件",
+            import_file_tip: "支持 JSON 格式的应用文件",
+            import_btn: "开始导入",
+            importing: "导入中...",
+            import_success: "应用导入成功",
+            import_failed: "应用导入失败",
+            select_file: "选择文件",
+            file_selected: "已选择文件"
         },
         apimarket: {
             list_title: "API市场",

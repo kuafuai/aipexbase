@@ -7,6 +7,7 @@ import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.StringUtils;
+import com.kuafuai.manage.entity.dto.AppInfoCopyDTO;
 import com.kuafuai.manage.entity.dto.AppInfoDTO;
 import com.kuafuai.manage.entity.vo.AppVo;
 import com.kuafuai.manage.entity.vo.TableVo;
@@ -153,5 +154,18 @@ public class ApplicationController {
 
         AppInfo copiedAppInfo = manageBusinessService.copyApp(appId);
         return ResultUtils.success(copiedAppInfo);
+    }
+
+    @PostMapping("/save/file")
+    public BaseResponse saveAppByStruct(@RequestBody AppInfoCopyDTO copyDTO) {
+        AppInfo copyAppInfo = copyDTO.getAppInfo();
+        AppInfo oldAppInfoByAppId = appInfoService.getAppInfoByAppId(copyAppInfo.getAppId());
+        String targetAppId = copyAppInfo.getAppId();
+        if (oldAppInfoByAppId != null) {
+            targetAppId = null;
+        }
+        copyAppInfo.setOwner(SecurityUtils.getUserId());
+        AppInfo newAppInfo = manageBusinessService.createAppTablesFromStructure(targetAppId, copyDTO);
+        return ResultUtils.success(newAppInfo);
     }
 }

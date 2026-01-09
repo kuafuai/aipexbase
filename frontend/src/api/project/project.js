@@ -46,5 +46,12 @@ export default {
             url: "/admin/application/copy/" + appId,
             method: "post"
         });
+    },
+    import(data) {
+        return request({
+            url: "/admin/application/save/file",
+            method: "post",
+            data: data
+        });
     }
 }

@@ -89,7 +89,20 @@ export default {
             copy_confirm_btn: "Confirm Copy",
             copy_processing: "Copying...",
             copy_success: "Application copied successfully",
-            copy_failed: "Failed to copy application"
+            copy_failed: "Failed to copy application",
+            // Import application
+            import_app: "Import Application",
+            import_tooltip: "Import Application",
+            dialog_import_title: "Import Application",
+            import_file_label: "Application File",
+            import_file_placeholder: "Please select an application file",
+            import_file_tip: "Supports JSON format application files",
+            import_btn: "Start Import",
+            importing: "Importing...",
+            import_success: "Application imported successfully",
+            import_failed: "Failed to import application",
+            select_file: "Select File",
+            file_selected: "File selected"
         },
         apimarket: {
             list_title: "API Market",

@@ -22,6 +22,18 @@
           {{ t('page.project.copy_inactive_btn') }}
         </el-button>
         <el-button
+            type="info"
+            class="bg-gradient-to-r from-purple-500 to-pink-500 border-0 text-white hover:from-purple-600 hover:to-pink-600 transition-all duration-300 shadow-lg shadow-purple-500/25"
+            @click="openImportDialog"
+            :title="t('page.project.import_tooltip')"
+        >
+          <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12"/>
+          </svg>
+          {{ t('page.project.import_app') }}
+        </el-button>
+        <el-button
             type="primary"
             class="bg-gradient-to-r from-cyan-500 to-blue-500 border-0 text-white hover:from-cyan-600 hover:to-blue-600 transition-all duration-300 shadow-lg shadow-cyan-500/25"
             @click="openDialog"
@@ -209,6 +221,71 @@
       </template>
     </el-dialog>
 
+    <el-dialog
+        v-model="showImportDialog"
+        :title="t('page.project.dialog_import_title')"
+        width="480px"
+        class="ai-dialog"
+        :close-on-click-modal="false"
+    >
+      <div class="p-2">
+        <el-form :model="importData" label-width="100px">
+          <el-form-item :label="t('page.project.import_file_label')">
+            <div class="w-full">
+              <el-upload
+                  ref="uploadRef"
+                  :auto-upload="false"
+                  :limit="1"
+                  :on-change="handleFileChange"
+                  :on-exceed="handleExceed"
+                  accept=".json,.sql"
+                  class="w-full"
+              >
+                <template #trigger>
+                  <el-button
+                      type="primary"
+                      class="w-full bg-gradient-to-r from-purple-500 to-pink-500 border-0"
+                  >
+                    <svg class="w-5 h-5 mr-2 inline-block" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                    </svg>
+                    {{ t('page.project.select_file') }}
+                  </el-button>
+                </template>
+              </el-upload>
+              <div v-if="importData.fileName" class="mt-2 text-sm text-white/70">
+                {{ t('page.project.file_selected') }}: {{ importData.fileName }}
+              </div>
+              <div class="mt-2 text-xs text-white/50">
+                {{ t('page.project.import_file_tip') }}
+              </div>
+            </div>
+          </el-form-item>
+        </el-form>
+      </div>
+
+      <template #footer>
+        <div class="flex justify-end space-x-3 px-6 pb-6">
+          <el-button
+              @click="showImportDialog = false"
+              class="border-white/20 text-white/80 hover:bg-white/5"
+          >
+            {{ t('page.project.cancel') }}
+          </el-button>
+          <el-button
+              type="primary"
+              :loading="importing"
+              @click="submitImport"
+              :disabled="!importData.file"
+              class="bg-gradient-to-r from-purple-500 to-pink-500 border-0 text-white hover:from-purple-600 hover:to-pink-600"
+          >
+            {{ t('page.project.import_btn') }}
+          </el-button>
+        </div>
+      </template>
+    </el-dialog>
+
   </div>
 </template>
 
@@ -220,14 +297,22 @@ const t = proxy.$tt;
 
 const loading = ref(false)
 const adding = ref(false)
+const importing = ref(false)
 
 const showDialog = ref(false)
+const showImportDialog = ref(false)
+const uploadRef = ref(null)
 const pageParams = ref({current: 1, pageSize: 20});
 // 分页响应数据
 const pageRes = ref({current: 1, pages: 1, size: 10, total: 0, records: []});
 
 const newProject = ref({
   name: '',
+})
+
+const importData = ref({
+  file: null,
+  fileName: ''
 })
 
 // 检查是否有不活跃的项目
@@ -291,6 +376,73 @@ function submitAdd() {
 function openDialog() {
   newProject.value = {name: ''}
   showDialog.value = true
+}
+
+function openImportDialog() {
+  importData.value = {file: null, fileName: ''}
+  if (uploadRef.value) {
+    uploadRef.value.clearFiles()
+  }
+  showImportDialog.value = true
+}
+
+function handleFileChange(file) {
+  importData.value.file = file.raw
+  importData.value.fileName = file.name
+}
+
+function handleExceed() {
+  proxy.$modal.msgWarning('只能上传一个文件')
+}
+
+async function submitImport() {
+  if (!importData.value.file) {
+    proxy.$modal.msgWarning('请选择要导入的文件')
+    return
+  }
+
+  importing.value = true
+
+  try {
+    // 读取文件内容
+    const fileContent = await readFileAsText(importData.value.file)
+
+    // 解析 JSON
+    let jsonData
+    try {
+      jsonData = JSON.parse(fileContent)
+    } catch (e) {
+      proxy.$modal.msgError('文件格式错误，请上传有效的 JSON 文件')
+      importing.value = false
+      return
+    }
+
+    console.log(jsonData);
+
+    // 调用导入 API
+    const res = await proxy.$api.project.import(jsonData)
+
+    if (res.success) {
+      proxy.$modal.msgSuccess(t('page.project.import_success'))
+      showImportDialog.value = false
+      refresh()
+    } else {
+      proxy.$modal.msgError(t('page.project.import_failed') + ': ' + (res.message || 'Unknown error'))
+    }
+  } catch (error) {
+    proxy.$modal.msgError(t('page.project.import_failed') + ': ' + (error.message || 'Unknown error'))
+  } finally {
+    importing.value = false
+  }
+}
+
+function readFileAsText(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => resolve(e.target.result)
+    reader.onerror = (e) => reject(e)
+    reader.readAsText(file)
+  })
 }
 
 // 格式化日期时间
