@@ -14,6 +14,7 @@ import com.kuafuai.common.util.RandomStringUtils;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.dynamic.service.DynamicInterfaceService;
 import com.kuafuai.dynamic.service.DynamicService;
+import com.kuafuai.manage.entity.dto.AppInfoCopyDTO;
 import com.kuafuai.manage.entity.vo.APIKeyVo;
 import com.kuafuai.system.entity.APIKey;
 import com.kuafuai.manage.entity.vo.AppVo;
@@ -153,13 +154,6 @@ public class ManageBusinessService {
     }
 
     /**
-     * 获取应用的表结构信息
-     */
-    public Map<String, Object> getAppStructure(String appId) {
-        return parseAppStructure(appId);
-    }
-
-    /**
      * 复制应用
      */
     @Transactional(rollbackFor = Exception.class)
@@ -172,22 +166,17 @@ public class ManageBusinessService {
         }
 
         // ===== 2. 解析原应用表数据结构 =====
-        Map<String, Object> appStructure = parseAppStructure(appId);
+        AppInfoCopyDTO appStructure = parseAppStructure(appId);
 
-        // ===== 3. 创建新应用 =====
-        AppInfo newAppInfo = createApp(originalApp.getAppName() + "_副本", originalApp.getOwner());
-        String newAppId = newAppInfo.getAppId();
 
         // ===== 4. 执行创建库表操作 =====
-        createAppTablesFromStructure(newAppId, appStructure);
-
-        return newAppInfo;
+        return createAppTablesFromStructure(null, appStructure);
     }
 
     /**
      * 解析应用结构
      */
-    public Map<String, Object> parseAppStructure(String appId) {
+    public AppInfoCopyDTO parseAppStructure(String appId) {
         // 校验应用
         AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
         if (appInfo == null) {
@@ -214,37 +203,38 @@ public class ManageBusinessService {
                 new LambdaQueryWrapper<AppTableRelation>()
                         .eq(AppTableRelation::getAppId, appId)
         );
-        
+
         // 获取SQL信息
         List<AppRequirementSQL> sqls = appRequirementSQLService.list(
                 new LambdaQueryWrapper<AppRequirementSQL>()
+                        .ne(AppRequirementSQL::getStatus, "delete")
                         .eq(AppRequirementSQL::getAppId, appId)
         );
 
-        // 组装返回数据
-        Map<String, Object> result = new HashMap<>();
-        result.put("appInfo", appInfo);
-        result.put("tables", tables);
-        result.put("columns", columns);
-        result.put("tableColumnMap", tableColumnMap);
-        result.put("relations", relations);
-        result.put("sqls", sqls);
-
-
-        return result;
-
+        return AppInfoCopyDTO.builder()
+                .appInfo(appInfo)
+                .tables(tables)
+                .tableColumnMap(tableColumnMap)
+                .relations(relations)
+                .sqls(sqls)
+                .build();
     }
 
     /**
      * 从应用结构创建应用表
      */
     @Transactional(rollbackFor = Exception.class)
-    public void createAppTablesFromStructure(String targetAppId, Map<String, Object> appStructure) {
-        List<AppTableInfo> originalTables = (List<AppTableInfo>) appStructure.get("tables");
-        List<AppTableColumnInfo> originalColumns = (List<AppTableColumnInfo>) appStructure.get("columns");
-        Map<Long, List<AppTableColumnInfo>> tableColumnMap = (Map<Long, List<AppTableColumnInfo>>) appStructure.get("tableColumnMap");
-        List<AppTableRelation> originalRelations = (List<AppTableRelation>) appStructure.get("relations");
-        List<AppRequirementSQL> originalSqls = (List<AppRequirementSQL>) appStructure.get("sqls");
+    public AppInfo createAppTablesFromStructure(String targetAppId, AppInfoCopyDTO appStructure) {
+        List<AppTableInfo> originalTables = appStructure.getTables();
+        Map<Long, List<AppTableColumnInfo>> tableColumnMap = appStructure.getTableColumnMap();
+        List<AppTableRelation> originalRelations = appStructure.getRelations();
+        List<AppRequirementSQL> originalSqls = appStructure.getSqls();
+
+        AppInfo originalAppInfo = appStructure.getAppInfo();
+        String originalAppId = originalAppInfo.getAppId();
+        if (StringUtils.isEmpty(targetAppId)) {
+            targetAppId = "baas_" + RandomStringUtils.generateRandomString(16);
+        }
 
         // ===== ID 映射 =====
         Map<Long, Long> tableIdMap = new HashMap<>();
@@ -253,6 +243,11 @@ public class ManageBusinessService {
         try {
             // 创建新数据库
             databaseMapper.createDatabase(targetAppId);
+
+            // 保存新应用
+            originalAppInfo.setAppId(targetAppId);
+            originalAppInfo.setId(null);
+            appInfoService.save(originalAppInfo);
 
             // ===== 复制表 & 字段（一次构建映射）=====
             for (AppTableInfo oldTable : originalTables) {
@@ -315,17 +310,11 @@ public class ManageBusinessService {
             // ===== 执行 SQL（替换 appId）=====
             // 收集所有SQL内容并替换appId后批量执行，避免重复插入
             List<String> processedSqls = new ArrayList<>();
-            AppInfo originalAppInfo = (AppInfo) appStructure.get("appInfo");
-            String originalAppId = originalAppInfo.getAppId();
             for (AppRequirementSQL sql : originalSqls) {
                 String content = sql.getContent().replace(originalAppId, targetAppId);
                 processedSqls.add(content);
             }
-            // 更新应用状态为与原应用相同的状态
-            AppInfo newAppInfo = appInfoService.getAppInfoByAppId(targetAppId);
-            newAppInfo.setStatus(originalAppInfo.getStatus());
-            appInfoService.updateById(newAppInfo);
-            
+
             // 批量执行处理后的SQL，只插入一次记录
             if (!processedSqls.isEmpty()) {
                 if (!manageSQLBusinessService.execute(targetAppId, processedSqls)) {
@@ -333,13 +322,14 @@ public class ManageBusinessService {
                 }
             }
 
-            
-            dynamicInfoCache.clean(targetAppId);
 
+            dynamicInfoCache.clean(targetAppId);
         } catch (Exception e) {
             deleteApp(targetAppId);
             throw new BusinessException("复制应用失败：" + e.getMessage(), e);
         }
+
+        return originalAppInfo;
     }
 
     public AppInfo createApp(String name, Long owner) {
@@ -919,11 +909,6 @@ public class ManageBusinessService {
 
         return applicationAPIKeysService.save(apiKeys);
     }
-
-    public boolean executeDDL(String appId, String ddl) {
-        return true;
-    }
-
 
     private AppInfo createAppInternal(String name, Long owner) {
         String appId = "baas_" + RandomStringUtils.generateRandomString(16);
