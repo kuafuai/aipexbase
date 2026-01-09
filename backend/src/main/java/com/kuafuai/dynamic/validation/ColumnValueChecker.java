@@ -67,6 +67,9 @@ public class ColumnValueChecker {
                 case "time":
                     validateDate(value, columnName, Lists.newArrayList("HH:mm:ss"), table);
                     break;
+                case "boolean":
+                    conditions.put(columnName, Convert.toBool(value, false));
+                    break;
                 case "decimal":
                 case "float":
                 case "double":

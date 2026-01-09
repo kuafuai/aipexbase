@@ -482,11 +482,13 @@ public class Convert {
             case "ok":
             case "1":
             case "有":
+            case "是":
                 return true;
             case "false":
             case "no":
             case "0":
             case "无":
+            case "否":
                 return false;
             default:
                 return defaultValue;
