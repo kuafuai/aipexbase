@@ -40,5 +40,11 @@ export default {
             method: "patch",
             data: data
         });
+    },
+    copy(appId) {
+        return request({
+            url: "/admin/application/copy/" + appId,
+            method: "post"
+        });
     }
 }

@@ -4,6 +4,7 @@ public class ManageConstants {
     public static final String REQUIREMENT_DEFAULT_ID = "0";
     public static final String RELATION_TYPE_ONE_TO_ONE = "ONE_TO_ONE";
     public static final String STATUS_DRAFT = "draft";
+    public static final String STATUS_ACTIVE = "active";
     public static final String EVENT_CREATE = "create";
 
     public static final String EVENT_REGISTER = "register";

@@ -14,7 +14,9 @@ import com.kuafuai.common.util.RandomStringUtils;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.dynamic.service.DynamicInterfaceService;
 import com.kuafuai.dynamic.service.DynamicService;
+import com.kuafuai.manage.entity.dto.AppInfoCopyDTO;
 import com.kuafuai.manage.entity.vo.APIKeyVo;
+import com.kuafuai.system.entity.APIKey;
 import com.kuafuai.manage.entity.vo.AppVo;
 import com.kuafuai.manage.entity.vo.ColumnVo;
 import com.kuafuai.manage.entity.vo.TableVo;
@@ -24,6 +26,7 @@ import com.kuafuai.system.SystemBusinessService;
 import com.kuafuai.system.entity.*;
 import com.kuafuai.system.mapper.DatabaseMapper;
 import com.kuafuai.system.service.*;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -37,6 +40,7 @@ import static com.kuafuai.manage.service.ManageConstants.*;
 import static com.kuafuai.manage.util.Table2SQL.resolveColumnType;
 import static com.kuafuai.manage.util.Table2SQL.resolveDslType;
 
+@Slf4j
 @Service
 public class ManageBusinessService {
 
@@ -147,6 +151,185 @@ public class ManageBusinessService {
     public AppInfo createApp(AppVo appVo) {
         Long owner = SecurityUtils.getUserId();
         return createAppInternal(appVo.getName(), owner);
+    }
+
+    /**
+     * 复制应用
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public AppInfo copyApp(String appId) {
+
+        // ===== 1. 校验原应用 =====
+        AppInfo originalApp = appInfoService.getAppInfoByAppId(appId);
+        if (originalApp == null) {
+            throw new BusinessException("原应用不存在：" + appId);
+        }
+
+        // ===== 2. 解析原应用表数据结构 =====
+        AppInfoCopyDTO appStructure = parseAppStructure(appId);
+
+
+        // ===== 4. 执行创建库表操作 =====
+        return createAppTablesFromStructure(null, appStructure);
+    }
+
+    /**
+     * 解析应用结构
+     */
+    public AppInfoCopyDTO parseAppStructure(String appId) {
+        // 校验应用
+        AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
+        if (appInfo == null) {
+            throw new BusinessException("应用不存在：" + appId);
+        }
+        log.info("应用结构解析结果：{}", appInfo);
+
+        // 获取表数据结构
+        List<AppTableInfo> tables = appTableInfoService.list(
+                new LambdaQueryWrapper<AppTableInfo>()
+                        .eq(AppTableInfo::getAppId, appId)
+        );
+
+        List<AppTableColumnInfo> columns = appTableColumnInfoService.list(
+                new LambdaQueryWrapper<AppTableColumnInfo>()
+                        .eq(AppTableColumnInfo::getAppId, appId)
+        );
+
+        Map<Long, List<AppTableColumnInfo>> tableColumnMap =
+                columns.stream()
+                        .collect(Collectors.groupingBy(AppTableColumnInfo::getTableId));
+
+        List<AppTableRelation> relations = appTableRelationService.list(
+                new LambdaQueryWrapper<AppTableRelation>()
+                        .eq(AppTableRelation::getAppId, appId)
+        );
+
+        // 获取SQL信息
+        List<AppRequirementSQL> sqls = appRequirementSQLService.list(
+                new LambdaQueryWrapper<AppRequirementSQL>()
+                        .ne(AppRequirementSQL::getStatus, "delete")
+                        .eq(AppRequirementSQL::getAppId, appId)
+        );
+
+        return AppInfoCopyDTO.builder()
+                .appInfo(appInfo)
+                .tables(tables)
+                .tableColumnMap(tableColumnMap)
+                .relations(relations)
+                .sqls(sqls)
+                .build();
+    }
+
+    /**
+     * 从应用结构创建应用表
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public AppInfo createAppTablesFromStructure(String targetAppId, AppInfoCopyDTO appStructure) {
+        List<AppTableInfo> originalTables = appStructure.getTables();
+        Map<Long, List<AppTableColumnInfo>> tableColumnMap = appStructure.getTableColumnMap();
+        List<AppTableRelation> originalRelations = appStructure.getRelations();
+        List<AppRequirementSQL> originalSqls = appStructure.getSqls();
+
+        AppInfo originalAppInfo = appStructure.getAppInfo();
+        String originalAppId = originalAppInfo.getAppId();
+        if (StringUtils.isEmpty(targetAppId)) {
+            targetAppId = "baas_" + RandomStringUtils.generateRandomString(16);
+        }
+
+        // ===== ID 映射 =====
+        Map<Long, Long> tableIdMap = new HashMap<>();
+        Map<Long, Long> columnIdMap = new HashMap<>();
+
+        try {
+            // 创建新数据库
+            databaseMapper.createDatabase(targetAppId);
+
+            // 保存新应用
+            originalAppInfo.setAppId(targetAppId);
+            originalAppInfo.setId(null);
+            appInfoService.save(originalAppInfo);
+
+            // ===== 复制表 & 字段（一次构建映射）=====
+            for (AppTableInfo oldTable : originalTables) {
+
+                AppTableInfo newTable = new AppTableInfo();
+                newTable.setAppId(targetAppId);
+                newTable.setTableName(oldTable.getTableName());
+                newTable.setPhysicalTableName(oldTable.getPhysicalTableName());
+                newTable.setDescription(oldTable.getDescription());
+                newTable.setRequirementId(oldTable.getRequirementId());
+                appTableInfoService.save(newTable);
+
+                tableIdMap.put(oldTable.getId(), newTable.getId());
+
+                List<AppTableColumnInfo> cols =
+                        tableColumnMap.getOrDefault(oldTable.getId(), Collections.emptyList());
+
+                for (AppTableColumnInfo oldCol : cols) {
+                    AppTableColumnInfo newCol = new AppTableColumnInfo();
+                    newCol.setAppId(targetAppId);
+                    newCol.setTableId(newTable.getId());
+                    newCol.setRequirementId(oldCol.getRequirementId());
+                    newCol.setColumnName(oldCol.getColumnName());
+                    newCol.setColumnType(oldCol.getColumnType());
+                    newCol.setDslType(oldCol.getDslType());
+                    newCol.setPrimary(oldCol.isPrimary());
+                    newCol.setNullable(oldCol.isNullable());
+                    newCol.setShow(oldCol.isShow());
+                    newCol.setColumnComment(oldCol.getColumnComment());
+                    appTableColumnInfoService.save(newCol);
+
+                    columnIdMap.put(oldCol.getId(), newCol.getId());
+                }
+            }
+
+            // ===== 复制表关系（完全使用映射）=====
+            for (AppTableRelation oldRel : originalRelations) {
+
+                Long newTableId = tableIdMap.get(oldRel.getTableId());
+                Long newColumnId = columnIdMap.get(oldRel.getTableColumnId());
+                Long newPrimaryTableId = tableIdMap.get(oldRel.getPrimaryTableId());
+                Long newPrimaryColumnId = columnIdMap.get(oldRel.getPrimaryTableColumnId());
+
+                if (newTableId == null || newColumnId == null ||
+                        newPrimaryTableId == null || newPrimaryColumnId == null) {
+                    continue;
+                }
+
+                AppTableRelation newRel = new AppTableRelation();
+                newRel.setAppId(targetAppId);
+                newRel.setRequirementId(oldRel.getRequirementId());
+                newRel.setTableId(newTableId);
+                newRel.setTableColumnId(newColumnId);
+                newRel.setPrimaryTableId(newPrimaryTableId);
+                newRel.setPrimaryTableColumnId(newPrimaryColumnId);
+                newRel.setRelationType(oldRel.getRelationType());
+                appTableRelationService.save(newRel);
+            }
+
+            // ===== 执行 SQL（替换 appId）=====
+            // 收集所有SQL内容并替换appId后批量执行，避免重复插入
+            List<String> processedSqls = new ArrayList<>();
+            for (AppRequirementSQL sql : originalSqls) {
+                String content = sql.getContent().replace(originalAppId, targetAppId);
+                processedSqls.add(content);
+            }
+
+            // 批量执行处理后的SQL，只插入一次记录
+            if (!processedSqls.isEmpty()) {
+                if (!manageSQLBusinessService.execute(targetAppId, processedSqls)) {
+                    throw new BusinessException("SQL 批量执行失败");
+                }
+            }
+
+
+            dynamicInfoCache.clean(targetAppId);
+        } catch (Exception e) {
+            deleteApp(targetAppId);
+            throw new BusinessException("复制应用失败：" + e.getMessage(), e);
+        }
+
+        return originalAppInfo;
     }
 
     public AppInfo createApp(String name, Long owner) {
@@ -726,11 +909,6 @@ public class ManageBusinessService {
 
         return applicationAPIKeysService.save(apiKeys);
     }
-
-    public boolean executeDDL(String appId, String ddl) {
-        return true;
-    }
-
 
     private AppInfo createAppInternal(String name, Long owner) {
         String appId = "baas_" + RandomStringUtils.generateRandomString(16);

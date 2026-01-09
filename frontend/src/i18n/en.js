@@ -81,7 +81,15 @@ export default {
             copy_inactive_btn: "Copy Inactive Projects",
             copy_inactive_tooltip: "Copy all inactive project AppIDs",
             copy_inactive_success: "Successfully copied {count} inactive project AppIDs",
-            no_inactive_projects: "No inactive projects"
+            no_inactive_projects: "No inactive projects",
+            // Copy application
+            copy_tooltip: "Copy Application",
+            copy_confirm_title: "Copy Application",
+            copy_confirm_msg: "Are you sure you want to copy application \"{appName}\"?",
+            copy_confirm_btn: "Confirm Copy",
+            copy_processing: "Copying...",
+            copy_success: "Application copied successfully",
+            copy_failed: "Failed to copy application"
         },
         apimarket: {
             list_title: "API Market",
