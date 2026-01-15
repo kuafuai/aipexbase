@@ -16,7 +16,6 @@ import com.kuafuai.dynamic.service.DynamicInterfaceService;
 import com.kuafuai.dynamic.service.DynamicService;
 import com.kuafuai.manage.entity.dto.AppInfoCopyDTO;
 import com.kuafuai.manage.entity.vo.APIKeyVo;
-import com.kuafuai.system.entity.APIKey;
 import com.kuafuai.manage.entity.vo.AppVo;
 import com.kuafuai.manage.entity.vo.ColumnVo;
 import com.kuafuai.manage.entity.vo.TableVo;

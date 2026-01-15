@@ -4,6 +4,8 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.kuafuai.common.constant.HttpStatus;
 import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.util.*;
+import com.kuafuai.config.db.DatabaseRouterAspect;
+import com.kuafuai.config.db.DynamicDataSourceContextHolder;
 import com.kuafuai.system.entity.APIKey;
 import com.kuafuai.system.service.ApplicationAPIKeysService;
 import lombok.extern.slf4j.Slf4j;
@@ -48,24 +50,36 @@ public class GlobalAppIdFilter extends OncePerRequestFilter {
 
         String appId = getHeaderIgnoreCase(httpServletRequest, "APP_ID");
         String appType = getHeaderIgnoreCase(httpServletRequest, "APP_TYPE", "user");
-
         String apiKey = getHeaderIgnoreCase(httpServletRequest, "CODE_FLYING");
 
-        if (StringUtils.isEmpty(appId) && StringUtils.isNotEmpty(apiKey)) {
-            APIKey key = getAPIKey(apiKey);
-            if (Objects.isNull(key)) {
-                writeUnauthorizedResponse(httpServletResponse, "error.code.no_auth");
-                return;
-            }
-            appId = key.getAppId();
-        }
-
-        if (StringUtils.isEmpty(appId)) {
-            writeUnauthorizedResponse(httpServletResponse, "error.code.params_error");
+        String rdsKey;
+        if (StringUtils.isNotEmpty(appId)) {
+            rdsKey = DatabaseRouterAspect.getOrAllocateRdsKey(appId, "app");
+        } else if (StringUtils.isNotEmpty(apiKey)) {
+            rdsKey = DatabaseRouterAspect.getOrAllocateRdsKey(apiKey, "token");
+        } else {
+            writeUnauthorizedResponse(httpServletResponse, "error.code.no_auth");
             return;
         }
 
         try {
+            
+            DynamicDataSourceContextHolder.setDataSourceType(rdsKey);
+
+            if (StringUtils.isEmpty(appId) && StringUtils.isNotEmpty(apiKey)) {
+                APIKey key = getAPIKey(apiKey);
+                if (Objects.isNull(key)) {
+                    writeUnauthorizedResponse(httpServletResponse, "error.code.no_auth");
+                    return;
+                }
+                appId = key.getAppId();
+            }
+
+            if (StringUtils.isEmpty(appId)) {
+                writeUnauthorizedResponse(httpServletResponse, "error.code.params_error");
+                return;
+            }
+
             appIdHolder.set(appId);
             appTypeHolder.set(appType);
 
@@ -74,6 +88,8 @@ public class GlobalAppIdFilter extends OncePerRequestFilter {
             log.info("Clear ThreadLocal: APP_ID={}, APP_TYPE={}", appId, appType);
             appIdHolder.remove();
             appTypeHolder.remove();
+
+            DynamicDataSourceContextHolder.clearDataSourceType();
         }
     }
 

@@ -3,9 +3,12 @@ package com.kuafuai.manage.controller;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.kuafuai.common.domin.BaseResponse;
 import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.login.SecurityUtils;
+import com.kuafuai.config.ApiDocumentParserConfig;
 import com.kuafuai.manage.entity.vo.ApiDocumentParsedVo;
 import com.kuafuai.manage.entity.vo.ApiMarketVo;
 import com.kuafuai.manage.entity.vo.ApiTestResultVo;
@@ -13,29 +16,24 @@ import com.kuafuai.manage.service.ApiManageBusinessService;
 import com.kuafuai.system.entity.ApiMarket;
 import com.kuafuai.system.entity.ApiPricing;
 import com.kuafuai.system.service.ApiMarketService;
-import com.kuafuai.config.ApiDocumentParserConfig;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-import org.springframework.web.client.RestTemplate;
-
-import java.util.Objects;
-import java.util.HashMap;
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Map;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.ResourceAccessException;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Slf4j
 @RestController
