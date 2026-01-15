@@ -3,6 +3,7 @@ package com.kuafuai.manage.controller;
 
 import com.kuafuai.common.domin.BaseResponse;
 import com.kuafuai.common.domin.ResultUtils;
+import com.kuafuai.config.db.DatabaseRouterAspect;
 import com.kuafuai.config.db.RdsManager;
 import com.kuafuai.manage.entity.dto.RdsDTO;
 import lombok.RequiredArgsConstructor;
@@ -31,5 +32,10 @@ public class ManagerRdsController {
         rdsManager.add(rdsDTO);
 
         return ResultUtils.success();
+    }
+
+    @GetMapping("/rds/app")
+    public BaseResponse rdsGetByAppId(@RequestParam("app_id") String appId) {
+        return ResultUtils.success(DatabaseRouterAspect.getRdsKeyByAppId(appId));
     }
 }

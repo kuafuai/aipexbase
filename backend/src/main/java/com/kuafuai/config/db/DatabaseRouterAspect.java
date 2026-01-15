@@ -48,6 +48,12 @@ public class DatabaseRouterAspect {
         return rdsKey;
     }
 
+    public static String getRdsKeyByAppId(String appId) {
+        RdsManager rdsManager = SpringUtils.getBean(RdsManager.class);
+        List<RdsDTO> rdsList = rdsManager.getRdsList();
+        return selectRdsKey(appId, rdsList);
+    }
+
     public static boolean recordExits(String routeKey, String type) {
         if (StringUtils.equalsIgnoreCase("app", type)) {
             AppInfoService appInfoService = SpringUtils.getBean(AppInfoService.class);
