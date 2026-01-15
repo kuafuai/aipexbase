@@ -25,22 +25,26 @@ public class DatabaseRouterAspect {
         RdsManager rdsManager = SpringUtils.getBean(RdsManager.class);
         // 1. 去缓存读取
         String rdsKey = rdsManager.getRdsKeyByAppId(routeKey);
+        String choose = "redis";
         // 2. 缓存不存在
         if (StringUtils.isEmpty(rdsKey)) {
             // 3. 去默认库读取一下数据看看数据存在不存在。
             if (recordExits(routeKey, type)) {
                 //4. 在默认库里读取到数据，使用 默认库
-
                 rdsKey = "DEFAULT";
+                choose = "db";
+
                 rdsManager.putRdsKeyByAppId(routeKey, rdsKey);
             } else {
                 // 5. 根据权重获取一个rdsKey
                 List<RdsDTO> rdsList = rdsManager.getRdsList();
                 rdsKey = selectRdsKey(routeKey, rdsList);
+                choose = "select";
                 // 6. 设置到缓存里
                 rdsManager.putRdsKeyByAppId(routeKey, rdsKey);
             }
         }
+        log.info("========rdsKey: {}:{}:{}", routeKey, choose, rdsKey);
         return rdsKey;
     }
 
