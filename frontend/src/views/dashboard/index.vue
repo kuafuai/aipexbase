@@ -53,9 +53,20 @@
           class="group relative bg-white/5 backdrop-blur-md rounded-2xl p-6 cursor-pointer border border-white/10 hover:border-cyan-400/30 transition-all duration-500 hover:scale-105 hover:shadow-2xl hover:shadow-cyan-500/20"
           @click="openProject(project)"
       >
+        <!-- 导出按钮 - 悬停时显示 -->
+        <button
+            class="absolute top-3 right-20 z-20 w-7 h-7 bg-green-500/80 hover:bg-green-500 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-md"
+            @click.stop="exportProject(project)"
+            :title="t('page.project.export_tooltip')"
+        >
+          <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                  d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+          </svg>
+        </button>
         <!-- 复制按钮 - 悬停时显示 -->
         <button
-            class="absolute top-3 right-12 z-20 w-7 h-7 bg-blue-500/80 hover:bg-blue-500 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-md"
+            class="absolute top-3 right-11 z-20 w-7 h-7 bg-blue-500/80 hover:bg-blue-500 rounded-lg flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 shadow-md"
             @click.stop="copyProject(project)"
             :title="t('page.project.copy_tooltip')"
         >
@@ -522,6 +533,36 @@ async function copyProject(project) {
     }
   } catch (e) {
     // 用户取消
+  }
+}
+
+// 导出项目
+async function exportProject(project) {
+  const loadingInstance = proxy.$loading({text: t('page.project.export_processing') || '正在导出项目...'})
+
+  try {
+    const res = await proxy.$api.project.export(project.appId);
+    if (res.success && res.data) {
+      // 创建JSON文件并下载
+      const jsonData = JSON.stringify(res.data, null, 2);
+      const blob = new Blob([jsonData], {type: 'application/json'});
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${project.appId}_export_${new Date().getTime()}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      proxy.$modal.msgSuccess(t('page.project.export_success') || '导出成功')
+    } else {
+      proxy.$modal.msgError(t('page.project.export_failed') + ': ' + (res.message || 'Unknown error'))
+    }
+  } catch (error) {
+    proxy.$modal.msgError(t('page.project.export_failed') || '导出失败' + ': ' + (error.message || 'Unknown error'))
+  } finally {
+    loadingInstance.close()
   }
 }
 

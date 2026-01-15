@@ -90,6 +90,11 @@ export default {
             copy_processing: "复制中...",
             copy_success: "应用复制成功",
             copy_failed: "应用复制失败",
+            // 导出应用
+            export_tooltip: "导出应用",
+            export_processing: "导出中...",
+            export_success: "应用导出成功",
+            export_failed: "应用导出失败",
             // 导入应用
             import_app: "导入应用",
             import_tooltip: "导入应用",

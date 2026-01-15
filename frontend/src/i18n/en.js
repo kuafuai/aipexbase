@@ -90,6 +90,11 @@ export default {
             copy_processing: "Copying...",
             copy_success: "Application copied successfully",
             copy_failed: "Failed to copy application",
+            // Export application
+            export_tooltip: "Export Application",
+            export_processing: "Exporting...",
+            export_success: "Application exported successfully",
+            export_failed: "Failed to export application",
             // Import application
             import_app: "Import Application",
             import_tooltip: "Import Application",
