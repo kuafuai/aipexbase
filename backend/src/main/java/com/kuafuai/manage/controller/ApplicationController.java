@@ -156,6 +156,11 @@ public class ApplicationController {
         return ResultUtils.success(copiedAppInfo);
     }
 
+    @PostMapping("/import/{id}")
+    public BaseResponse importApp(@PathVariable(value = "id") String appId) {
+        return ResultUtils.success(manageBusinessService.parseAppStructure(appId));
+    }
+
     @PostMapping("/save/file")
     public BaseResponse saveAppByStruct(@RequestBody AppInfoCopyDTO copyDTO) {
         AppInfo copyAppInfo = copyDTO.getAppInfo();
