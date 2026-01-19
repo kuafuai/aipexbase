@@ -144,10 +144,16 @@ public class LoginBusinessService {
         String appId = GlobalAppIdFilter.getAppId();
         String authTable = DynamicAuthFilter.getAppInfo().getAuthTable();
 
-        List<AppTableColumnInfo> columnInfoList = dynamicInfoCache.getAppTableColumnInfo(appId, authTable);
-        Map<String, Object> valueMap = createAuthDataMap(columnInfoList);
+        Long id;
+        if (StringUtils.isEmpty(openId) || StringUtils.equalsAnyIgnoreCase(openId, "codeflying")) {
+            // bind 1
+            id = 1L;
+        } else {
+            List<AppTableColumnInfo> columnInfoList = dynamicInfoCache.getAppTableColumnInfo(appId, authTable);
+            Map<String, Object> valueMap = createAuthDataMap(columnInfoList);
 
-        Long id = dynamicInterfaceService.add(appId, authTable, valueMap);
+            id = dynamicInterfaceService.add(appId, authTable, valueMap);
+        }
 
         Login login = createLogin(openId, authTable, id);
         loginService.save(appId, login);
@@ -165,7 +171,6 @@ public class LoginBusinessService {
         loginService.save(appId, login);
         return login;
     }
-
 
 
     private Login createLogin(String openId, String tableName, Long id) {

@@ -449,7 +449,9 @@ public class DynamicInterfaceService {
 
         for (Map<String, Object> data : list) {
             Object columnValue = data.get(columnInfo.getColumnName());
-
+            if (Objects.isNull(columnValue)) {
+                continue;
+            }
             Map<String, Object> params = Maps.newHashMap();
             params.put(primaryKey, columnValue);
 
