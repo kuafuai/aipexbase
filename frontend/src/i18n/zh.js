@@ -329,7 +329,13 @@ export default {
             empty_text: "暂无数据",
             bool_true: "是",
             bool_false: "否",
-            operations: "操作"
+            operations: "操作",
+            import_data: "导入数据",
+            download_template: "下载模板",
+            select_excel_file: "选择Excel文件",
+            import_success: "导入成功",
+            import_failed: "导入失败",
+            file_format_tip: "支持 .xlsx, .xls 格式的Excel文件"
         },
         apikeys: {
             title: "API 密钥管理",

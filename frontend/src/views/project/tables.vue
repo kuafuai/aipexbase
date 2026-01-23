@@ -207,6 +207,32 @@
               </svg>
               {{ t('page.tables.add_data') }}
             </el-button>
+            <!-- 下载模板按钮 -->
+            <el-button
+                type="primary"
+                size="large"
+                class="bg-gradient-to-r from-amber-500 to-orange-500 border-0 text-white hover:from-amber-600 hover:to-orange-600 transition-all duration-300 shadow-lg shadow-amber-500/25"
+                @click="downloadTemplate"
+            >
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+              </svg>
+              {{ t('page.tables.download_template') }}
+            </el-button>
+            <!-- 导入按钮 -->
+            <el-button
+                type="primary"
+                size="large"
+                class="bg-gradient-to-r from-purple-500 to-indigo-500 border-0 text-white hover:from-purple-600 hover:to-indigo-600 transition-all duration-300 shadow-lg shadow-purple-500/25"
+                @click="showImportDialog"
+            >
+              <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M9 19l3 3m0 0l3-3m-3 3V10"/>
+              </svg>
+              {{ t('page.tables.import_data') }}
+            </el-button>
           </div>
 
         </div>
@@ -725,6 +751,43 @@
     </template>
 
   </el-drawer>
+  <!-- 放在模板最下面，和抽屉平级 -->
+  <el-dialog
+      v-model="importDialogVisible"
+      :title="t('page.tables.import_data')"
+      width="420px"
+      top="15vh"
+      class="custom-dialog">
+    <div class="space-y-4">
+      <el-upload
+          drag
+          :limit="1"
+          accept=".xlsx,.xls"
+          :before-upload="beforeUpload"
+          :on-change="handleFileChange"
+          :on-remove="clearSelectedFile"
+          :auto-upload="false">
+        <el-icon class="el-icon--upload"><upload-filled /></el-icon>
+        <div class="el-upload__text">
+          {{ t('page.tables.drop_file') }}
+        </div>
+      </el-upload>
+    </div>
+
+    <template #footer>
+      <div class="flex justify-end space-x-3">
+        <el-button @click="importDialogVisible = false">
+          {{ t('page.project.cancel') }}
+        </el-button>
+        <el-button
+            type="primary"
+            :loading="importLoading"
+            @click="confirmImport">
+          {{ t('page.tables.import_data') }}
+        </el-button>
+      </div>
+    </template>
+  </el-dialog>
 
 </template>
 
@@ -755,6 +818,11 @@ const tableForm = ref({
   description: '',
   columns: []
 });
+
+// 新增导入相关的响应式数据
+const importDialogVisible = ref(false);
+const selectedFile = ref(null);
+const importLoading = ref(false);
 
 const props = {
   value: 'tableName',
@@ -1101,6 +1169,78 @@ function getDefaultValuePlaceholder(type) {
   return placeholders[type] || t('page.tables.default_value')
 }
 
+// 新增导入相关的方法
+function showImportDialog() {
+  importDialogVisible.value = true;
+  selectedFile.value = null;
+}
+
+function downloadTemplate() {
+  if (currentTable.value) {
+    const appIdForTemplate = currentTable.value.appId || appId;
+    proxy.$api.dataset.downloadImportTemplate(currentTable.value.tableName, appIdForTemplate)
+        .then((response) => {
+          const blob = new Blob([response], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+          saveAs(blob, `${currentTable.value.description}_模板.xlsx`);
+        })
+        .catch(error => {
+          console.error('下载模板失败:', error);
+          proxy.$modal.msgError('下载模板失败');
+        });
+  }
+}
+
+
+function handleFileChange(file) {
+  selectedFile.value = file.raw;
+}
+
+function beforeUpload(file) {
+  const isExcel = file.type === 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' || 
+                  file.type === 'application/vnd.ms-excel';
+  const isLt5M = file.size / 1024 / 1024 < 5;
+
+  if (!isExcel) {
+    proxy.$modal.msgError('上传文件只能是 Excel 格式!');
+    return false;
+  }
+  if (!isLt5M) {
+    proxy.$modal.msgError('上传文件大小不能超过 5MB!');
+    return false;
+  }
+  
+  return true;
+}
+
+function clearSelectedFile() {
+  selectedFile.value = null;
+}
+
+async function confirmImport() {
+  if (!selectedFile.value) {
+    proxy.$modal.msgError('请先选择要导入的文件');
+    return;
+  }
+
+  importLoading.value = true;
+  
+  try {
+    const result = await proxy.$api.dataset.importData(currentTable.value.tableName, selectedFile.value, appId);
+    if (result.success) {
+      proxy.$modal.msgSuccess(t('page.tables.import_success'));
+      importDialogVisible.value = false;
+      // 重新加载数据
+      selectTableData(currentTable.value);
+    } else {
+      proxy.$modal.msgError(result.message || t('page.tables.import_failed'));
+    }
+  } catch (error) {
+    console.error('导入失败:', error);
+    proxy.$modal.msgError(error.message || t('page.tables.import_failed'));
+  } finally {
+    importLoading.value = false;
+  }
+}
 
 onMounted(() => {
   window.onresize = function windowResize() {
