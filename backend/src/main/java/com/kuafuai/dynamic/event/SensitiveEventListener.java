@@ -5,6 +5,8 @@ import com.google.common.eventbus.Subscribe;
 import com.kuafuai.common.cache.Cache;
 import com.kuafuai.common.event.EventVo;
 import com.kuafuai.common.util.StringUtils;
+import com.kuafuai.config.db.DatabaseRouterAspect;
+import com.kuafuai.config.db.DynamicDataSourceContextHolder;
 import com.kuafuai.system.DynamicInfoCache;
 import com.kuafuai.system.SystemBusinessService;
 import com.kuafuai.system.entity.AppInfo;
@@ -61,19 +63,28 @@ public class SensitiveEventListener {
         }
 
         String database = event.getAppId();
-        AppInfo appInfo = appInfoService.getAppInfoByAppId(database);
+        try {
 
-        if (appInfo == null) {
-            log.info("No app info found for appId: {}", database);
-            return;
-        }
+            String rdsKey = DatabaseRouterAspect.getOrAllocateRdsKey(database, "app");
+            DynamicDataSourceContextHolder.setDataSourceType(rdsKey);
 
-        String model = event.getModel();
+            AppInfo appInfo = appInfoService.getAppInfoByAppId(database);
 
-        if (StringUtils.equalsAnyIgnoreCase(model, "add", "update")) {
-            if (sensitiveConfig.isEnable()) {
-                process(event);
+            if (appInfo == null) {
+                log.info("No app info found for appId: {}", database);
+                return;
             }
+
+            String model = event.getModel();
+
+            if (StringUtils.equalsAnyIgnoreCase(model, "add", "update")) {
+                if (sensitiveConfig.isEnable()) {
+                    process(event);
+                }
+            }
+        } finally {
+            log.info("==========sensitive clear =========");
+            DynamicDataSourceContextHolder.clearDataSourceType();
         }
     }
 

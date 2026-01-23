@@ -6,6 +6,8 @@ import com.kuafuai.common.event.EventVo;
 import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.text.Convert;
 import com.kuafuai.common.util.StringUtils;
+import com.kuafuai.config.db.DatabaseRouterAspect;
+import com.kuafuai.config.db.DynamicDataSourceContextHolder;
 import com.kuafuai.login.domain.Login;
 import com.kuafuai.login.service.LoginColumnService;
 import com.kuafuai.login.service.LoginService;
@@ -57,25 +59,33 @@ public class LoginEventListener {
         String database = event.getAppId();
         String tableName = event.getTableName();
 
-        AppInfo appInfo = appInfoService.getAppInfoByAppId(database);
+        try {
+            String rdsKey = DatabaseRouterAspect.getOrAllocateRdsKey(database, "app");
+            DynamicDataSourceContextHolder.setDataSourceType(rdsKey);
 
-        if (appInfo == null) {
-            log.info("No app info found for appId: {}", database);
-            return;
-        }
+            AppInfo appInfo = appInfoService.getAppInfoByAppId(database);
 
-        if (!appInfo.getNeedAuth() || !StringUtils.equalsIgnoreCase(tableName, appInfo.getAuthTable())) {
-            log.info("app not need auth or table not same :{},{},{}", database, tableName, appInfo.getAuthTable());
-            return;
-        }
-
-        String model = event.getModel();
-
-        if (StringUtils.equalsIgnoreCase(model, "add")) {
-            Login login = convert(database, tableName, event.getData());
-            if (login != null) {
-                loginService.save(database, login);
+            if (appInfo == null) {
+                log.info("No app info found for appId: {}", database);
+                return;
             }
+
+            if (!appInfo.getNeedAuth() || !StringUtils.equalsIgnoreCase(tableName, appInfo.getAuthTable())) {
+                log.info("app not need auth or table not same :{},{},{}", database, tableName, appInfo.getAuthTable());
+                return;
+            }
+
+            String model = event.getModel();
+
+            if (StringUtils.equalsIgnoreCase(model, "add")) {
+                Login login = convert(database, tableName, event.getData());
+                if (login != null) {
+                    loginService.save(database, login);
+                }
+            }
+        } finally {
+            log.info("==========login clear =========");
+            DynamicDataSourceContextHolder.clearDataSourceType();
         }
     }
 
