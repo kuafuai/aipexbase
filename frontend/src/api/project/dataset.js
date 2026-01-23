@@ -110,6 +110,35 @@ export default {
             ElMessage.error('下载文件出现错误，请联系管理员！')
             downloadLoadingInstance.close();
         })
+    },
+    importData(tableName, file, appId) {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const url = appId
+            ? `/admin/${tableName}/import/${appId}`
+            : `/${tableName}/import`;
+
+        return request({
+            url,
+            method: "post",
+            data: formData,
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
+    },
+
+    downloadImportTemplate(tableName, appId) {
+        const url = appId
+            ? `/admin/${tableName}/downloadTemplate/${appId}`
+            : `/${tableName}/downloadTemplate`;
+
+        return request({
+            url,
+            method: "get",
+            responseType: 'blob'
+        });
     }
 
 }

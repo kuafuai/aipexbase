@@ -100,11 +100,23 @@ public class FileExportController {
     /**
      * 导出模板
      */
-    @GetMapping("/{tableName}/downloadTemplate")
-    public void downloadTemplate(@PathVariable String tableName, HttpServletResponse response) {
+    @GetMapping({
+            "/{tableName}/downloadTemplate",
+            "/admin/{tableName}/downloadTemplate/{appId}"
+    })
+    public void downloadTemplate(@PathVariable String tableName,
+                                 @PathVariable(required = false) String appId,
+                                 HttpServletResponse response) {
         try {
             String normalizedTableName = normalizeTableName(tableName);
-            List<AppTableColumnInfo> columnInfos = getTableColumnInfos(normalizedTableName);
+
+            if (StringUtils.isBlank(appId)) {
+                appId = GlobalAppIdFilter.getAppId();
+            }
+
+            AppTableInfo tableInfo = getTableInfoByTableName(normalizedTableName, appId);
+            List<AppTableColumnInfo> columnInfos =
+                    getColumnInfosByTableId(tableInfo.getId(), appId);
 
             Workbook workbook = excelProvider.downloadExcelTemplate(columnInfos);
             setExcelResponse(response, "模板.xlsx");
@@ -135,17 +147,33 @@ public class FileExportController {
     }
 
 
-    @PostMapping("/{tableName}/import")
-    public BaseResponse importExcel(@PathVariable String tableName, @RequestPart(name = "file") MultipartFile file) {
-        String normalizedTableName = normalizeTableName(tableName);
-        List<AppTableColumnInfo> columnInfos = getTableColumnInfos(normalizedTableName);
+    @PostMapping({
+            "/{tableName}/import",
+            "/admin/{tableName}/import/{appId}"
+    })
+    public BaseResponse importExcel(@PathVariable String tableName,
+                                    @PathVariable(required = false) String appId,
+                                    @RequestPart("file") MultipartFile file) {
 
-        String appId = GlobalAppIdFilter.getAppId();
+        String normalizedTableName = normalizeTableName(tableName);
+
+        if (StringUtils.isBlank(appId)) {
+            appId = GlobalAppIdFilter.getAppId();
+        }
+
+        String finalAppId = StringUtils.isBlank(appId)
+                ? GlobalAppIdFilter.getAppId()
+                : appId;
+        AppTableInfo tableInfo = getTableInfoByTableName(normalizedTableName, appId);
+        List<AppTableColumnInfo> columnInfos =
+                getColumnInfosByTableId(tableInfo.getId(), appId);
+
         excelProvider.importData(file, columnInfos,
-                data -> dynamicService.addBatch(appId, normalizedTableName, data));
+                data -> dynamicService.addBatch(finalAppId, normalizedTableName, data));
 
         return ResultUtils.success();
     }
+
 
     /**
      * 获取导出数据

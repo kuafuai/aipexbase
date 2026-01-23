@@ -337,7 +337,13 @@ export default {
             empty_text: "No Data",
             bool_true: "Yes",
             bool_false: "No",
-            operations: "Operations"
+            operations: "Operations",
+            import_data: "Import Data",
+            download_template: "Download Template",
+            select_excel_file: "Select Excel File",
+            import_success: "Import Successful",
+            import_failed: "Import Failed",
+            file_format_tip: "Supports Excel files in .xlsx, .xls format"
         },
         apikeys: {
             title: "API Key Management",

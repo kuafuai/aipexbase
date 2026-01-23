@@ -65,6 +65,26 @@ public class DynamicService {
     public BaseResponse addBatch(String database,
                                  String table,
                                  List<Map<String, Object>> conditions) {
+        AppInfo appInfo = Optional.ofNullable(DynamicAuthFilter.getAppInfo()).orElseGet(() -> systemBusinessService.getAppInfo(database));
+        if (appInfo.getNeedAuth() != null && appInfo.getNeedAuth()
+                && StringUtils.equalsAnyIgnoreCase(table, appInfo.getAuthTable())) {
+            // 如果开启认证且操作的是用户表，改为逐条插入而非批量导入
+            long successCount = 0;
+            for (Map<String, Object> condition : conditions) {
+                try {
+                    long id = dynamicInterfaceService.add(database, table, condition);
+                    condition.put("_system_primary_id", id);
+                    eventService.publishEvent(EventVo.builder().appId(database).model("add").tableName(table).data(condition).build());
+                    successCount++;
+                } catch (Exception e) {
+                    log.error("Error inserting record: {}", condition, e);
+                    // 可以选择继续处理其他记录或者抛出异常
+                    // 这里我们选择继续处理剩余记录
+                    continue;
+                }
+            }
+            return ResultUtils.success(successCount);
+        }
         long count = dynamicInterfaceService.addBatch(database, table, conditions);
         return ResultUtils.success(count);
     }
