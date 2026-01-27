@@ -28,12 +28,20 @@ public class FromClauseBuilder {
             for (AppTableColumnInfo col : resourceCols) {
                 String alias = col.getColumnName();
 
-                String joinSubquery = String.format(
-                        "(SELECT * FROM `%s`.static_resources " +
-                                "WHERE related_table_name='%s' " +
-                                "AND relate_table_column_name='%s') AS %s",
-                        database, table, alias, alias
-                );
+                String joinSubquery = "(SELECT " +
+                        "related_table_key" + ", " +
+                        "  JSON_ARRAYAGG(JSON_OBJECT( " +
+                        "'resource_id', " + "resource_id, " +
+                        "'resource_path', " + "resource_path, " +
+                        "'url', " + "resource_path, " +
+                        "'related_table_name', " + "related_table_name, " +
+                        "'relate_table_column_name', " + "relate_table_column_name, " +
+                        "'related_table_key', " + "related_table_key" +
+                        ")) AS " + alias +
+                        " FROM`" + database + "`.static_resources" +
+                        " WHERE related_table_name=" + "'" + table + "'" +
+                        " AND relate_table_column_name=" + "'" + alias + "'" +
+                        " GROUP BY related_table_key " + ") AS " + alias;
 
                 fromBuilder.append("\n LEFT JOIN ")
                         .append(joinSubquery)

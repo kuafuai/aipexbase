@@ -24,16 +24,6 @@ public class GroupByBuilder {
 
         Map<String, Object> conditions = ctx.getConditions();
 
-        List<AppTableColumnInfo> resourceCols = getResourceColumns(this.ctx.getColumns());
-        String database = this.ctx.getDatabase();
-        String table = this.ctx.getTable();
-
-        if (!resourceCols.isEmpty() && resourceCols.size() <= 2) {
-            SystemBusinessService service = SpringUtils.getBean(SystemBusinessService.class);
-            String pk = service.getAppTablePrimaryKey(database, table);
-            String resourceGroupBy = String.format("`%s`.%s", table, pk);
-            groups.add(resourceGroupBy);
-        }
 
         Object group = conditions.get("group_by");
         if (Objects.nonNull(group)) {

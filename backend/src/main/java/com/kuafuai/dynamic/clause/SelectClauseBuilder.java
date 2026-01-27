@@ -29,14 +29,7 @@ public class SelectClauseBuilder {
         if (!resourceCols.isEmpty() && resourceCols.size() <= 2) {
             for (AppTableColumnInfo col : resourceCols) {
                 String alias = col.getColumnName();
-                selectBuilder.append(", JSON_ARRAYAGG(JSON_OBJECT( ")
-                        .append("'resource_id', ").append(alias).append(".resource_id, ")
-                        .append("'resource_path', ").append(alias).append(".resource_path, ")
-                        .append("'url', ").append(alias).append(".resource_path, ")
-                        .append("'related_table_name', ").append(alias).append(".related_table_name, ")
-                        .append("'relate_table_column_name', ").append(alias).append(".relate_table_column_name, ")
-                        .append("'related_table_key', ").append(alias).append(".related_table_key")
-                        .append(")) AS ").append(alias);
+                selectBuilder.append(", ").append(alias).append(".").append(alias);
             }
         }
         return selectBuilder.toString();
