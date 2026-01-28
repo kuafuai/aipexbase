@@ -62,12 +62,6 @@
             <version>1.2.16</version>
         </dependency>
 
-        <dependency>
-            <groupId>org.json</groupId>
-            <artifactId>json</artifactId>
-            <version>20231013</version>
-        </dependency>
-
         <!--        mybatis-plus-->
         <dependency>
             <groupId>com.baomidou</groupId>
