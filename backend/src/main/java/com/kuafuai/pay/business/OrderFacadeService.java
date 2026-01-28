@@ -1,6 +1,7 @@
 package com.kuafuai.pay.business;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.base.CaseFormat;
 import com.kuafuai.common.domin.BaseResponse;
@@ -20,7 +21,9 @@ import org.apache.commons.lang3.ObjectUtils;
 import org.springframework.stereotype.Service;
 
 import javax.annotation.Resource;
+import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -131,8 +134,13 @@ public class OrderFacadeService {
         final LambdaQueryWrapper<Login> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Login::getRelevanceId, relevanceId);
         queryWrapper.eq(Login::getRelevanceTable, CaseFormat.LOWER_UNDERSCORE.to(CaseFormat.LOWER_CAMEL, relevanceTable));
-        final Login login = loginService.getOne(appId, queryWrapper);
+        Page<Login> loginPage = new Page<>(1,1);
+        loginService.page(appId, loginPage, queryWrapper);
+        Login login = loginPage.getRecords() == null || loginPage.getRecords().isEmpty() ? null : loginPage.getRecords().get(0);
 
+        if (login == null){
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "user does not exist");
+        }
 
         payLoginVo.setLoginId(login.getLoginId());
         payLoginVo.setWxOpenId(login.getWxOpenId());
