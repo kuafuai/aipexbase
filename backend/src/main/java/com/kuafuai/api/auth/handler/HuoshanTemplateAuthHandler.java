@@ -1,7 +1,6 @@
 package com.kuafuai.api.auth.handler;
 
 import com.google.gson.Gson;
-import com.google.gson.JsonObject;
 import com.google.gson.reflect.TypeToken;
 import com.kuafuai.api.auth.AuthHandler;
 import com.kuafuai.api.auth.entity.HuoshanSignResult;
@@ -10,7 +9,6 @@ import com.kuafuai.api.spec.ApiDefinition;
 import com.kuafuai.system.entity.ApiMarket;
 import com.kuafuai.system.entity.DynamicApiSetting;
 import lombok.extern.slf4j.Slf4j;
-import org.json.JSONObject;
 import org.springframework.stereotype.Component;
 
 import java.lang.reflect.Type;
@@ -39,24 +37,33 @@ public class HuoshanTemplateAuthHandler implements AuthHandler {
             String service = (String) config.getOrDefault("service", "");
             String ip = params.get("ip").toString();
             params.remove("ip");
-            HashMap<String, Object> bodyMap = new HashMap<>();
-            HashMap<String, Object> subMap = new HashMap<>();
-            subMap.put("ResourceList", params.get("resourceList"));
-            subMap.put("TemplateId", params.get("templateId").toString());
-            bodyMap.put("ServerId", params.get("serverId"));
-            String payloadJson = gson.toJson(subMap);
+            String body = "";
+            String payloadJson = "";
+            if ("QueryAiTemplateTaskResult".equals( action)){
+                body = gson.toJson(params);
+            }else {
+                HashMap<String, Object> bodyMap = new HashMap<>();
+                HashMap<String, Object> subMap = new HashMap<>();
+                subMap.put("ResourceList", params.get("resourceList"));
+                subMap.put("TemplateId", params.get("templateId").toString());
+                bodyMap.put("ServerId", params.get("serverId"));
+                payloadJson =  gson.toJson(subMap);
+                bodyMap.put("PayloadJson", payloadJson);
+                body = gson.toJson(bodyMap);
 
-            bodyMap.put("PayloadJson", payloadJson);
-            String body = gson.toJson(bodyMap);
-            System.out.println("body = " + body);
+            }
             HuoshanSignResult huoshanSignResult = HuoshanTemplateSign.signResult("POST", queryMap, body, action, version, service, accessKey, secretKey);
             String xDate = huoshanSignResult.getXDate();
             String xContentSha256 = huoshanSignResult.getXContentSha256();
             String authorization = huoshanSignResult.getAuthorization();
+
+            String payloadJsonStr = gson.toJson(payloadJson);
+            payloadJsonStr = payloadJsonStr.substring(1, payloadJsonStr.length() - 1);
+
             params.put("xDate", xDate);
             params.put("xContentSha256", xContentSha256);
             params.put("authorization", authorization);
-            params.put("payloadJson", payloadJson);
+            params.put("payloadJson", payloadJsonStr);
             params.put("ip", ip);
 
         }

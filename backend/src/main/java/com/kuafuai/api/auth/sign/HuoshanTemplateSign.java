@@ -76,7 +76,7 @@ public class HuoshanTemplateSign {
                     headerList.add(h + ":" + payload);
                     break;
                 case "content-type":
-                    headerList.add(h + ":application/json");
+                    headerList.add(h + ":application/json; charset=utf-8");
                     break;
             }
         }
