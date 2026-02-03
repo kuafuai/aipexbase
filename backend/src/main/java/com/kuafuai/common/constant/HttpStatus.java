@@ -67,6 +67,11 @@ public class HttpStatus {
     public static final int BAD_METHOD = 405;
 
     /**
+     * 请求过多
+     */
+    public static final int TOO_MANY_REQUESTS = 429;
+
+    /**
      * 资源冲突，或者资源被锁
      */
     public static final int CONFLICT = 409;
