@@ -40,3 +40,5 @@ build/
 ### Mac OS ###
 .DS_Store
 .idea
+*.json
+*.md

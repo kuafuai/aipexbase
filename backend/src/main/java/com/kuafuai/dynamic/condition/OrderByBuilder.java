@@ -1,12 +1,16 @@
 package com.kuafuai.dynamic.condition;
 
+import com.kuafuai.common.util.SpringUtils;
 import com.kuafuai.dynamic.context.TableContext;
+import com.kuafuai.system.SystemBusinessService;
 import com.kuafuai.system.entity.AppTableColumnInfo;
 
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static com.kuafuai.dynamic.helper.DynamicSelectStatement.getResourceColumns;
 
 public class OrderByBuilder {
     private final TableContext ctx;
@@ -21,6 +25,15 @@ public class OrderByBuilder {
         Map<String, Object> conditions = ctx.getConditions();
         Object order = conditions.get("order_by");
         if (order == null) {
+            List<AppTableColumnInfo> resourceCols = getResourceColumns(this.ctx.getColumns());
+            if (!resourceCols.isEmpty() && resourceCols.size() <= 2) {
+                String database = this.ctx.getDatabase();
+                String table = this.ctx.getTable();
+
+                SystemBusinessService service = SpringUtils.getBean(SystemBusinessService.class);
+                String pk = service.getAppTablePrimaryKey(database, table);
+                return String.format("`%s`.%s", table, pk) + " " + DEFAULT_DIRECTION;
+            }
             return "";
         }
 
@@ -68,7 +81,7 @@ public class OrderByBuilder {
 
         String direction = directionObj == null ? DEFAULT_DIRECTION : String.valueOf(directionObj).toUpperCase();
         direction = validateDirection(direction);
-        return "`"+field + "` " + direction;
+        return "`" + field + "` " + direction;
     }
 
 
