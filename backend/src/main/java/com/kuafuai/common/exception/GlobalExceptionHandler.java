@@ -49,6 +49,12 @@ public class GlobalExceptionHandler {
         return ResultUtils.error(e.getCode(), e.getMessage());
     }
 
+    @ExceptionHandler(RateLimitException.class)
+    public BaseResponse<?> rateLimitExceptionHandler(RateLimitException e) {
+        // 可以添加监控指标
+        return ResultUtils.error(e.getCode(), e.getMessage());
+    }
+
     @ExceptionHandler(MissingServletRequestParameterException.class)
     public BaseResponse<?> handleMissingParams(MissingServletRequestParameterException ex) {
         String message = I18nUtils.get("error.param.required", ex.getParameterName());

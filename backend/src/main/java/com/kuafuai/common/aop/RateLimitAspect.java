@@ -1,8 +1,7 @@
 package com.kuafuai.common.aop;
 
 import com.kuafuai.common.annotation.RateLimit;
-import com.kuafuai.common.constant.HttpStatus;
-import com.kuafuai.common.exception.BusinessException;
+import com.kuafuai.common.exception.RateLimitException;
 import com.kuafuai.common.service.LocalAppRateLimitService;
 import com.kuafuai.common.util.ServletUtils;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
@@ -63,7 +62,7 @@ public class RateLimitAspect {
 
         if (!allowed) {
             // 限流触发
-            throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS, "error.rate_limit.too_many_requests");
+            throw new RateLimitException();
         }
 
         // 限流检查通过，执行目标方法
