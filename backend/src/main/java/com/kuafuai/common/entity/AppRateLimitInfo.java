@@ -3,61 +3,86 @@ package com.kuafuai.common.entity;
 import com.google.common.util.concurrent.RateLimiter;
 import lombok.Data;
 
+import java.util.concurrent.ConcurrentLinkedDeque;
+
 /**
- * 应用限流统计信息 - 基于Guava RateLimiter实现
+ * 应用限流统计信息 - 混合限流实现
+ * 秒级：使用 Guava RateLimiter（令牌桶算法）
+ * 分钟级：使用滑动窗口计数器
  */
 @Data
 public class AppRateLimitInfo {
-    
-    /** 应用ID */
+
+    /**
+     * 应用ID
+     */
     private String appId;
-    
-    /** IP地址 */
+
+    /**
+     * IP地址
+     */
     private String ipAddress;
-    
-    /** 秒级限流器 (每秒20个请求) */
+
+    /**
+     * 秒级限流器 (每秒20个请求) - 令牌桶算法
+     */
     private final RateLimiter secondRateLimiter;
-    
-    /** 分钟级限流器 (每分钟50个请求) */
-    private final RateLimiter minuteRateLimiter;
-    
-    /** 上次尝试获取许可的时间戳（毫秒）*/
+
+    /**
+     * 分钟级请求时间戳队列 - 滑动窗口
+     */
+    private final ConcurrentLinkedDeque<Long> minuteRequestTimestamps;
+
+    /**
+     * 每分钟允许的最大请求数
+     */
+    private final int maxRequestsPerMinute;
+
+    /**
+     * 上次尝试获取许可的时间戳（毫秒）
+     */
     private volatile long lastAttemptTime;
-    
+
     public AppRateLimitInfo(String appId, String ipAddress, double permitsPerSecond, double permitsPerMinute) {
         this.appId = appId;
         this.ipAddress = ipAddress;
-        // 创建两个独立的RateLimiter实例
+        // 秒级限流：使用令牌桶算法
         this.secondRateLimiter = RateLimiter.create(permitsPerSecond);
-        this.minuteRateLimiter = RateLimiter.create(permitsPerMinute / 60.0); // 转换为每秒的速率
+        // 分钟级限流：使用滑动窗口计数器
+        this.minuteRequestTimestamps = new ConcurrentLinkedDeque<>();
+        this.maxRequestsPerMinute = (int) permitsPerMinute;
         this.lastAttemptTime = System.currentTimeMillis();
     }
-    
+
     /**
      * 尝试获取限流许可
+     *
      * @return true表示允许请求，false表示被限流
      */
     public boolean tryAcquire() {
         this.lastAttemptTime = System.currentTimeMillis();
-        
-        // 同时检查秒级和分钟级限流
+        long now = this.lastAttemptTime;
+
+        // 1. 检查秒级限流（令牌桶）
         boolean secondAllowed = secondRateLimiter.tryAcquire();
-        boolean minuteAllowed = minuteRateLimiter.tryAcquire();
-        
-        return secondAllowed && minuteAllowed;
-    }
-    
-    /**
-     * 获取当前估计的请求速率
-     * 注意：RateLimiter不提供精确的当前请求数统计，这里返回配置的速率作为参考
-     */
-    public int getCurrentSecondEstimate() {
-        // 返回配置的速率作为估计值
-        return (int) Math.round(secondRateLimiter.getRate());
-    }
-    
-    public int getCurrentMinuteEstimate() {
-        // 返回配置的分钟速率作为估计值
-        return (int) Math.round(minuteRateLimiter.getRate() * 60);
+        if (!secondAllowed) {
+            return false;
+        }
+
+        // 2. 检查分钟级限流（滑动窗口）
+        // 清理60秒前的旧请求记录
+        long oneMinuteAgo = now - 60_000;
+        while (!minuteRequestTimestamps.isEmpty() &&
+                minuteRequestTimestamps.peekFirst() < oneMinuteAgo) {
+            minuteRequestTimestamps.pollFirst();
+        }
+
+        // 检查当前窗口内的请求数
+        int currentMinuteRequests = minuteRequestTimestamps.size();
+        if (currentMinuteRequests >= maxRequestsPerMinute) {
+            return false;
+        }
+
+        return minuteRequestTimestamps.offerLast(now);
     }
 }
