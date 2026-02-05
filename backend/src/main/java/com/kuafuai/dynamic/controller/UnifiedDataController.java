@@ -73,14 +73,11 @@ public class UnifiedDataController {
             LocalAppRateLimitService.RateLimitStatus status = rateLimitService.getStatus(appId, clientIp);
             String message = I18nUtils.getOrDefault("error.rate_limit.too_many_requests", 
                 "请求过于频繁，请稍后再试");
-            message += String.format(" (当前: %d/%d 请求/秒, %d/%d 请求/分钟)", 
-                status.getCurrentSecondRequests(), 20,
-                status.getCurrentMinuteRequests(), 50);
+            message += String.format(" (限流阈值: %d 请求/秒, %d 请求/分钟)", 
+                20, 50);
             
-            log.warn("应用 {} IP {} 触发限流: 秒级 {}/{}, 分钟级 {}/{}", 
-                appId, clientIp,
-                status.getCurrentSecondRequests(), 20,
-                status.getCurrentMinuteRequests(), 50);
+            log.warn("应用 {} IP {} 触发限流: 当前请求被RateLimiter拒绝", 
+                appId, clientIp);
             
             throw new BusinessException(HttpStatus.TOO_MANY_REQUESTS, message);
         }

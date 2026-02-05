@@ -1,10 +1,10 @@
 package com.kuafuai.common.entity;
 
+import com.google.common.util.concurrent.RateLimiter;
 import lombok.Data;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * 应用限流统计信息
+ * 应用限流统计信息 - 基于Guava RateLimiter实现
  */
 @Data
 public class AppRateLimitInfo {
@@ -15,69 +15,49 @@ public class AppRateLimitInfo {
     /** IP地址 */
     private String ipAddress;
     
-    /** 秒级计数器 */
-    private final AtomicInteger secondCounter = new AtomicInteger(0);
+    /** 秒级限流器 (每秒20个请求) */
+    private final RateLimiter secondRateLimiter;
     
-    /** 分钟级计数器 */
-    private final AtomicInteger minuteCounter = new AtomicInteger(0);
+    /** 分钟级限流器 (每分钟50个请求) */
+    private final RateLimiter minuteRateLimiter;
     
-    /** 上次重置秒计数器的时间戳（秒） */
-    private volatile long lastSecondResetTime;
+    /** 上次尝试获取许可的时间戳（毫秒）*/
+    private volatile long lastAttemptTime;
     
-    /** 上次重置分钟计数器的时间戳（秒） */
-    private volatile long lastMinuteResetTime;
-    
-    /** 当前秒的起始时间戳 */
-    private volatile long currentSecondStart;
-    
-    /** 当前分钟的起始时间戳 */
-    private volatile long currentMinuteStart;
-    
-    public AppRateLimitInfo(String appId, String ipAddress) {
+    public AppRateLimitInfo(String appId, String ipAddress, double permitsPerSecond, double permitsPerMinute) {
         this.appId = appId;
         this.ipAddress = ipAddress;
-        long now = System.currentTimeMillis() / 1000;
-        this.lastSecondResetTime = now;
-        this.lastMinuteResetTime = now;
-        this.currentSecondStart = now;
-        this.currentMinuteStart = now;
+        // 创建两个独立的RateLimiter实例
+        this.secondRateLimiter = RateLimiter.create(permitsPerSecond);
+        this.minuteRateLimiter = RateLimiter.create(permitsPerMinute / 60.0); // 转换为每秒的速率
+        this.lastAttemptTime = System.currentTimeMillis();
     }
     
     /**
-     * 重置秒计数器
+     * 尝试获取限流许可
+     * @return true表示允许请求，false表示被限流
      */
-    public void resetSecondCounter() {
-        secondCounter.set(0);
-        lastSecondResetTime = System.currentTimeMillis() / 1000;
+    public boolean tryAcquire() {
+        this.lastAttemptTime = System.currentTimeMillis();
+        
+        // 同时检查秒级和分钟级限流
+        boolean secondAllowed = secondRateLimiter.tryAcquire();
+        boolean minuteAllowed = minuteRateLimiter.tryAcquire();
+        
+        return secondAllowed && minuteAllowed;
     }
     
     /**
-     * 重置分钟计数器
+     * 获取当前估计的请求速率
+     * 注意：RateLimiter不提供精确的当前请求数统计，这里返回配置的速率作为参考
      */
-    public void resetMinuteCounter() {
-        minuteCounter.set(0);
-        lastMinuteResetTime = System.currentTimeMillis() / 1000;
+    public int getCurrentSecondEstimate() {
+        // 返回配置的速率作为估计值
+        return (int) Math.round(secondRateLimiter.getRate());
     }
     
-    /**
-     * 增加计数
-     */
-    public void increment() {
-        secondCounter.incrementAndGet();
-        minuteCounter.incrementAndGet();
-    }
-    
-    /**
-     * 获取当前秒计数
-     */
-    public int getSecondCount() {
-        return secondCounter.get();
-    }
-    
-    /**
-     * 获取当前分钟计数
-     */
-    public int getMinuteCount() {
-        return minuteCounter.get();
+    public int getCurrentMinuteEstimate() {
+        // 返回配置的分钟速率作为估计值
+        return (int) Math.round(minuteRateLimiter.getRate() * 60);
     }
 }

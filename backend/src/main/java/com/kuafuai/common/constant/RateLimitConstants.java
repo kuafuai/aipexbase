@@ -10,13 +10,16 @@ public class RateLimitConstants {
      */
     public static final class Config {
         /** 每秒请求数限制 */
-        public static final int REQUESTS_PER_SECOND = 20;
+        public static final double REQUESTS_PER_SECOND = 20.0;
         
         /** 每分钟请求数限制 */
-        public static final int REQUESTS_PER_MINUTE = 50;
+        public static final double REQUESTS_PER_MINUTE = 50.0;
         
-        /** 时间窗口大小（秒） */
-        public static final int TIME_WINDOW_SECONDS = 60;
+        /** 数据清理间隔时间（秒） */
+        public static final int CLEANUP_INTERVAL_SECONDS = 60;
+        
+        /** 数据过期时间（秒）- 2分钟未使用则清理 */
+        public static final long EXPIRATION_TIME_SECONDS = 120;
     }
     
     /**
