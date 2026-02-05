@@ -18,7 +18,7 @@ import java.util.concurrent.TimeUnit;
 @Service
 public class LocalAppRateLimitService {
     
-    /** 应用限流信息缓存 */
+    /** 应用限流信息缓存 - 使用 appId:ipAddress 作为键 */
     private final ConcurrentHashMap<String, AppRateLimitInfo> rateLimitCache = new ConcurrentHashMap<>();
     
     /** 定时清理过期数据的调度器 */
@@ -35,16 +35,24 @@ public class LocalAppRateLimitService {
     /**
      * 检查并更新应用的请求次数
      * @param appId 应用ID
+     * @param ipAddress IP地址
      * @return true表示允许请求，false表示被限流
      */
-    public boolean tryAcquire(String appId) {
+    public boolean tryAcquire(String appId, String ipAddress) {
         if (appId == null || appId.trim().isEmpty()) {
             log.warn("无效的应用ID: {}", appId);
             return false;
         }
         
-        AppRateLimitInfo info = rateLimitCache.computeIfAbsent(appId, AppRateLimitInfo::new);
-        log.info("应用 {} 限流检查 - 缓存大小: {}", appId, rateLimitCache.size());
+        if (ipAddress == null || ipAddress.trim().isEmpty()) {
+            log.warn("无效的IP地址: {}", ipAddress);
+            return false;
+        }
+        
+        // 使用 appId:ipAddress 作为唯一键
+        String cacheKey = appId + ":" + ipAddress;
+        AppRateLimitInfo info = rateLimitCache.computeIfAbsent(cacheKey, k -> new AppRateLimitInfo(appId, ipAddress));
+        log.info("应用 {} IP {} 限流检查 - 缓存大小: {}", appId, ipAddress, rateLimitCache.size());
         return checkAndIncrement(info);
     }
     
@@ -98,9 +106,12 @@ public class LocalAppRateLimitService {
     
     /**
      * 获取应用当前的限流状态
+     * @param appId 应用ID
+     * @param ipAddress IP地址
      */
-    public RateLimitStatus getStatus(String appId) {
-        AppRateLimitInfo info = rateLimitCache.get(appId);
+    public RateLimitStatus getStatus(String appId, String ipAddress) {
+        String cacheKey = appId + ":" + ipAddress;
+        AppRateLimitInfo info = rateLimitCache.get(cacheKey);
         if (info == null) {
             return new RateLimitStatus(0, 0, 
                 RateLimitConstants.Config.REQUESTS_PER_SECOND, 

@@ -2,7 +2,6 @@ package com.kuafuai.common.entity;
 
 import lombok.Data;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 /**
  * 应用限流统计信息
@@ -12,6 +11,9 @@ public class AppRateLimitInfo {
     
     /** 应用ID */
     private String appId;
+    
+    /** IP地址 */
+    private String ipAddress;
     
     /** 秒级计数器 */
     private final AtomicInteger secondCounter = new AtomicInteger(0);
@@ -31,8 +33,9 @@ public class AppRateLimitInfo {
     /** 当前分钟的起始时间戳 */
     private volatile long currentMinuteStart;
     
-    public AppRateLimitInfo(String appId) {
+    public AppRateLimitInfo(String appId, String ipAddress) {
         this.appId = appId;
+        this.ipAddress = ipAddress;
         long now = System.currentTimeMillis() / 1000;
         this.lastSecondResetTime = now;
         this.lastMinuteResetTime = now;
