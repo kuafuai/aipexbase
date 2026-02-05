@@ -43,12 +43,11 @@ public class DruidProperties {
     public DruidDataSource dataSource(DruidDataSource datasource) {
         /** 配置初始化大小、最小、最大 */
         datasource.setInitialSize(initialSize);
-        datasource.setMaxActive(maxActive);
         datasource.setMinIdle(minIdle);
+        datasource.setMaxActive(maxActive);
 
         /** 配置获取连接等待超时的时间 */
         datasource.setMaxWait(maxWait);
-
 
         /** 配置间隔多久才进行一次检测，检测需要关闭的空闲连接，单位是毫秒 */
         datasource.setTimeBetweenEvictionRunsMillis(timeBetweenEvictionRunsMillis);
@@ -63,6 +62,11 @@ public class DruidProperties {
         datasource.setTestOnBorrow(testOnBorrow);
         /** 归还连接时执行validationQuery检测连接是否有效，做了这个配置会降低性能。 */
         datasource.setTestOnReturn(testOnReturn);
+
+        datasource.setKeepAlive(true);
+        datasource.setValidationQueryTimeout(5);
+        datasource.setValidationQuery("SELECT 1 FROM DUAL");
+
         return datasource;
     }
 }
