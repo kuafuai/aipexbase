@@ -67,6 +67,32 @@ public class LocalAppRateLimitService {
         }
     }
 
+    /**
+     * 检查是否处于限流状态（不消耗令牌，仅查询）
+     *
+     * @param appId     应用ID
+     * @param ipAddress IP地址
+     * @return true表示允许请求，false表示当前处于限流状态
+     */
+    public boolean isAllowed(String appId, String ipAddress) {
+        String cacheKey = buildCacheKey(appId, ipAddress);
+
+        try {
+            // 检查缓存中是否存在该限流信息
+            AppRateLimitInfo info = rateLimitCache.getIfPresent(cacheKey);
+            if (info == null) {
+                // 没有限流记录，允许通过
+                return true;
+            }
+
+            // 检查是否能获取到令牌（不实际消耗）
+            return info.canAcquire();
+        } catch (Exception e) {
+            log.error("限流状态查询异常 - 应用: {}, IP: {}", appId, ipAddress, e);
+            return true;
+        }
+    }
+
 
     /**
      * 构建缓存键

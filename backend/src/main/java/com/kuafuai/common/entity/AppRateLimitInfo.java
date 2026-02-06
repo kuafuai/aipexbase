@@ -85,4 +85,26 @@ public class AppRateLimitInfo {
 
         return minuteRequestTimestamps.offerLast(now);
     }
+
+    /**
+     * 检查是否能获取到令牌（不实际消耗令牌，仅查询状态）
+     * 只检查分钟级限流，避免消耗秒级令牌
+     *
+     * @return true表示允许请求，false表示当前处于限流状态
+     */
+    public boolean canAcquire() {
+        long now = System.currentTimeMillis();
+
+        // 检查分钟级限流（滑动窗口）
+        // 清理60秒前的旧请求记录
+        long oneMinuteAgo = now - 60_000;
+        while (!minuteRequestTimestamps.isEmpty() &&
+                minuteRequestTimestamps.peekFirst() < oneMinuteAgo) {
+            minuteRequestTimestamps.pollFirst();
+        }
+
+        // 检查当前窗口内的请求数
+        int currentMinuteRequests = minuteRequestTimestamps.size();
+        return currentMinuteRequests < maxRequestsPerMinute;
+    }
 }

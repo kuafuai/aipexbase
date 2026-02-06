@@ -53,6 +53,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .anyRequest().permitAll()
                 .and()
                 .logout().logoutUrl("/logout").logoutSuccessHandler(logoutSuccessHandler).and()
+                .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new GlobalAppIdFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new DynamicAuthFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationTokenFilter(), UsernamePasswordAuthenticationFilter.class)
