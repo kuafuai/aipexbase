@@ -39,9 +39,15 @@ public class DataSourceConfig {
     public LettuceConnectionFactory redisConnectionFactory() {
 
         ClientResources clientResources = DefaultClientResources.create();
-        LettuceClientConfiguration clientConfig = LettuceClientConfiguration.builder()
-                .clientResources(clientResources)
-                .build();
+        LettuceClientConfiguration.LettuceClientConfigurationBuilder clientConfigBuilder = LettuceClientConfiguration.builder()
+                .clientResources(clientResources);
+
+        if (dataRedisProperties.getSsl() != null && dataRedisProperties.getSsl()) {
+            clientConfigBuilder
+                    .useSsl()
+                    .disablePeerVerification();
+        }
+        LettuceClientConfiguration clientConfig = clientConfigBuilder.build();
 
         RedisStandaloneConfiguration config = new RedisStandaloneConfiguration();
         config.setHostName(dataRedisProperties.getHost());

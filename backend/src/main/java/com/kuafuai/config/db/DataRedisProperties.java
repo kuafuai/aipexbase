@@ -22,4 +22,7 @@ public class DataRedisProperties {
 
     @Value("${spring.redis.port}")
     private Integer port;
+
+    @Value("${spring.redis.ssl}")
+    private Boolean ssl;
 }
