@@ -57,10 +57,14 @@ public class DataSourceConfig {
         } else {
             config.setPort(6379);
         }
-        if (dataRedisProperties.getDatabase() != null) {
-            config.setDatabase(dataRedisProperties.getDatabase());
+        if (dataRedisProperties.getSsl() != null && dataRedisProperties.getSsl()) {
+            log.info("========================redis:{}============== do not set database", dataRedisProperties);
         } else {
-            config.setDatabase(0);
+            if (dataRedisProperties.getDatabase() != null) {
+                config.setDatabase(dataRedisProperties.getDatabase());
+            } else {
+                config.setDatabase(0);
+            }
         }
 
         if (StringUtils.isNotEmpty(dataRedisProperties.getPassword())) {
