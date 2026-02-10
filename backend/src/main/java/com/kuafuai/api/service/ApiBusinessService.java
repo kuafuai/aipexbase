@@ -123,16 +123,16 @@ public class ApiBusinessService {
      */
     @Transactional(rollbackFor = Exception.class)
     public String callApiWithBilling(String appId, DynamicApiSetting setting, Map<String, Object> params) {
+        // 准备API配置
+        ApiMarket apiMarket = getApiMarket(setting.getMarketId());
+        mergeMarketSetting(apiMarket, setting);
+
         // 1. 获取定价信息
         ApiPricing pricing = getApiPricing(setting.getMarketId());
         if (pricing == null) {
             log.warn("API未配置定价信息,跳过计费, appId: {}, apiKey: {}", appId, setting.getKeyName());
-            return callHttpApi(setting, params, null);
+            return callHttpApi(setting, params, apiMarket);
         }
-
-        // 准备API配置
-        ApiMarket apiMarket = getApiMarket(setting.getMarketId());
-        mergeMarketSetting(apiMarket, setting);
 
         Integer billingModel = pricing.getPricingModel();
         BigDecimal unitPrice = BigDecimal.valueOf(pricing.getUnitPrice());
@@ -313,7 +313,7 @@ public class ApiBusinessService {
     private void recordBillingLog(String appId, DynamicApiSetting setting, Integer billingModel, BillingResult result) {
         // 获取API市场信息以检查isBilling字段
         ApiMarket apiMarket = getApiMarket(setting.getMarketId());
-        
+
         // 如果apiMarke不为null并且isBilling字段为0，则记录计费日志
         if (apiMarket != null && apiMarket.getIsBilling().equals(0)) {
             apiBillingService.recordBilling(appId, setting.getMarketId(), setting.getId(), billingModel, result.getQuantity(), result.getTotalAmount());
