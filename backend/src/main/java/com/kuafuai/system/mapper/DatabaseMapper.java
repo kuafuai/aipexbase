@@ -16,4 +16,6 @@ public interface DatabaseMapper {
     int createDDL(@Param("sql") String sql);
 
     List<DatabaseStructureVO.ColumnStructureVO> getTableColumns(@Param("appId") String appId, @Param("tableName") String tableName);
+
+    List<String> getTableNames(@Param("appId") String appId);
 }

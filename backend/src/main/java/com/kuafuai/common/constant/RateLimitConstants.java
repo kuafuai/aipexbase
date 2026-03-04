@@ -12,12 +12,12 @@ public class RateLimitConstants {
         /**
          * 每秒请求数限制
          */
-        public static final double REQUESTS_PER_SECOND = 50.0;
+        public static final double REQUESTS_PER_SECOND = 100.0;
 
         /**
          * 每分钟请求数限制
          */
-        public static final double REQUESTS_PER_MINUTE = 150.0;
+        public static final double REQUESTS_PER_MINUTE = 600.0;
 
         /**
          * 数据清理间隔时间（秒）

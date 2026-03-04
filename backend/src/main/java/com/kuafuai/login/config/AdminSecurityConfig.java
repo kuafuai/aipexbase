@@ -36,7 +36,7 @@ public class AdminSecurityConfig extends WebSecurityConfigurerAdapter {
                 .exceptionHandling().authenticationEntryPoint(unauthorizedHandler).and()
                 .sessionManagement().sessionCreationPolicy(SessionCreationPolicy.STATELESS).and()
                 .authorizeRequests()
-                .antMatchers("/admin/login", "/admin/register", "/admin/app", "/admin/app/**").permitAll()
+                .antMatchers("/admin/login", "/admin/register", "/admin/app", "/admin/app/**", "/admin/permission-strategy/**").permitAll()
                 .anyRequest().authenticated()
                 .and()
                 .addFilterBefore(new AdminAuthFilter(), UsernamePasswordAuthenticationFilter.class);

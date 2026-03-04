@@ -346,6 +346,14 @@ public class DynamicInterfaceService {
                 .collect(Collectors.toList());
 
         if (!quoteColumns.isEmpty()) {
+
+            if (list.size() > 10) {
+                // todo 后续优化
+                // 如果超过 10 条 , 不处理 关联表查询
+                log.info("======================:{}:{}:{}==========================", database, table, list.size());
+                return;
+            }
+
             for (AppTableColumnInfo appTableColumnInfo : quoteColumns) {
                 Long columnId = appTableColumnInfo.getId();
 
