@@ -3,6 +3,14 @@
     <property name="log.path" value="./logs"/>
     <property name="log.pattern" value="%d{HH:mm:ss.SSS} [%thread] %-5level %logger{20} - [%method,%line] - %msg%n"/>
 
+    <appender name="console" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <pattern>
+                %d{HH:mm:ss.SSS} %highlight(%-5level) %cyan(%logger{20}) - %msg%n
+            </pattern>
+        </encoder>
+    </appender>
+
     <appender name="file_info" class="ch.qos.logback.core.rolling.RollingFileAppender">
         <file>${log.path}/sys-info.log</file>
         <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
@@ -38,6 +46,7 @@
     <logger name="org.springframework.boot.autoconfigure" level="INFO"/>
 
     <root level="INFO">
+        <appender-ref ref="console"/>
         <appender-ref ref="file_info"/>
         <appender-ref ref="file_error"/>
     </root>
