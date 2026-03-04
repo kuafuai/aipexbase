@@ -63,7 +63,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RuntimeException.class)
     public BaseResponse<?> runtimeExceptionHandler(RuntimeException e) {
-        log.error("===={}====", e.getMessage());
+        log.error("===={}====", e.getMessage(), e);
         Throwable ex = e;
         while (ex != null) {
             log.warn("Cause: {}", ex.getClass().getName());
