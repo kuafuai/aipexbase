@@ -78,7 +78,6 @@ public class DynamicAuthFilter extends OncePerRequestFilter {
 
         // 需要APP_ID,不要验证，直接放行
         if (isUrlMatched(WHITE_URLS, requestUri)) {
-            log.info("白名单路径: {}, 跳过认证", requestUri);
             proceedWithAppInfo(filterChain, request, response, appInfo);
             return;
         }

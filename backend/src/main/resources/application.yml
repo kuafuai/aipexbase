@@ -64,11 +64,15 @@ logging:
         boot:
           autoconfigure:
             logging: info
-        security: debug
+        security: ${LOG_LEVEL:info}
     com:
       kuafuai:
+        common: ${LOG_LEVEL:info}
+        config: ${LOG_LEVEL:info}
+        dynamic: ${LOG_LEVEL:info}
+        system: ${LOG_LEVEL:info}
         manage:
-          mcp: debug
+          mcp: ${LOG_LEVEL:info}
 
 token:
   expireTime: 43200

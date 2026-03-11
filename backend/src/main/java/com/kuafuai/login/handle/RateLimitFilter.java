@@ -34,6 +34,7 @@ public class RateLimitFilter extends OncePerRequestFilter {
         String rateLimitKey = StringUtils.isNotEmpty(appId) ? appId : apiKey;
         LocalAppRateLimitService rateLimitService = SpringUtils.getBean(LocalAppRateLimitService.class);
         boolean allowed = rateLimitService.isAllowed(rateLimitKey, clientIp);
+        log.info("========触发限流CHECK======{},{},{}", rateLimitKey, clientIp, allowed);
         if (!allowed) {
             log.info("================触发限流============{}:{}", rateLimitKey, clientIp);
             writeRateLimitResponse(httpServletResponse);

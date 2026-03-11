@@ -2,6 +2,7 @@ package com.kuafuai.common.entity;
 
 import com.google.common.util.concurrent.RateLimiter;
 import lombok.Data;
+import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
 
@@ -11,6 +12,7 @@ import java.util.concurrent.ConcurrentLinkedDeque;
  * 分钟级：使用滑动窗口计数器
  */
 @Data
+@Slf4j
 public class AppRateLimitInfo {
 
     /**
@@ -52,6 +54,7 @@ public class AppRateLimitInfo {
         this.minuteRequestTimestamps = new ConcurrentLinkedDeque<>();
         this.maxRequestsPerMinute = (int) permitsPerMinute;
         this.lastAttemptTime = System.currentTimeMillis();
+        log.info("限流:{},{}====={},{}====", appId, ipAddress, permitsPerSecond, permitsPerMinute);
     }
 
     /**
@@ -65,6 +68,7 @@ public class AppRateLimitInfo {
 
         // 1. 检查秒级限流（令牌桶）
         boolean secondAllowed = secondRateLimiter.tryAcquire();
+        log.info("限流:{}:{}====秒级限流", appId, ipAddress);
         if (!secondAllowed) {
             return false;
         }
@@ -79,6 +83,8 @@ public class AppRateLimitInfo {
 
         // 检查当前窗口内的请求数
         int currentMinuteRequests = minuteRequestTimestamps.size();
+
+        log.info("限流:{}:{}====分钟级限流：{}", appId, ipAddress, currentMinuteRequests);
         if (currentMinuteRequests >= maxRequestsPerMinute) {
             return false;
         }

@@ -20,7 +20,7 @@ public class GeneralTableNameHandler implements TableNameHandler {
     @Override
     public String dynamicTableName(String sql, String tableName) {
         final String database = DatabaseThreadLocal.getDatabase();
-        log.info("GeneralTableNameHandler:{}===========>tableName:{}", database, tableName);
+        log.debug("GeneralTableNameHandler:{}===========>tableName:{}", database, tableName);
 
         if (StringUtils.isEmpty(database)) {
             return tableName;

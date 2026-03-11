@@ -32,7 +32,7 @@ public class SensitiveEventListener {
     @PostConstruct
     public void init() {
         //注册订阅者
-        eventBus.register(this);
+        // eventBus.register(this);
     }
 
     @Autowired
@@ -54,7 +54,7 @@ public class SensitiveEventListener {
 
     private final SensitiveClient client = new SensitiveClient();
 
-    @Subscribe
+    //    @Subscribe
     public void handleEvent(EventVo event) {
         log.info("=====================sensitive===================");
         // 参数检查
