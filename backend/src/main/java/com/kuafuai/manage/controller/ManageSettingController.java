@@ -30,6 +30,7 @@ public class ManageSettingController {
     private final AppInfoService appInfoService;
 
     private final static String newTableName = "kf_system_config";
+    private final static String MASK_VALUE = "******";
 
     @GetMapping("/settings/{appId}")
     public BaseResponse settings(@PathVariable("appId") String appId) {
@@ -49,6 +50,10 @@ public class ManageSettingController {
         checkAppPermission(appId);
         //1. 先根据 data 的 key 删除数据
         //2. 在根据 data 的 key 保存数据
+
+        // 过滤掉值为 "******" 的字段，不更新这些被掩码的敏感数据
+        data.entrySet().removeIf(entry -> MASK_VALUE.equals(entry.getValue()));
+
         if (data.isEmpty()) {
             return ResultUtils.success();
         }

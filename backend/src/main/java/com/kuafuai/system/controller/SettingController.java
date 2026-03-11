@@ -26,6 +26,7 @@ public class SettingController {
     private AppTableInfoService appTableInfoService;
 
     private final static String newTableName = "kf_system_config";
+    private final static String MASK_VALUE = "******";
 
 
     /**
@@ -55,6 +56,10 @@ public class SettingController {
 
     @PostMapping("/settings")
     public BaseResponse saveSetting(@RequestBody Map<String, Object> data) {
+
+        // 过滤掉值为 "******" 的字段，不更新这些被掩码的敏感数据
+        data.entrySet().removeIf(entry -> MASK_VALUE.equals(entry.getValue()));
+
         if (data.isEmpty()) {
             return ResultUtils.success();
         }
