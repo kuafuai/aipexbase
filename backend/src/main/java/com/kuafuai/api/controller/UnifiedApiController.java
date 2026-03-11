@@ -106,7 +106,7 @@ public class UnifiedApiController {
         List<Map<String, Object>> contents = Lists.newArrayList();
 
         addText(contents, data);
-        addImage(contents, data);
+        addImages(contents, data);
 
         Map<String, Object> contentMap = Maps.newHashMap();
         contentMap.put("content", contents);
@@ -132,23 +132,42 @@ public class UnifiedApiController {
         contents.add(map);
     }
 
-    private void addImage(List<Map<String, Object>> contents, Map<String, Object> data) {
-        String file = StringUtils.trimToEmpty((String) data.get("file"));
-        if (StringUtils.isEmpty(file)) {
-            return;
+    private void addImages(List<Map<String, Object>> contents, Map<String, Object> data) {
+        // 支持单个 file 或多个 files 数组
+        Object fileObj = data.get("file");
+        Object filesObj = data.get("files");
+
+        List<String> fileList = Lists.newArrayList();
+
+        // 处理单个 file 的情况
+        if (fileObj instanceof String && StringUtils.isNotEmpty((String) fileObj)) {
+            fileList.add((String) fileObj);
         }
 
-        byte[] imageBytes = ImageUtils.readFile(file);
-        String base64 = Base64.getEncoder().encodeToString(imageBytes);
+        // 处理 files 数组的情况
+        if (filesObj instanceof List) {
+            List<?> filesList = (List<?>) filesObj;
+            for (Object file : filesList) {
+                if (file instanceof String && StringUtils.isNotEmpty((String) file)) {
+                    fileList.add((String) file);
+                }
+            }
+        }
 
-        Map<String, Object> imageMap = Maps.newHashMap();
-        imageMap.put("mime_type", "image/png");
-        imageMap.put("data", base64);
+        // 将所有图片添加到 contents
+        for (String file : fileList) {
+            byte[] imageBytes = ImageUtils.readFile(file);
+            String base64 = Base64.getEncoder().encodeToString(imageBytes);
 
-        Map<String, Object> inlineMap = Maps.newHashMap();
-        inlineMap.put("inline_data", imageMap);
+            Map<String, Object> imageMap = Maps.newHashMap();
+            imageMap.put("mime_type", "image/png");
+            imageMap.put("data", base64);
 
-        contents.add(inlineMap);
+            Map<String, Object> inlineMap = Maps.newHashMap();
+            inlineMap.put("inline_data", imageMap);
+
+            contents.add(inlineMap);
+        }
     }
 
 }
