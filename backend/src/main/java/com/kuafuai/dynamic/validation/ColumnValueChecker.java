@@ -9,6 +9,7 @@ import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.dynamic.helper.DynamicCheckValue;
 import com.kuafuai.system.entity.AppTableColumnInfo;
 
+import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.time.format.ResolverStyle;
@@ -24,7 +25,7 @@ public class ColumnValueChecker {
     }
 
     /**
-     * 跟新时-对数据进行类型判断与是否超出范围
+     * 更新时 - 对数据进行类型判断与是否超出范围
      */
     public static void normalizeByUpdateValidate(String table, List<AppTableColumnInfo> columns, Map<String, Object> conditions) {
 
@@ -47,7 +48,7 @@ public class ColumnValueChecker {
             }
 
             if (value instanceof Map) {
-                // 如果value是Map，说明是修改条件
+                // 如果 value 是 Map，说明是修改条件
                 continue;
             }
 
@@ -58,13 +59,13 @@ public class ColumnValueChecker {
                     validateNumeric(value, columnName, table);
                     break;
                 case "date":
-                    validateDate(value, columnName, Lists.newArrayList("yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss"), table);
+                    convertAndValidateDate(value, columnName, Lists.newArrayList("yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss"), table, conditions);
                     break;
                 case "datetime":
-                    validateDate(value, columnName, Lists.newArrayList("yyyy-MM-dd HH:mm:ss"), table);
+                    convertAndValidateDate(value, columnName, Lists.newArrayList("yyyy-MM-dd HH:mm:ss"), table, conditions);
                     break;
                 case "time":
-                    validateDate(value, columnName, Lists.newArrayList("HH:mm:ss"), table);
+                    convertAndValidateDate(value, columnName, Lists.newArrayList("HH:mm:ss"), table, conditions);
                     break;
                 case "boolean":
                     conditions.put(columnName, Convert.toBool(value, false));
@@ -98,20 +99,85 @@ public class ColumnValueChecker {
         }
     }
 
-    private static void validateDate(Object value, String columName, List<String> formats, String table) {
+    private static void convertAndValidateDate(Object value, String columName,
+                                               List<String> formats, String table, Map<String, Object> conditions) {
+
         String timeStr = Convert.toStr(value);
+
         if (StringUtils.isEmpty(timeStr)) {
             throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
         }
 
+        // 1️1、兼容 ISO8601 时间格式 (2026-03-13T09:04:25.000Z)
+        try {
+            if (timeStr.contains("T")) {
+                java.time.OffsetDateTime offsetDateTime = java.time.OffsetDateTime.parse(timeStr);
+                java.time.LocalDateTime dateTime = offsetDateTime.toLocalDateTime();
+
+                String formattedDate = dateTime.format(DateTimeFormatter.ofPattern(formats.get(0)));
+                conditions.put(columName, formattedDate);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 2️2、兼容 JavaScript Date.toString()
+        try {
+            if (timeStr.matches("^[A-Z][a-z]{2} [A-Z][a-z]{2} .*GMT.*$")) {
+                java.text.SimpleDateFormat jsFormat =
+                        new java.text.SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z", java.util.Locale.US);
+
+                java.util.Date date = jsFormat.parse(timeStr);
+                java.time.LocalDateTime dateTime =
+                        date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+
+                String formattedDate = dateTime.format(DateTimeFormatter.ofPattern(formats.get(0)));
+                conditions.put(columName, formattedDate);
+                return;
+            }
+        } catch (Exception ignored) {}
+
+        // 3️3、兼容时间戳 (毫秒)
+        if (NumberUtil.isNumber(timeStr) && timeStr.length() >= 10) {
+            try {
+                long timestamp = Long.parseLong(timeStr);
+                if (timeStr.length() == 10) {
+                    timestamp = timestamp * 1000;
+                }
+
+                java.time.LocalDateTime dateTime =
+                        java.time.Instant.ofEpochMilli(timestamp)
+                                .atZone(java.time.ZoneId.systemDefault())
+                                .toLocalDateTime();
+
+                String formattedDate = dateTime.format(DateTimeFormatter.ofPattern(formats.get(0)));
+                conditions.put(columName, formattedDate);
+                return;
+            } catch (Exception ignored) {}
+        }
+
+        // 4️4、原有格式匹配
         for (String format : formats) {
             try {
-                DateTimeFormatter formatter = DateTimeFormatter.ofPattern(format).withResolverStyle(ResolverStyle.STRICT);
-                formatter.parse(timeStr);
+                DateTimeFormatter formatter =
+                        DateTimeFormatter.ofPattern(format).withResolverStyle(ResolverStyle.STRICT);
+
+                java.time.temporal.TemporalAccessor parsed = formatter.parse(timeStr);
+
+                if (format.equals("yyyy-MM-dd")) {
+                    java.time.LocalDate date = java.time.LocalDate.from(parsed);
+                    conditions.put(columName, date.format(formatter));
+                } else if (format.equals("yyyy-MM-dd HH:mm:ss")) {
+                    java.time.LocalDateTime dateTime = java.time.LocalDateTime.from(parsed);
+                    conditions.put(columName, dateTime.format(formatter));
+                } else if (format.equals("HH:mm:ss")) {
+                    java.time.LocalTime time = java.time.LocalTime.from(parsed);
+                    conditions.put(columName, time.format(formatter));
+                }
                 return;
             } catch (DateTimeParseException ignored) {
             }
         }
+
         throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
     }
 
