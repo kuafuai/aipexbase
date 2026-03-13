@@ -39,7 +39,7 @@ public class DynamicInfoCache {
         String key = APP_TABLE_KEY + appId + "_" + table;
         AppTableInfo appTableInfo = cache.getCacheObject(key);
         if (appTableInfo == null) {
-            log.info("get table no cache {}:{}", appId, table);
+            log.debug("get table no cache {}:{}", appId, table);
             LambdaQueryWrapper<AppTableInfo> tableWrapper = new LambdaQueryWrapper<>();
             tableWrapper.eq(AppTableInfo::getAppId, appId);
             tableWrapper.eq(AppTableInfo::getTableName, table);
@@ -49,7 +49,7 @@ public class DynamicInfoCache {
                 cache.setCacheObject(key, appTableInfo);
             }
         } else {
-            log.info("get table by cache {}:{}", appId, table);
+            log.debug("get table by cache {}:{}", appId, table);
         }
         return appTableInfo;
     }
@@ -60,7 +60,7 @@ public class DynamicInfoCache {
 
         List<AppTableColumnInfo> columns = cache.getCacheList(key);
         if (columns == null) {
-            log.info("get table column no cache {}:{}", appId, table);
+            log.debug("get table column no cache {}:{}", appId, table);
             AppTableInfo tableInfo = getAppTableInfo(appId, table);
             if (tableInfo != null) {
 
@@ -77,7 +77,7 @@ public class DynamicInfoCache {
                 columns = Lists.newArrayList();
             }
         } else {
-            log.info("get table column by cache {}:{}", appId, table);
+            log.debug("get table column by cache {}:{}", appId, table);
         }
         return columns;
     }
@@ -87,7 +87,7 @@ public class DynamicInfoCache {
         String key = APP_TABLE_RELATION_KEY + appId + "_" + table;
         List<AppTableRelation> relations = cache.getCacheList(key);
         if (relations == null) {
-            log.info("get table relations no cache {}:{}", appId, table);
+            log.debug("get table relations no cache {}:{}", appId, table);
 
             AppTableInfo tableInfo = getAppTableInfo(appId, table);
 
@@ -101,7 +101,7 @@ public class DynamicInfoCache {
                 cache.setCacheList(key, relations);
             }
         } else {
-            log.info("get table relations by cache {}:{}", appId, table);
+            log.debug("get table relations by cache {}:{}", appId, table);
         }
         return relations;
     }
@@ -109,15 +109,15 @@ public class DynamicInfoCache {
 
     public void clean(String appId) {
         cache.keys(APP_TABLE_KEY + appId).forEach(p -> {
-            log.info("remove key=============={}", p);
+            log.debug("remove key=============={}", p);
             cache.deleteObject(p);
         });
         cache.keys(APP_TABLE_COLUMN_KEY + appId).forEach(p -> {
-            log.info("remove key=============={}", p);
+            log.debug("remove key=============={}", p);
             cache.deleteObject(p);
         });
         cache.keys(APP_TABLE_RELATION_KEY + appId).forEach(p -> {
-            log.info("remove key=============={}", p);
+            log.debug("remove key=============={}", p);
             cache.deleteObject(p);
         });
     }
