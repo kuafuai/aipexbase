@@ -11,9 +11,6 @@ import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.dynamic.helper.DynamicCheckValue;
 import com.kuafuai.system.entity.AppTableColumnInfo;
 
-import java.time.LocalDateTime;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
 import java.util.List;
 import java.util.Map;
 
@@ -100,43 +97,37 @@ public class ColumnValueChecker {
         }
     }
 
-    private static void convertAndValidateDate(Object value, String columName,
+    private static void convertAndValidateDate(Object value, String columnName,
                                                List<String> formats, String table, Map<String, Object> conditions) {
-        
-        // 直接支持 java.util.Date 对象
-        if (value instanceof java.util.Date) {
-            Date date = (java.util.Date) value;
-            LocalDateTime dateTime = date.toInstant()
-                    .atZone(java.time.ZoneId.systemDefault())
-                    .toLocalDateTime();
-            String formattedDate = dateTime.format(DateTimeFormatter.ofPattern(formats.get(0)));
-            conditions.put(columName, formattedDate);
-            return;
-        }
-
-        // 直接支持 LocalDateTime 对象
-        if (value instanceof LocalDateTime) {
-            LocalDateTime dateTime = (LocalDateTime) value;
-            String formattedDate = dateTime.format(DateTimeFormatter.ofPattern(formats.get(0)));
-            conditions.put(columName, formattedDate);
-            return;
-        }
 
         String timeStr = Convert.toStr(value);
 
         if (StringUtils.isEmpty(timeStr)) {
-            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
+            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columnName));
         }
 
-        // 使用 Hutool 解析日期（支持 JavaScript Date.toString() 等多种格式）
-        try {
-            DateTime dateTime = DateUtil.parse(timeStr);
-            String formattedDate = DateUtil.format(dateTime.toJdkDate(), formats.get(0));
-            conditions.put(columName, formattedDate);
-            return;
-        } catch (Exception ignored) {}
+        DateTime dateTime = null;
 
-        throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
+        try {
+            // 1 常规解析
+            dateTime = DateUtil.parse(timeStr);
+        } catch (Exception ignored) {
+        }
+
+        if (dateTime == null) {
+            try {
+                // 2 JS Date 解析
+                dateTime = DateUtil.parse(timeStr, "EEE MMM dd yyyy HH:mm:ss 'GMT'Z", java.util.Locale.US);
+            } catch (Exception ignored) {
+            }
+        }
+
+        if (dateTime == null) {
+            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columnName));
+        }
+
+        String formattedDate = DateUtil.format(dateTime, formats.get(0));
+        conditions.put(columnName, formattedDate);
     }
 
     private static void validateDecimal(Object value, String columName, String table) {
