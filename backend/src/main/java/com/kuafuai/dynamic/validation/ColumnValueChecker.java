@@ -108,7 +108,26 @@ public class ColumnValueChecker {
             throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columName));
         }
 
-        // 1️1、兼容 ISO8601 时间格式 (2026-03-13T09:04:25.000Z)
+        // 0、直接支持 java.util.Date 对象
+        if (value instanceof java.util.Date) {
+            java.util.Date date = (java.util.Date) value;
+            LocalDateTime dateTime = date.toInstant()
+                    .atZone(java.time.ZoneId.systemDefault())
+                    .toLocalDateTime();
+            String formattedDate = dateTime.format(DateTimeFormatter.ofPattern(formats.get(0)));
+            conditions.put(columName, formattedDate);
+            return;
+        }
+
+        // 1、直接支持 LocalDateTime 对象
+        if (value instanceof LocalDateTime) {
+            LocalDateTime dateTime = (LocalDateTime) value;
+            String formattedDate = dateTime.format(DateTimeFormatter.ofPattern(formats.get(0)));
+            conditions.put(columName, formattedDate);
+            return;
+        }
+
+        // 2、兼容 ISO8601 时间格式 (2026-03-13T09:04:25.000Z)
         try {
             if (timeStr.contains("T")) {
                 java.time.OffsetDateTime offsetDateTime = java.time.OffsetDateTime.parse(timeStr);
@@ -120,23 +139,33 @@ public class ColumnValueChecker {
             }
         } catch (Exception ignored) {}
 
-        // 2️2、兼容 JavaScript Date.toString()
+        // 3、兼容 JavaScript Date.toString() 格式 (Sat Mar 14 2026 12:30:45 GMT+0800)
         try {
             if (timeStr.matches("^[A-Z][a-z]{2} [A-Z][a-z]{2} .*GMT.*$")) {
-                java.text.SimpleDateFormat jsFormat =
-                        new java.text.SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z", java.util.Locale.US);
+                // 尝试多种可能的格式
+                java.text.SimpleDateFormat[] jsFormats = {
+                    new java.text.SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'Z", java.util.Locale.US),
+                    new java.text.SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss Z", java.util.Locale.US),
+                    new java.text.SimpleDateFormat("EEE MMM dd yyyy HH:mm:ss 'GMT'XXX", java.util.Locale.US)
+                };
 
-                java.util.Date date = jsFormat.parse(timeStr);
-                java.time.LocalDateTime dateTime =
-                        date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
+                for (java.text.SimpleDateFormat format : jsFormats) {
+                    try {
+                        java.util.Date date = format.parse(timeStr);
+                        java.time.LocalDateTime dateTime =
+                                date.toInstant().atZone(java.time.ZoneId.systemDefault()).toLocalDateTime();
 
-                String formattedDate = dateTime.format(DateTimeFormatter.ofPattern(formats.get(0)));
-                conditions.put(columName, formattedDate);
-                return;
+                        String formattedDate = dateTime.format(DateTimeFormatter.ofPattern(formats.get(0)));
+                        conditions.put(columName, formattedDate);
+                        return;
+                    } catch (Exception e) {
+                        // 继续尝试下一个格式
+                    }
+                }
             }
         } catch (Exception ignored) {}
 
-        // 3️3、兼容时间戳 (毫秒)
+        // 4、兼容时间戳 (毫秒)
         if (NumberUtil.isNumber(timeStr) && timeStr.length() >= 10) {
             try {
                 long timestamp = Long.parseLong(timeStr);
@@ -155,7 +184,7 @@ public class ColumnValueChecker {
             } catch (Exception ignored) {}
         }
 
-        // 4️4、原有格式匹配
+        // 5、原有格式匹配
         for (String format : formats) {
             try {
                 DateTimeFormatter formatter =
