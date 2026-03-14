@@ -5,6 +5,7 @@ import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
+import java.util.concurrent.TimeUnit;
 
 /**
  * 应用限流统计信息 - 混合限流实现
@@ -67,8 +68,8 @@ public class AppRateLimitInfo {
         long now = this.lastAttemptTime;
 
         // 1. 检查秒级限流（令牌桶）
-        boolean secondAllowed = secondRateLimiter.tryAcquire();
-        log.info("限流:{}:{}====秒级限流", appId, ipAddress);
+        boolean secondAllowed = secondRateLimiter.tryAcquire(20, TimeUnit.MILLISECONDS);
+        log.info("限流:{}:{}:{}====秒级限流", appId, ipAddress, secondAllowed);
         if (!secondAllowed) {
             return false;
         }
