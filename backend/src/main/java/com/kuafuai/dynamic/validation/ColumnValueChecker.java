@@ -3,7 +3,6 @@ package com.kuafuai.dynamic.validation;
 import cn.hutool.core.date.DateTime;
 import cn.hutool.core.date.DateUtil;
 import cn.hutool.core.util.NumberUtil;
-import com.google.common.collect.Lists;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.text.Convert;
 import com.kuafuai.common.util.I18nUtils;
@@ -11,6 +10,7 @@ import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.dynamic.helper.DynamicCheckValue;
 import com.kuafuai.system.entity.AppTableColumnInfo;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -52,19 +52,22 @@ public class ColumnValueChecker {
             }
 
             switch (dslType) {
+
                 case "number":
-                case "quote":
                 case "int":
                     validateNumeric(value, columnName, table);
                     break;
+
                 case "date":
-                    convertAndValidateDate(value, columnName, Lists.newArrayList("yyyy-MM-dd", "yyyy-MM-dd HH:mm:ss"), table, conditions);
+                    convertAndValidateDate(value, columnName, "yyyy-MM-dd", table, conditions);
                     break;
+
                 case "datetime":
-                    convertAndValidateDate(value, columnName, Lists.newArrayList("yyyy-MM-dd HH:mm:ss"), table, conditions);
+                    convertAndValidateDate(value, columnName, "yyyy-MM-dd HH:mm:ss", table, conditions);
                     break;
+
                 case "time":
-                    convertAndValidateDate(value, columnName, Lists.newArrayList("HH:mm:ss"), table, conditions);
+                    convertAndValidateDate(value, columnName, "HH:mm:ss", table, conditions);
                     break;
                 case "boolean":
                     conditions.put(columnName, Convert.toBool(value, false));
@@ -98,62 +101,59 @@ public class ColumnValueChecker {
         }
     }
 
-    private static DateTime tryParseDate(String timeStr, List<String> formats) {
-
-        // 1 常规解析
-        try {
-            return DateUtil.parse(timeStr);
-        } catch (Exception ignored) {}
-
-        // 2 指定格式解析
-        for (String format : formats) {
-            try {
-                return DateUtil.parse(timeStr, format);
-            } catch (Exception ignored) {}
-        }
-
-        // 3 JS Date
-        try {
-            return DateUtil.parse(timeStr, "EEE MMM dd yyyy HH:mm:ss 'GMT'Z", Locale.US);
-        } catch (Exception ignored) {}
-
-        return null;
-    }
-
-    private static String parseAndFormatDate(String value, List<String> formats) {
-
-        DateTime dateTime = tryParseDate(value, formats);
-
-        if (dateTime == null) {
-            return null;
-        }
-
-        return DateUtil.format(dateTime, formats.get(0));
-    }
-
+    /**
+     * 日期解析与格式化（只传最终存储格式）
+     */
     private static void convertAndValidateDate(Object value,
                                                String columnName,
-                                               List<String> formats,
+                                               String finalFormat,
                                                String table,
                                                Map<String, Object> conditions) {
 
         String timeStr = Convert.toStr(value);
 
-        if (StringUtils.isBlank(timeStr)) {
+        if (StringUtils.isEmpty(timeStr)) {
             throw new BusinessException(
                     I18nUtils.get("dynamic.update.value_type_error", table + ":" + columnName)
             );
         }
 
-        String formattedDate = parseAndFormatDate(timeStr, formats);
+        // 固定解析候选格式
+        List<String> parseFormats = Arrays.asList(
+                "",  // 自动解析
+                "EEE MMM dd yyyy HH:mm:ss 'GMT'Z"
+        );
 
-        if (formattedDate == null) {
+        DateTime dateTime = tryParseDate(timeStr, parseFormats);
+
+        if (dateTime == null) {
             throw new BusinessException(
                     I18nUtils.get("dynamic.update.value_type_error", table + ":" + columnName)
             );
         }
 
-        conditions.put(columnName, formattedDate);
+        // 最终存储格式
+        conditions.put(columnName, DateUtil.format(dateTime, finalFormat));
+    }
+
+    /**
+     * 日期解析策略
+     */
+    private static DateTime tryParseDate(String timeStr, List<String> formats) {
+
+        for (String format : formats) {
+            try {
+                // 判断空字符串使用自动解析
+                if (StringUtils.isEmpty(format)) {
+                    return DateUtil.parse(timeStr);
+                } else {
+                    return DateUtil.parse(timeStr, format, Locale.US);
+                }
+            } catch (Exception ignored) {
+            }
+        }
+
+        return null;
     }
 
     private static void validateDecimal(Object value, String columName, String table) {
