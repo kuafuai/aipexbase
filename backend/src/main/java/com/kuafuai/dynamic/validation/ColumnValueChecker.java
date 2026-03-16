@@ -12,6 +12,7 @@ import com.kuafuai.dynamic.helper.DynamicCheckValue;
 import com.kuafuai.system.entity.AppTableColumnInfo;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class ColumnValueChecker {
@@ -97,36 +98,61 @@ public class ColumnValueChecker {
         }
     }
 
-    private static void convertAndValidateDate(Object value, String columnName,
-                                               List<String> formats, String table, Map<String, Object> conditions) {
+    private static DateTime tryParseDate(String timeStr, List<String> formats) {
+
+        // 1 常规解析
+        try {
+            return DateUtil.parse(timeStr);
+        } catch (Exception ignored) {}
+
+        // 2 指定格式解析
+        for (String format : formats) {
+            try {
+                return DateUtil.parse(timeStr, format);
+            } catch (Exception ignored) {}
+        }
+
+        // 3 JS Date
+        try {
+            return DateUtil.parse(timeStr, "EEE MMM dd yyyy HH:mm:ss 'GMT'Z", Locale.US);
+        } catch (Exception ignored) {}
+
+        return null;
+    }
+
+    private static String parseAndFormatDate(String value, List<String> formats) {
+
+        DateTime dateTime = tryParseDate(value, formats);
+
+        if (dateTime == null) {
+            return null;
+        }
+
+        return DateUtil.format(dateTime, formats.get(0));
+    }
+
+    private static void convertAndValidateDate(Object value,
+                                               String columnName,
+                                               List<String> formats,
+                                               String table,
+                                               Map<String, Object> conditions) {
 
         String timeStr = Convert.toStr(value);
 
-        if (StringUtils.isEmpty(timeStr)) {
-            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columnName));
+        if (StringUtils.isBlank(timeStr)) {
+            throw new BusinessException(
+                    I18nUtils.get("dynamic.update.value_type_error", table + ":" + columnName)
+            );
         }
 
-        DateTime dateTime = null;
+        String formattedDate = parseAndFormatDate(timeStr, formats);
 
-        try {
-            // 1 常规解析
-            dateTime = DateUtil.parse(timeStr);
-        } catch (Exception ignored) {
+        if (formattedDate == null) {
+            throw new BusinessException(
+                    I18nUtils.get("dynamic.update.value_type_error", table + ":" + columnName)
+            );
         }
 
-        if (dateTime == null) {
-            try {
-                // 2 JS Date 解析
-                dateTime = DateUtil.parse(timeStr, "EEE MMM dd yyyy HH:mm:ss 'GMT'Z", java.util.Locale.US);
-            } catch (Exception ignored) {
-            }
-        }
-
-        if (dateTime == null) {
-            throw new BusinessException(I18nUtils.get("dynamic.update.value_type_error", table + ":" + columnName));
-        }
-
-        String formattedDate = DateUtil.format(dateTime, formats.get(0));
         conditions.put(columnName, formattedDate);
     }
 
