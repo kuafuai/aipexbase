@@ -153,6 +153,48 @@ public class ManageBusinessService {
     }
 
     /**
+     * 创建应用 - 用于对外API
+     *
+     * @param name           应用名称
+     * @param externalUserId 外部平台的用户ID
+     * @return 创建的应用信息
+     */
+    public AppInfo createAppForApi(String name, String externalUserId) {
+        // 根据外部用户ID获取或创建本地用户
+        Long owner = getOrCreateUserByExternalId(externalUserId);
+        return createAppInternal(name, owner);
+    }
+
+    /**
+     * 根据外部用户ID获取或创建本地用户
+     *
+     * @param externalUserId 外部平台的用户ID
+     * @return 本地用户ID
+     */
+    private Long getOrCreateUserByExternalId(String externalUserId) {
+        // 查询用户是否存在
+        LambdaQueryWrapper<Users> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Users::getCodeFlyingUserId, externalUserId);
+        Users existingUser = usersService.getOne(wrapper);
+
+        if (existingUser != null) {
+            log.info("用户已存在 externalUserId={}, userId={}", externalUserId, existingUser.getId());
+            return existingUser.getId();
+        }
+
+        // 用户不存在，创建新用户
+        Users newUser = Users.builder()
+                .email("external_" + externalUserId + "@external.com")
+                .codeFlyingUserId(externalUserId)
+                .nickName("外部用户_" + externalUserId)
+                .build();
+        usersService.save(newUser);
+        log.info("创建新用户 externalUserId={}, userId={}", externalUserId, newUser.getId());
+
+        return newUser.getId();
+    }
+
+    /**
      * 复制应用
      */
     @Transactional(rollbackFor = Exception.class)

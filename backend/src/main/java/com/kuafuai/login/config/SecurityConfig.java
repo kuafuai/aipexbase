@@ -21,7 +21,7 @@ import java.util.Map;
 
 @Slf4j
 @EnableGlobalMethodSecurity(prePostEnabled = true, securedEnabled = true)
-@Order(2)
+@Order(3)
 public class SecurityConfig extends WebSecurityConfigurerAdapter {
 
     /**
