@@ -108,3 +108,9 @@ sensitive:
 error-report:
   reportUrl: ${ERROR_REPORT_URL:xxxxxxxxxxxxx}
   secretKey: ${ERROR_REPORT_SECRET_KEY:xxxxxxxxxx}
+
+# 对外管理API配置
+manage:
+  api:
+    enable: ${MANAGE_API_ENABLE:true}
+    token: ${MANAGE_API_TOKEN:kf_TLYflZqeCBQvhXmOAlVyeEZyfKEXQfwwnUAuyMZTT6r}

@@ -3,13 +3,16 @@ package com.kuafuai.manage.event;
 import com.google.common.eventbus.EventBus;
 import com.google.common.eventbus.Subscribe;
 import com.kuafuai.common.event.EventVo;
+import com.kuafuai.common.util.DateUtils;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.manage.entity.vo.TableVo;
 import com.kuafuai.manage.service.ManageBusinessService;
 import com.kuafuai.manage.util.SystemTableUtil;
+import com.kuafuai.system.entity.APIKey;
 import com.kuafuai.system.entity.AppInfo;
 import com.kuafuai.system.mapper.DatabaseMapper;
 import com.kuafuai.system.service.AppInfoService;
+import com.kuafuai.system.service.ApplicationAPIKeysService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
@@ -37,6 +40,8 @@ public class ManageEventListener {
 
     @Autowired
     private ManageBusinessService manageBusinessService;
+    @Autowired
+    private ApplicationAPIKeysService applicationAPIKeysService;
 
     @PostConstruct
     public void init() {
@@ -76,6 +81,9 @@ public class ManageEventListener {
         updateAppStatus(appInfo);
 
         createSystemDatabaseTables(appId);
+
+        //创建一个默认key
+        createDefaultApiKey(appId);
     }
 
     private void updateAppStatus(AppInfo appInfo) {
@@ -103,4 +111,18 @@ public class ManageEventListener {
                         DESC_SYSTEM_CONFIG, "id", kf_system_config)
         );
     }
+
+    private void createDefaultApiKey(String appId) {
+        APIKey apiKeys = APIKey.builder()
+                .appId(appId)
+                .name("码上飞_" + appId)
+                .keyName(appId)
+                .description("码上飞_" + appId)
+                .status(APIKey.APIKeyStatus.ACTIVE.name())
+                .expireAt("2099-12-31 23:59:59")
+                .createAt(DateUtils.getTime())
+                .build();
+        applicationAPIKeysService.save(apiKeys);
+    }
+
 }
