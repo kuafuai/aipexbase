@@ -259,4 +259,17 @@ CREATE TABLE `user_balance` (
 ) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
 
+DROP TABLE IF EXISTS `aipexbase`.`app_access_token`;
+CREATE TABLE `app_access_token`(
+    `id`            bigint       NOT NULL AUTO_INCREMENT,
+    `app_id`        varchar(64)  NOT NULL COMMENT 'appId，唯一',
+    `token`         varchar(128) NOT NULL COMMENT 'kft_ 前缀的访问令牌，全局唯一',
+    `allowed_paths` text COMMENT '放行路径白名单，JSON 数组，支持 AntPath；NULL 表示全放行',
+    `created_at`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    `updated_at`    datetime     NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_app_id` (`app_id`),
+    UNIQUE KEY `uk_token` (`token`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
 
