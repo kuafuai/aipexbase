@@ -5,6 +5,7 @@ import com.google.gson.reflect.TypeToken;
 import com.kuafuai.common.constant.HttpStatus;
 import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.login.LoginUser;
+import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.*;
 import com.kuafuai.login.service.TokenService;
 import com.kuafuai.system.entity.AppInfo;
@@ -39,7 +40,8 @@ public class DynamicAuthFilter extends OncePerRequestFilter {
             "/get_mp_url",
             "/generalOrder/callback/**",
             "/system/setting/**",
-            "/error/report/**"
+            "/error/report/**",
+            "/api/access/agent/login-link"
     };
 
     public static final String[] NON_VERIFIED_URLS = {
@@ -89,7 +91,7 @@ public class DynamicAuthFilter extends OncePerRequestFilter {
         }
 
         String appType = GlobalAppIdFilter.getAppType();
-        if (appInfo.getNeedAuth() || StringUtils.equalsIgnoreCase(appType, "admin")) {
+        if ((appInfo.getNeedAuth() || StringUtils.equalsIgnoreCase(appType, "admin")) && StringUtils.isNull(SecurityUtils.getAuthentication())) {
             // 需要登录,验证登录信息是否存在
             LoginUser loginUser = getLoginUser(request);
             if (loginUser == null) {

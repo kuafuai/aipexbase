@@ -30,7 +30,9 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
             "/generalOrder/callback/**",
             "/error/report/**",
             "/mcp/**",
-            "/oauth2/**"
+            "/oauth2/**",
+            "/api/access/agent/parse",
+            "/api/access/agent/login-link"
     };
 
 
@@ -40,6 +42,11 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
         String requestUri = request.getRequestURI();
 
         if (isExcludedUrl(requestUri)) {
+            chain.doFilter(request, response);
+            return;
+        }
+
+        if (StringUtils.isNotNull(SecurityUtils.getAuthentication())) {
             chain.doFilter(request, response);
             return;
         }

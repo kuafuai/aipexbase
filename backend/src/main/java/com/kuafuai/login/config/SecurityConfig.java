@@ -1,5 +1,6 @@
 package com.kuafuai.login.config;
 
+import com.kuafuai.accesstoken.AccessTokenAuthFilter;
 import com.kuafuai.login.handle.*;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +56,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .logout().logoutUrl("/logout").logoutSuccessHandler(logoutSuccessHandler).and()
                 .addFilterBefore(new RateLimitFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new GlobalAppIdFilter(), UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(new AccessTokenAuthFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new DynamicAuthFilter(), UsernamePasswordAuthenticationFilter.class)
                 .addFilterBefore(new JwtAuthenticationTokenFilter(), UsernamePasswordAuthenticationFilter.class)
         ;

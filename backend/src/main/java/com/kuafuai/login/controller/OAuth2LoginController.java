@@ -51,24 +51,28 @@ public class OAuth2LoginController {
 
     /**
      * 获取指定提供商的OAuth2授权URL
+     *
      * @param provider OAuth2提供商名称 / wechat / google
      * @return 包含授权URL和state的响应
      */
     @GetMapping("/authorize/{provider}")
-    public BaseResponse getAuthorizationUrl(@PathVariable String provider) {
+    public BaseResponse getAuthorizationUrl(
+            @PathVariable String provider,
+            @RequestParam(required = false) String agentToken,
+            @RequestParam(required = false) String sign) {
 
         try {
             String appId = GlobalAppIdFilter.getAppId();
 
-            // 将 state 存储到缓存中，设置 10 分钟过期时间
             String state = UUID.randomUUID().toString().replace("-", "");
-
-            // 设置缓存，同时存储重定向URL
             String stateKey = "oauth2_state:" + state;
-
             cache.setCacheObject(stateKey, appId, 10, TimeUnit.MINUTES);
 
-            // 获取授权链接
+            // 若携带 agent 参数，绑定到同一个 state，生命周期与授权流程一致
+            if (StringUtils.isNotEmpty(agentToken) && StringUtils.isNotEmpty(sign)) {
+                cache.setCacheObject("oauth2_agent:" + state, agentToken + "|" + sign, 10, TimeUnit.MINUTES);
+            }
+
             String authorizationUrl = oauth2Service.getAuthorizationUrl(provider, state);
 
             return ResultUtils.success(authorizationUrl);
@@ -80,9 +84,10 @@ public class OAuth2LoginController {
 
     /**
      * 处理OAuth2登录回调
+     *
      * @param provider OAuth2提供商名称
-     * @param code 授权码
-     * @param state 状态参数
+     * @param code     授权码
+     * @param state    状态参数
      * @return 重定向到指定URL
      */
     @GetMapping("/callback/{provider}")
@@ -124,14 +129,14 @@ public class OAuth2LoginController {
 
             // 处理登录逻辑
             String token = processOAuth2Login(loginRequest);
-            
+
             if (!StringUtils.isEmpty(token)) {
                 String callbackUri = oauth2Service.getCallbackUri(provider);
 
                 // 构建重定向URL，将token作为参数传递
                 String callbackUrlWithToken = callbackUri + "?token=" + token + "&login_success=true";
                 log.info("OAuth2登录成功，重定向到: {}", callbackUrlWithToken);
-                
+
                 return ResponseEntity.status(HttpStatus.FOUND)
                         .location(URI.create(callbackUrlWithToken))
                         .build();
@@ -152,6 +157,7 @@ public class OAuth2LoginController {
 
     /**
      * 处理OAuth2登录的核心逻辑
+     *
      * @param request OAuth2登录请求
      * @return 登录结果 Token
      */
@@ -180,6 +186,7 @@ public class OAuth2LoginController {
 
     /**
      * 验证state参数是否有效
+     *
      * @param state 状态参数
      * @return appId
      */
@@ -201,6 +208,7 @@ public class OAuth2LoginController {
 
     /**
      * 删除已使用的state参数
+     *
      * @param state 状态参数
      */
     private void removeState(String state) {
