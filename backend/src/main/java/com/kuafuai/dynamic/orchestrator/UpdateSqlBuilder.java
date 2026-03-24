@@ -2,6 +2,7 @@ package com.kuafuai.dynamic.orchestrator;
 
 import com.kuafuai.dynamic.clause.UpdateClauseBuilder;
 import com.kuafuai.dynamic.context.TableContext;
+import com.kuafuai.dynamic.policy.PolicyChecker;
 import com.kuafuai.dynamic.validation.ColumnValueChecker;
 
 public class UpdateSqlBuilder {
@@ -13,6 +14,9 @@ public class UpdateSqlBuilder {
 
     public String build() {
         ColumnValueChecker.normalizeByUpdateValidate(ctx.getTable(), ctx.getColumns(), ctx.getConditions());
+
+        // WITH CHECK 策略验证
+        PolicyChecker.checkUpdate(ctx.getDatabase(), ctx.getTable(), ctx.getConditions());
 
         return new UpdateClauseBuilder(ctx).build();
     }

@@ -2,6 +2,7 @@ package com.kuafuai.dynamic.orchestrator;
 
 import com.kuafuai.dynamic.clause.InsertClauseBuilder;
 import com.kuafuai.dynamic.context.TableContext;
+import com.kuafuai.dynamic.policy.PolicyChecker;
 import com.kuafuai.dynamic.validation.ColumnValueChecker;
 import com.kuafuai.dynamic.validation.RequiredColumnChecker;
 
@@ -16,6 +17,9 @@ public class InsertSqlBuilder {
 
         RequiredColumnChecker.check(ctx.getColumns(), ctx.getConditions());
         ColumnValueChecker.normalizeAndValidate(ctx.getColumns(), ctx.getConditions());
+
+        // WITH CHECK 策略验证
+        PolicyChecker.checkInsert(ctx.getDatabase(), ctx.getTable(), ctx.getConditions());
 
         return new InsertClauseBuilder(ctx).build();
     }

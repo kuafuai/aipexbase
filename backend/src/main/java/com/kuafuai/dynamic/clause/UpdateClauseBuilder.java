@@ -6,6 +6,7 @@ import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.dynamic.condition.WhereBuilder;
 import com.kuafuai.dynamic.context.TableContext;
 import com.kuafuai.dynamic.helper.ContextFactory;
+import com.kuafuai.dynamic.policy.PolicyEngine;
 import com.kuafuai.system.entity.AppTableColumnInfo;
 
 import java.util.ArrayList;
@@ -70,9 +71,25 @@ public class UpdateClauseBuilder {
 
         TableContext wc = ContextFactory.fromTableContext(ctx, whereCond);
         WhereBuilder whereBuilder = new WhereBuilder(wc, false);
+        String where = whereBuilder.build();
+
+        // 注入 RLS 策略条件
+        String policyCondition = PolicyEngine.getUsingCondition(
+                ctx.getDatabase(),
+                ctx.getTable(),
+                "UPDATE"
+        );
+
+        if (StringUtils.isNotEmpty(policyCondition)) {
+            if (StringUtils.isEmpty(where)) {
+                where = policyCondition;
+            } else {
+                where = where + " AND (" + policyCondition + ")";
+            }
+        }
 
         return "UPDATE " + ctx.qualifiedTable() +
                 " SET " + String.join(", ", sets) +
-                " WHERE " + whereBuilder.build();
+                " WHERE " + where;
     }
 }
