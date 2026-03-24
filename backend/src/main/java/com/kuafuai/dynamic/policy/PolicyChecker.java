@@ -1,6 +1,8 @@
 package com.kuafuai.dynamic.policy;
 
 import com.kuafuai.common.exception.BusinessException;
+import com.kuafuai.common.login.LoginUser;
+import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 
@@ -17,9 +19,9 @@ public class PolicyChecker {
     /**
      * 验证 INSERT 操作的数据是否符合 WITH CHECK 策略
      *
-     * @param appId  应用ID
-     * @param table  表名
-     * @param data   待插入的数据
+     * @param appId 应用ID
+     * @param table 表名
+     * @param data  待插入的数据
      * @throws BusinessException 如果违反策略
      */
     public static void checkInsert(String appId, String table, Map<String, Object> data) {
@@ -29,9 +31,9 @@ public class PolicyChecker {
     /**
      * 验证 UPDATE 操作的数据是否符合 WITH CHECK 策略
      *
-     * @param appId  应用ID
-     * @param table  表名
-     * @param data   待更新的数据
+     * @param appId 应用ID
+     * @param table 表名
+     * @param data  待更新的数据
      * @throws BusinessException 如果违反策略
      */
     public static void checkUpdate(String appId, String table, Map<String, Object> data) {
@@ -49,6 +51,12 @@ public class PolicyChecker {
      */
     private static void checkPolicy(String appId, String table, String operation, Map<String, Object> data) {
         try {
+            // 0. 检查是否绕过 RLS
+            if (shouldBypassRls()) {
+                log.debug("当前用户设置了 bypassRls，跳过 WITH CHECK 验证");
+                return;
+            }
+
             // 1. 获取 WITH CHECK 表达式
             List<String> expressions = PolicyEngine.getWithCheckExpressions(appId, table, operation);
 
@@ -83,6 +91,25 @@ public class PolicyChecker {
         } catch (Exception e) {
             log.error("WITH CHECK 验证失败: appId={}, table={}, operation={}", appId, table, operation, e);
             throw new BusinessException("policy.with_check.error");
+        }
+    }
+
+    /**
+     * 判断当前用户是否应该绕过 RLS 检查
+     *
+     * @return true: 绕过 RLS；false: 正常应用 RLS
+     */
+    private static boolean shouldBypassRls() {
+        try {
+            LoginUser loginUser = SecurityUtils.getLoginUser();
+            if (loginUser == null) {
+                return false;
+            }
+            Boolean bypassRls = loginUser.getBypassRls();
+            return bypassRls != null && bypassRls;
+        } catch (Exception e) {
+            log.warn("检查 bypassRls 标志失败，默认应用 RLS", e);
+            return false;
         }
     }
 }

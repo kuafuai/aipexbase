@@ -136,7 +136,9 @@ public class LoginBusinessService {
             relevanceTable = DynamicAuthFilter.getAppInfo().getAuthTable();
         }
         String relevanceId = value.getRelevanceId();
-        return new LoginUser(appId, relevanceId, relevanceTable);
+
+        boolean bypassRls = !isUserType();
+        return new LoginUser(appId, relevanceId, relevanceTable, bypassRls);
     }
 
 

@@ -39,6 +39,13 @@ public class LoginUser implements UserDetails {
 
     private String appId;
 
+    /**
+     * 是否绕过 RLS 检查
+     * true: 跳过 RLS，可以访问所有数据（管理员模式）
+     * false/null: 正常应用 RLS 策略
+     */
+    private Boolean bypassRls;
+
 
     public LoginUser(String appId, String relevanceId, String relevanceTable) {
         this.appId = appId;
@@ -46,8 +53,16 @@ public class LoginUser implements UserDetails {
         this.relevanceTable = relevanceTable;
     }
 
+    public LoginUser(String appId, String relevanceId, String relevanceTable, Boolean passRls) {
+        this.appId = appId;
+        this.relevanceId = relevanceId;
+        this.relevanceTable = relevanceTable;
+        this.bypassRls = passRls;
+    }
+
     public LoginUser(Long userId) {
         this.userId = userId;
+        this.bypassRls = true;
     }
 
 

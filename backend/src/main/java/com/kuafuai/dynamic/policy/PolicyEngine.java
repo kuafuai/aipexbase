@@ -1,5 +1,7 @@
 package com.kuafuai.dynamic.policy;
 
+import com.kuafuai.common.login.LoginUser;
+import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.SpringUtils;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.system.entity.RlsPolicy;
@@ -27,6 +29,12 @@ public class PolicyEngine {
      */
     public static String getUsingCondition(String appId, String tableName, String operation) {
         try {
+            // 0. 检查是否绕过 RLS
+            if (shouldBypassRls()) {
+                log.debug("当前用户设置了 bypassRls，跳过 RLS 检查");
+                return "";
+            }
+
             // 1. 查询该表该操作的所有启用策略
             List<RlsPolicy> policies = queryPolicies(appId, tableName, operation);
 
@@ -75,6 +83,12 @@ public class PolicyEngine {
      */
     public static List<String> getWithCheckExpressions(String appId, String tableName, String operation) {
         try {
+            // 0. 检查是否绕过 RLS
+            if (shouldBypassRls()) {
+                log.debug("当前用户设置了 bypassRls，跳过 WITH CHECK 检查");
+                return new ArrayList<>();
+            }
+
             // 1. 查询该表该操作的所有启用策略
             List<RlsPolicy> policies = queryPolicies(appId, tableName, operation);
 
@@ -112,5 +126,24 @@ public class PolicyEngine {
     private static List<RlsPolicy> queryPolicies(String appId, String tableName, String operation) {
         RlsPolicyService service = SpringUtils.getBean(RlsPolicyService.class);
         return service.getPoliciesByTableAndOperation(appId, tableName, operation);
+    }
+
+    /**
+     * 判断当前用户是否应该绕过 RLS 检查
+     *
+     * @return true: 绕过 RLS；false: 正常应用 RLS
+     */
+    private static boolean shouldBypassRls() {
+        try {
+            LoginUser loginUser = SecurityUtils.getLoginUser();
+            if (loginUser == null) {
+                return false;
+            }
+            Boolean bypassRls = loginUser.getBypassRls();
+            return bypassRls != null && bypassRls;
+        } catch (Exception e) {
+            log.warn("检查 bypassRls 标志失败，默认应用 RLS", e);
+            return false;
+        }
     }
 }
