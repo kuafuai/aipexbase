@@ -5,14 +5,23 @@ import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 
-/**
- * auth 命名空间实现
- * <p>
- * 支持的方法：
- * - auth.uid() : 当前登录用户的 relevanceId
- */
+import java.util.HashMap;
+import java.util.Map;
+import java.util.function.Function;
+
+
 @Slf4j
 public class AuthNamespace implements FunctionNamespace {
+
+    private final Map<String, Function<LoginUser, RlsValue>> methods = new HashMap<>();
+
+    public AuthNamespace() {
+        // 注册字符串类型字段
+        registerStringGetter("uid", LoginUser::getRelevanceId);
+        registerStringGetter("app_id", LoginUser::getAppId);
+
+        log.info("AuthNamespace 初始化完成，注册方法数: {}", methods.size());
+    }
 
     @Override
     public String getName() {
@@ -20,98 +29,51 @@ public class AuthNamespace implements FunctionNamespace {
     }
 
     @Override
-    public String evaluate(String methodName) {
+    public RlsValue evaluate(String methodName) {
         LoginUser loginUser = SecurityUtils.getLoginUser();
 
+        // 未登录：返回 NULL（正常情况，不记录警告）
         if (loginUser == null) {
-            log.warn("auth.{} 调用失败: 未登录", methodName);
-            return "NULL";
+            return RlsValue.ofNull();
         }
 
-        switch (methodName) {
-            case "uid":
-                return evaluateUid(loginUser);
+        // 从注册表中查找求值函数
+        Function<LoginUser, RlsValue> evaluator = methods.get(methodName);
 
-            case "user_id":
-                return evaluateUserId(loginUser);
-
-            case "tenant_id":
-                return evaluateTenantId(loginUser);
-
-            case "app_id":
-                return evaluateAppId(loginUser);
-
-            case "table":
-                return evaluateTable(loginUser);
-
-            default:
-                log.warn("未知的 auth 方法: {}", methodName);
-                return "NULL";
+        if (evaluator == null) {
+            log.warn("未知的 auth 方法: {}，支持的方法: {}", methodName, methods.keySet());
+            return RlsValue.ofNull();
         }
+
+        // 执行求值
+        return evaluator.apply(loginUser);
     }
 
-    /**
-     * auth.uid() - 返回 relevanceId
-     */
-    private String evaluateUid(LoginUser loginUser) {
-        String userId = loginUser.getRelevanceId();
-        if (StringUtils.isEmpty(userId)) {
-            return "NULL";
+    public void registerMethod(String methodName, Function<LoginUser, RlsValue> evaluator) {
+        if (methods.containsKey(methodName)) {
+            log.warn("auth 方法 {} 已存在，将被覆盖", methodName);
         }
-        return "'" + escapeSql(userId) + "'";
+        methods.put(methodName, evaluator);
     }
 
-    /**
-     * auth.user_id() - 返回 userId
-     */
-    private String evaluateUserId(LoginUser loginUser) {
-        Long userId = loginUser.getUserId();
-        if (userId == null) {
-            return "NULL";
-        }
-        return String.valueOf(userId);
+    private void registerStringGetter(String methodName, Function<LoginUser, String> getter) {
+        registerMethod(methodName, user -> {
+            String value = getter.apply(user);
+            return StringUtils.isEmpty(value) ? RlsValue.ofNull() : RlsValue.ofString(value);
+        });
     }
 
-    /**
-     * auth.tenant_id() - 返回 tenantId
-     */
-    private String evaluateTenantId(LoginUser loginUser) {
-        Integer tenantId = loginUser.getTenantId();
-        if (tenantId == null) {
-            return "NULL";
-        }
-        return String.valueOf(tenantId);
+    private void registerNumberGetter(String methodName, Function<LoginUser, ? extends Number> getter) {
+        registerMethod(methodName, user -> {
+            Number value = getter.apply(user);
+            return value == null ? RlsValue.ofNull() : RlsValue.ofNumber(value);
+        });
     }
 
-    /**
-     * auth.app_id() - 返回 appId
-     */
-    private String evaluateAppId(LoginUser loginUser) {
-        String appId = loginUser.getAppId();
-        if (StringUtils.isEmpty(appId)) {
-            return "NULL";
-        }
-        return "'" + escapeSql(appId) + "'";
-    }
-
-    /**
-     * auth.table() - 返回 relevanceTable
-     */
-    private String evaluateTable(LoginUser loginUser) {
-        String table = loginUser.getRelevanceTable();
-        if (StringUtils.isEmpty(table)) {
-            return "NULL";
-        }
-        return "'" + escapeSql(table) + "'";
-    }
-
-    /**
-     * SQL 转义
-     */
-    private String escapeSql(String value) {
-        if (value == null) {
-            return "";
-        }
-        return value.replace("'", "''");
+    private void registerBooleanGetter(String methodName, Function<LoginUser, Boolean> getter) {
+        registerMethod(methodName, user -> {
+            Boolean value = getter.apply(user);
+            return value == null ? RlsValue.ofNull() : RlsValue.ofBoolean(value);
+        });
     }
 }

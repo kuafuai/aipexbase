@@ -79,6 +79,7 @@ public class RlsPolicyServiceImpl extends ServiceImpl<RlsPolicyMapper, RlsPolicy
         LambdaQueryWrapper<RlsPolicy> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(RlsPolicy::getAppId, appId)
                 .eq(RlsPolicy::getTableName, tableName)
+                .eq(RlsPolicy::getEnabled, true)
                 .orderByDesc(RlsPolicy::getPriority)
                 .orderByAsc(RlsPolicy::getId);
 
@@ -94,6 +95,7 @@ public class RlsPolicyServiceImpl extends ServiceImpl<RlsPolicyMapper, RlsPolicy
         LambdaQueryWrapper<RlsPolicy> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(RlsPolicy::getAppId, appId)
                 .eq(RlsPolicy::getTableName, tableName)
+                .eq(RlsPolicy::getEnabled, true)
                 .and(wrapper -> wrapper
                         .eq(RlsPolicy::getOperation, operation)
                         .or()

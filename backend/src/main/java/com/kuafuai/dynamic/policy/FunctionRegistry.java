@@ -49,21 +49,21 @@ public class FunctionRegistry {
      * 求值函数
      *
      * @param namespace 命名空间名称（如 "auth"）
-     * @param method    方法名称（如 "uid"）
-     * @return SQL 字面量
+     * @param method    方法名称（如 "uid", "user_id"）
+     * @return RlsValue 对象，包含类型和值
      */
-    public static String evaluateFunction(String namespace, String method) {
+    public static RlsValue evaluateFunction(String namespace, String method) {
         FunctionNamespace ns = NAMESPACES.get(namespace);
         if (ns == null) {
             log.warn("未找到命名空间: {}", namespace);
-            return "NULL";
+            return RlsValue.ofNull();
         }
 
         try {
             return ns.evaluate(method);
         } catch (Exception e) {
             log.error("函数求值失败: {}.{}()", namespace, method, e);
-            return "NULL";
+            return RlsValue.ofNull();
         }
     }
 }

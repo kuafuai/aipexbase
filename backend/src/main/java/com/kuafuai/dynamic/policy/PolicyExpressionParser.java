@@ -77,13 +77,15 @@ public class PolicyExpressionParser {
 
                     // 检查是否是已注册的命名空间
                     if (FunctionRegistry.hasNamespace(namespace)) {
-                        // 替换为函数求值结果
-                        String value = FunctionRegistry.evaluateFunction(namespace, method);
-                        result.append(value);
+                        // 求值函数（返回 RlsValue）
+                        RlsValue rlsValue = FunctionRegistry.evaluateFunction(namespace, method);
 
-                        log.debug("替换函数: {}.{}() → {}", namespace, method, value);
+                        // 转换为 SQL 字面量
+                        String sqlLiteral = rlsValue.toSqlLiteral();
+                        result.append(sqlLiteral);
 
-                        // 跳过已处理的 token（namespace, dot, method, lparen, rparen）
+                        log.debug("替换函数: {}.{}() → {} (类型: {})", namespace, method, sqlLiteral, rlsValue.getType());
+
                         i += 4;
                         continue;
                     }

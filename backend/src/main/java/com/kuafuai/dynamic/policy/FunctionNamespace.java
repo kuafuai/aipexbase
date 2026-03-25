@@ -16,10 +16,14 @@ public interface FunctionNamespace {
     String getName();
 
     /**
-     * 求值指定方法，返回 SQL 字面量
+     * 求值指定方法，返回强类型的值
+     * <p>
+     * 设计原则：
+     * - 只负责求值，返回 Java 类型的值
+     * - 不负责转换为 SQL 语法，由外层（PolicyExpressionParser）处理
      *
-     * @param methodName 方法名（如 "uid", "role"）
-     * @return SQL 字面量字符串（已包含引号，如 "'123'" 或 "NULL"）
+     * @param methodName 方法名（如 "uid", "user_id", "tenant_id"）
+     * @return RlsValue 对象，包含类型和值
      */
-    String evaluate(String methodName);
+    RlsValue evaluate(String methodName);
 }
