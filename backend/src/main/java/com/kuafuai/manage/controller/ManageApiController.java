@@ -55,6 +55,23 @@ public class ManageApiController {
     }
 
     /**
+     * 删除应用
+     *
+     * @param appVo 应用信息（需要提供 appId）
+     * @return 删除结果
+     */
+    @DeleteMapping("/application")
+    public BaseResponse deleteApp(@RequestBody AppVo appVo) {
+        if (StringUtils.isEmpty(appVo.getAppId())) {
+            throw new BusinessException("error.param.required", "appId");
+        }
+
+        log.info("对外API - 删除应用: appId={}", appVo.getAppId());
+        manageBusinessService.deleteApp(appVo.getAppId());
+        return ResultUtils.success();
+    }
+
+    /**
      * 创建表
      *
      * @param tableVo 表信息（需要提供 appId、tableName 等信息）

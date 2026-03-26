@@ -15,4 +15,5 @@ public class AppVo extends PageRequest {
      * 应用所有者ID - 用于对外API指定应用所有者
      */
     private String userId;
+    private String appId;
 }
