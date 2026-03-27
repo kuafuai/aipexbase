@@ -11,6 +11,7 @@ import com.kuafuai.api.service.ApiBusinessService;
 import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.exception.BusinessException;
+import com.kuafuai.common.file.FileUtils;
 import com.kuafuai.common.file.ImageUtils;
 import com.kuafuai.common.storage.StorageService;
 import com.kuafuai.common.util.ServletUtils;
@@ -90,7 +91,7 @@ public class UnifiedApiController {
     }
 
 
-    @PostMapping("/word2pic")
+    @PostMapping("/word2pic_old")
     public Object word2pic(@RequestBody Map<String, Object> data) {
         String apiKey = "word2pic";
         if (!data.containsKey("text")) {
@@ -122,6 +123,71 @@ public class UnifiedApiController {
 
         } catch (Exception e) {
             log.error("=====文生图失败:{}=====", e.getMessage() + "\n" + result);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR);
+        }
+    }
+
+    @PostMapping("/musicGeneration")
+    public Object musicGeneration(@RequestBody Map<String, Object> data) {
+        String apiKey = "musicGeneration";
+        if (!data.containsKey("prompt")) {
+            return ResultUtils.error("login.register.params", "prompt");
+        }
+
+        String appId = GlobalAppIdFilter.getAppId();
+        DynamicApiSetting setting = apiBusinessService.getByApiKey(appId, apiKey);
+        if (setting == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+
+        // 构建请求参数
+        Map<String, Object> contentMap = Maps.newHashMap();
+        contentMap.put("model", data.getOrDefault("model", "music-2.5+"));
+        contentMap.put("prompt", data.get("prompt"));
+
+        // 可选参数
+        if (data.containsKey("lyrics")) {
+            contentMap.put("lyrics", data.get("lyrics"));
+        }
+        if (data.containsKey("duration")) {
+            contentMap.put("duration", data.get("duration"));
+        }
+        if (data.containsKey("style")) {
+            contentMap.put("style", data.get("style"));
+        }
+
+        // 音频设置
+        if (data.containsKey("audio_setting")) {
+            contentMap.put("audio_setting", data.get("audio_setting"));
+        } else {
+            Map<String, Object> audioSetting = Maps.newHashMap();
+            audioSetting.put("sample_rate", 44100);
+            audioSetting.put("bitrate", 256000);
+            audioSetting.put("format", "mp3");
+            contentMap.put("audio_setting", audioSetting);
+        }
+
+        String result = apiBusinessService.callApiWithBilling(appId, setting, contentMap);
+        try {
+            String dataPath = setting.getDataPath();
+            Object content = JsonPath.read(result, dataPath);
+
+            // 假设返回的是 hex 编码的音频数据
+            String hexData = (String) content;
+            byte[] audioBytes = FileUtils.hexToBytes(hexData);
+
+            String fileName = (String) data.get("file_name"); // 可选参数
+            String path;
+            if (StringUtils.isNotBlank(fileName)) {
+                path = storageService.upload(audioBytes, GlobalAppIdFilter.getAppId(), fileName, "audio/mpeg");
+            } else {
+                path = storageService.upload(audioBytes, GlobalAppIdFilter.getAppId(), "mp3", "audio/mpeg");
+            }
+
+            return ResultUtils.success(path);
+
+        } catch (Exception e) {
+            log.error("=====音乐生成失败:{}=====", e.getMessage() + "\n" + result);
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
     }

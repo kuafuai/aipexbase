@@ -235,4 +235,87 @@ public class FileUtils {
         String baseName = FilenameUtils.getBaseName(fileName);
         return baseName;
     }
+
+    /**
+     * 将 hex 编码的字符串转换为字节数组
+     *
+     * @param hex hex 编码的字符串（可以包含或不包含 0x 前缀）
+     * @return 转换后的字节数组
+     * @throws IllegalArgumentException 如果 hex 格式不正确
+     */
+    public static byte[] hexToBytes(String hex) {
+        if (hex == null || hex.isEmpty()) {
+            throw new IllegalArgumentException("Hex 字符串不能为空");
+        }
+
+        // 移除 0x 或 0X 前缀
+        if (hex.startsWith("0x") || hex.startsWith("0X")) {
+            hex = hex.substring(2);
+        }
+
+        // 移除空格和连字符
+        hex = hex.replaceAll("\\s+", "").replaceAll("-", "");
+
+        if (hex.length() % 2 != 0) {
+            throw new IllegalArgumentException("Hex 字符串长度必须为偶数");
+        }
+
+        int len = hex.length();
+        byte[] data = new byte[len / 2];
+
+        for (int i = 0; i < len; i += 2) {
+            int high = Character.digit(hex.charAt(i), 16);
+            int low = Character.digit(hex.charAt(i + 1), 16);
+
+            if (high == -1 || low == -1) {
+                throw new IllegalArgumentException("无效的十六进制字符：" + hex.substring(i, Math.min(i + 2, len)));
+            }
+
+            data[i / 2] = (byte) ((high << 4) + low);
+        }
+
+        return data;
+    }
+
+    /**
+     * 将 hex 编码的音频数据转换为 MP3 文件
+     *
+     * @param hexData   hex 编码的音频数据
+     * @param uploadDir 上传目录
+     * @param fileName  文件名（不包含扩展名）
+     * @return 生成的 MP3 文件路径
+     * @throws IOException IO 异常
+     */
+    public static String hexAudioToMp3(String hexData, String uploadDir, String fileName) throws IOException {
+        byte[] audioBytes = hexToBytes(hexData);
+
+        // 验证是否为有效的 MP3 文件（可选，检查文件头）
+        // MP3 文件通常以 ID3 标签开头或以帧同步字开头
+        if (audioBytes.length < 3) {
+            throw new IllegalArgumentException("音频数据太短，不是有效的 MP3 文件");
+        }
+
+        // 使用指定的文件名保存 MP3 文件
+        return writeBytes(audioBytes, uploadDir, "mp3");
+    }
+
+    /**
+     * 将 hex 编码的音频数据转换为 MP3 文件（自动生成文件名）
+     *
+     * @param hexData   hex 编码的音频数据
+     * @param uploadDir 上传目录
+     * @return 生成的 MP3 文件路径
+     * @throws IOException IO 异常
+     */
+    public static String hexAudioToMp3(String hexData, String uploadDir) throws IOException {
+        byte[] audioBytes = hexToBytes(hexData);
+
+        // 验证是否为有效的 MP3 文件（可选）
+        if (audioBytes.length < 3) {
+            throw new IllegalArgumentException("音频数据太短，不是有效的 MP3 文件");
+        }
+
+        // 自动生成文件名并保存
+        return writeBytes(audioBytes, uploadDir, "mp3");
+    }
 }
