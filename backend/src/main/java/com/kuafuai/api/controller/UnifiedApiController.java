@@ -127,9 +127,9 @@ public class UnifiedApiController {
         }
     }
 
-    @PostMapping("/musicGeneration")
-    public Object musicGeneration(@RequestBody Map<String, Object> data) {
-        String apiKey = "musicGeneration";
+    @PostMapping("/text2music")
+    public Object text2music(@RequestBody Map<String, Object> data) {
+        String apiKey = "text2music";
         if (!data.containsKey("prompt")) {
             return ResultUtils.error("login.register.params", "prompt");
         }
