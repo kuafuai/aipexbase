@@ -91,7 +91,7 @@ public class UnifiedApiController {
     }
 
 
-    @PostMapping("/word2pic_old")
+    @PostMapping("/word2pic")
     public Object word2pic(@RequestBody Map<String, Object> data) {
         String apiKey = "word2pic";
         if (!data.containsKey("text")) {
