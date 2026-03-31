@@ -11,13 +11,15 @@ import com.kuafuai.common.storage.StorageService;
 import com.kuafuai.common.util.JSON;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import com.kuafuai.system.entity.AppInfo;
+import com.kuafuai.system.service.AppInfoService;
+import cn.hutool.core.util.ZipUtil;
+import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
+import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
@@ -35,6 +37,9 @@ public class CommonController {
 
     @Resource
     private StorageService storageService;
+
+    @Resource
+    private AppInfoService appInfoService;
 
     /**
      * 通用上传请求（单个）
@@ -75,6 +80,41 @@ public class CommonController {
         String resultUrl = storageService.upload(fileUrl, formatter, contentType);
         return ResultUtils.success(resultUrl);
     }
+
+    @PostMapping("/deploy")
+    public BaseResponse deploy(MultipartFile file, @RequestParam String appId) {
+        try {
+            String originalFilename = file.getOriginalFilename();
+            if (originalFilename == null || !originalFilename.toLowerCase().endsWith(".zip")) {
+                return ResultUtils.error("仅支持上传zip文件");
+            }
+
+            // 通过 appId 查询数据库获取 id
+            AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
+            if (appInfo == null || appInfo.getId() == null) {
+                return ResultUtils.error("应用不存在");
+            }
+            Long id = appInfo.getId();
+
+            // 目标目录
+            String targetDir = "/data/codeflying/kuafu-runtime-agent/workspace/" + id + "/1" + id + "/";
+
+            // 解压 zip 到目标目录
+            File targetPath = new File(targetDir);
+            if (!targetPath.exists()) {
+                targetPath.mkdirs();
+            }
+            ZipUtil.unzip(file.getInputStream(), targetPath, StandardCharsets.UTF_8);
+
+            String deployUrl = "http://124.71.176.202/1" + id;
+            Map<String, String> data = Maps.newHashMap();
+            data.put("url", deployUrl);
+            return ResultUtils.success(data);
+        } catch (Exception e) {
+            return ResultUtils.error(e.getMessage());
+        }
+    }
+
 
     /**
      * 发送消息
