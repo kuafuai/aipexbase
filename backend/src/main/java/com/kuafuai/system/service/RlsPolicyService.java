@@ -57,4 +57,12 @@ public interface RlsPolicyService extends IService<RlsPolicy> {
      * @return 删除数量
      */
     int deleteByTable(String appId, String tableName);
+
+    /**
+     * 删除应用的所有 RLS 策略
+     *
+     * @param appId 应用ID
+     * @return 删除数量
+     */
+    boolean deleteByAppId(String appId);
 }

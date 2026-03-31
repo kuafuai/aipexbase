@@ -4,6 +4,7 @@ import com.kuafuai.common.domin.BaseResponse;
 import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.util.StringUtils;
+import com.kuafuai.manage.entity.vo.AppBatchVo;
 import com.kuafuai.manage.entity.vo.AppVo;
 import com.kuafuai.manage.entity.vo.TableVo;
 import com.kuafuai.manage.service.ManageBusinessService;
@@ -27,6 +28,35 @@ import java.util.Map;
 public class ManageApiController {
 
     private final ManageBusinessService manageBusinessService;
+
+    /**
+     * 批量创建应用和表
+     *
+     * @param appBatchVo 应用信息和表列表
+     * @return 创建结果（包含 appId 和 apiKey）
+     */
+    @PostMapping("/application/batch")
+    public BaseResponse createAppWithTables(@RequestBody AppBatchVo appBatchVo) {
+        if (StringUtils.isEmpty(appBatchVo.getName())) {
+            throw new BusinessException("error.param.required", "name");
+        }
+        if (StringUtils.isEmpty(appBatchVo.getUserId())) {
+            appBatchVo.setUserId("agent_01");
+        }
+
+        log.info("对外API - 批量创建应用和表: name={}, owner={}, tables.size={}",
+                appBatchVo.getName(), appBatchVo.getUserId(),
+                appBatchVo.getTables() != null ? appBatchVo.getTables().size() : 0);
+
+        AppInfo appInfo = manageBusinessService.createAppWithTables(appBatchVo);
+
+        // 返回 apiKey 和 appId
+        Map<String, String> result = new HashMap<>();
+        result.put("apiKey", appInfo.getAppId());
+        result.put("appId", appInfo.getAppId());
+
+        return ResultUtils.success(result);
+    }
 
     /**
      * 创建应用

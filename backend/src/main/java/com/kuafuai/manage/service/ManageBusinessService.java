@@ -16,6 +16,7 @@ import com.kuafuai.dynamic.service.DynamicInterfaceService;
 import com.kuafuai.dynamic.service.DynamicService;
 import com.kuafuai.manage.entity.dto.AppInfoCopyDTO;
 import com.kuafuai.manage.entity.vo.APIKeyVo;
+import com.kuafuai.manage.entity.vo.AppBatchVo;
 import com.kuafuai.manage.entity.vo.AppVo;
 import com.kuafuai.manage.entity.vo.ColumnVo;
 import com.kuafuai.manage.entity.vo.TableVo;
@@ -97,6 +98,9 @@ public class ManageBusinessService {
     @Resource
     private ApplicationAPIKeysService applicationAPIKeysService;
 
+    @Autowired
+    private RlsPolicyService rlsPolicyService;
+
     @Transactional
     public void recycle(String appId) {
         AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
@@ -150,6 +154,41 @@ public class ManageBusinessService {
     public AppInfo createApp(AppVo appVo) {
         Long owner = SecurityUtils.getUserId();
         return createAppInternal(appVo.getName(), owner);
+    }
+
+    /**
+     * 批量创建应用和表 - 用于对外API
+     *
+     * @param appBatchVo 包含应用信息和表列表的请求对象
+     * @return 创建的应用信息
+     */
+    public AppInfo createAppWithTables(AppBatchVo appBatchVo) {
+        // 1. 创建应用
+        AppInfo appInfo = createAppForApi(appBatchVo.getName(), appBatchVo.getUserId());
+
+        // 2. 如果有表信息，批量创建表
+        if (appBatchVo.getTables() != null && !appBatchVo.getTables().isEmpty()) {
+
+            // 显式同步创建数据库，避免异步创建导致的时序问题
+            databaseMapper.createDatabase(appInfo.getAppId());
+
+            createTables(appInfo.getAppId(), appBatchVo.getTables());
+        }
+
+        // 3. 如果有 RLS 策略，批量创建策略
+        if (appBatchVo.getRlsPolicies() != null && !appBatchVo.getRlsPolicies().isEmpty()) {
+            for (String policySql : appBatchVo.getRlsPolicies()) {
+                try {
+                    rlsPolicyService.createFromSql(appInfo.getAppId(), policySql, null);
+                    log.info("RLS 策略创建成功: appId={}, sql={}", appInfo.getAppId(), policySql);
+                } catch (Exception e) {
+                    log.error("RLS 策略创建失败: appId={}, sql={}", appInfo.getAppId(), policySql, e);
+                    throw new BusinessException("创建 RLS 策略失败: " + e.getMessage(), e);
+                }
+            }
+        }
+
+        return appInfo;
     }
 
     /**
@@ -393,6 +432,9 @@ public class ManageBusinessService {
         dynamicApiSettingService.deleteByAppId(appId);
 
         applicationAPIKeysService.deleteByAppId(appId);
+
+        // 删除 RLS 策略
+        rlsPolicyService.deleteByAppId(appId);
 
         dynamicInfoCache.clean(appId);
     }

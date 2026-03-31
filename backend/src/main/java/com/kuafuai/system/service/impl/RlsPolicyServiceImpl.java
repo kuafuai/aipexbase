@@ -24,9 +24,6 @@ import java.util.List;
 @Service
 public class RlsPolicyServiceImpl extends ServiceImpl<RlsPolicyMapper, RlsPolicy> implements RlsPolicyService {
 
-    @Resource
-    private RlsPolicyMapper rlsPolicyMapper;
-
     @Override
     @Transactional(rollbackFor = Exception.class)
     public RlsPolicy createFromSql(String appId, String sql, Integer priority) {
@@ -147,6 +144,19 @@ public class RlsPolicyServiceImpl extends ServiceImpl<RlsPolicyMapper, RlsPolicy
 
         log.info("删除表的所有 RLS 策略: appId={}, table={}, count={}", appId, tableName, count);
         return count;
+    }
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public boolean deleteByAppId(String appId) {
+        if (StringUtils.isEmpty(appId)) {
+            throw new BusinessException("policy.app_id.required");
+        }
+
+        LambdaQueryWrapper<RlsPolicy> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(RlsPolicy::getAppId, appId);
+        
+        return remove(queryWrapper);
     }
 
     /**
