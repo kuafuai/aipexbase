@@ -346,14 +346,6 @@ public class DynamicInterfaceService {
                 .collect(Collectors.toList());
 
         if (!quoteColumns.isEmpty()) {
-
-            if (list.size() > 10) {
-                // todo 后续优化
-                // 如果超过 10 条 , 不处理 关联表查询
-                log.info("======================:{}:{}:{}==========================", database, table, list.size());
-                return;
-            }
-
             for (AppTableColumnInfo appTableColumnInfo : quoteColumns) {
                 Long columnId = appTableColumnInfo.getId();
 
@@ -417,23 +409,46 @@ public class DynamicInterfaceService {
             }
         } else {
             String primaryKey = systemBusinessService.getAppTablePrimaryKey(database, table);
+
+            // 收集所有主键值，批量查询 static_resources
+            List<Object> allKeys = list.stream()
+                    .map(d -> d.get(primaryKey))
+                    .filter(Objects::nonNull)
+                    .distinct()
+                    .collect(Collectors.toList());
+
+            if (allKeys.isEmpty()) {
+                return;
+            }
+
+            Map<String, Object> batchParams = Maps.newHashMap();
+            batchParams.put("related_table_name", table);
+            batchParams.put("related_table_key", allKeys);
+            List<Map<String, Object>> allResources = dynamicMapper.list(database, "static_resources", batchParams);
+
+            // 按 related_table_key + relate_table_column_name 分组
+            Map<String, Map<String, List<Map<String, Object>>>> grouped = allResources.stream()
+                    .collect(Collectors.groupingBy(
+                            r -> String.valueOf(r.get("related_table_key")),
+                            Collectors.groupingBy(r -> String.valueOf(r.get("relate_table_column_name")))
+                    ));
+
+            // 回填到 list 中
             for (AppTableColumnInfo appTableColumnInfo : resourceColumns) {
                 String resourceColumnName = appTableColumnInfo.getColumnName();
                 for (Map<String, Object> data : list) {
                     String primaryKeyValue = Convert.toStr(data.get(primaryKey));
+                    Map<String, List<Map<String, Object>>> columnMap = grouped.get(primaryKeyValue);
+                    List<Map<String, Object>> resourceList = (columnMap != null) ? columnMap.get(resourceColumnName) : null;
 
-                    Map<String, Object> params = Maps.newHashMap();
-                    params.put("related_table_name", table);
-                    params.put("relate_table_column_name", resourceColumnName);
-                    params.put("related_table_key", primaryKeyValue);
-
-                    List<Map<String, Object>> resourceList = dynamicMapper.list(database, "static_resources", params);
                     if (resourceList != null && !resourceList.isEmpty()) {
                         resourceList.forEach(this::normalizeResource);
                         resourceList = resourceList.stream()
                                 .sorted(Comparator.comparing(resourcesMap ->
                                         ((Number) resourcesMap.get("resource_id")).intValue()))
                                 .collect(Collectors.toList());
+                    } else {
+                        resourceList = Collections.emptyList();
                     }
                     data.put(resourceColumnName, resourceList);
                 }
@@ -451,27 +466,47 @@ public class DynamicInterfaceService {
             return;
         }
         String primaryKey = systemBusinessService.getAppTablePrimaryKey(database, tableName);
+        String columnName = columnInfo.getColumnName();
 
-        // 查询出 quote表的 资源类型
+        // 收集所有 quote 列的值（去重去 null）
+        List<Object> quoteIds = list.stream()
+                .map(data -> data.get(columnName))
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (quoteIds.isEmpty()) {
+            return;
+        }
+
+        // 批量 IN 查询，一次查出所有关联数据
+        Map<String, Object> params = Maps.newHashMap();
+        params.put(primaryKey, quoteIds);
+        List<Map<String, Object>> allQuoteData = dynamicMapper.list(database, tableName, params);
+
+        // 处理关联表的资源列
         List<AppTableColumnInfo> columnInfos = dynamicInfoCache.getAppTableColumnInfo(database, tableName);
+        process_resource_column(database, tableName, columnInfos, allQuoteData);
 
+        // 按主键分组，方便回填
+        Map<String, Map<String, Object>> quoteMap = allQuoteData.stream()
+                .filter(m -> m.get(primaryKey) != null)
+                .collect(Collectors.toMap(
+                        m -> m.get(primaryKey).toString(),
+                        m -> m,
+                        (existing, replacement) -> existing
+                ));
+
+        // 回填到 list 中
         for (Map<String, Object> data : list) {
-            Object columnValue = data.get(columnInfo.getColumnName());
+            Object columnValue = data.get(columnName);
             if (Objects.isNull(columnValue)) {
                 continue;
             }
-            Map<String, Object> params = Maps.newHashMap();
-            params.put(primaryKey, columnValue);
-
-            Map<String, Object> quoteDataMap = dynamicMapper.getOne(database, tableName, params);
+            Map<String, Object> quoteDataMap = quoteMap.get(columnValue.toString());
             if (quoteDataMap != null) {
-
-                List<Map<String, Object>> quoteDataMapList = Lists.newArrayList(quoteDataMap);
-                process_resource_column(database, tableName, columnInfos, quoteDataMapList);
-
                 quoteDataMap.forEach(data::putIfAbsent);
-                // 将引用字段的数据放入对象里
-                data.put(columnInfo.getColumnName() + "_map", quoteDataMap);
+                data.put(columnName + "_map", quoteDataMap);
             }
         }
     }

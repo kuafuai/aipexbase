@@ -31,8 +31,7 @@ public class SensitiveEventListener {
 
     @PostConstruct
     public void init() {
-        //注册订阅者
-        // eventBus.register(this);
+        eventBus.register(this);
     }
 
     @Autowired
@@ -52,9 +51,11 @@ public class SensitiveEventListener {
 
     private static final String KEY = "sensitive:accesstoken:";
 
+    private static final int MAX_TEXT_LENGTH = 5000;
+
     private final SensitiveClient client = new SensitiveClient();
 
-    //    @Subscribe
+    @Subscribe
     public void handleEvent(EventVo event) {
         log.info("=====================sensitive===================");
         // 参数检查
@@ -82,8 +83,9 @@ public class SensitiveEventListener {
                     process(event);
                 }
             }
+        } catch (Exception e) {
+            log.error("Sensitive check failed for appId: {}, table: {}", database, event.getTableName(), e);
         } finally {
-            log.info("==========sensitive clear =========");
             DynamicDataSourceContextHolder.clearDataSourceType();
         }
     }
@@ -93,29 +95,31 @@ public class SensitiveEventListener {
         String tableName = event.getTableName();
         String token = getAccessToken();
 
-        if (StringUtils.isNotEmpty(token)) {
-
-            //查询所有字段
-            Map<String, Object> mapData = (Map<String, Object>) event.getData();
-            List<AppTableColumnInfo> columnInfoList = dynamicInfoCache.getAppTableColumnInfo(appId, tableName);
-            StringBuilder sb = new StringBuilder();
-            //获取所有类型是text
-            for (AppTableColumnInfo columnInfo : columnInfoList) {
-                String dslType = columnInfo.getDslType();
-                if (StringUtils.equalsAnyIgnoreCase(dslType, "text", "longtext", "string")) {
-                    String columName = columnInfo.getColumnName();
-                    if (mapData.containsKey(columName)) {
-                        sb.append(mapData.get(columName)).append("\n");
-                    }
-                }
-            }
-
-            if (sb.length() > 0) {
-                textCensorAndSendMsg(token, sb.toString(), event);
-            }
-
+        if (StringUtils.isEmpty(token)) {
+            log.warn("Failed to get access token for sensitive check, appId: {}", appId);
+            return;
         }
 
+        Map<String, Object> mapData = (Map<String, Object>) event.getData();
+        List<AppTableColumnInfo> columnInfoList = dynamicInfoCache.getAppTableColumnInfo(appId, tableName);
+        StringBuilder sb = new StringBuilder();
+        for (AppTableColumnInfo columnInfo : columnInfoList) {
+            String dslType = columnInfo.getDslType();
+            if (StringUtils.equalsAnyIgnoreCase(dslType, "text", "longtext", "string")) {
+                String columName = columnInfo.getColumnName();
+                if (mapData.containsKey(columName)) {
+                    sb.append(mapData.get(columName)).append("\n");
+                }
+            }
+        }
+
+        if (sb.length() > 0) {
+            String text = sb.toString();
+            if (text.length() > MAX_TEXT_LENGTH) {
+                text = text.substring(0, MAX_TEXT_LENGTH);
+            }
+            textCensorAndSendMsg(token, text, event);
+        }
     }
 
     private String getAccessToken() {
