@@ -166,7 +166,21 @@ public class ManageBusinessService {
         // 1. 创建应用
         AppInfo appInfo = createAppForApi(appBatchVo.getName(), appBatchVo.getUserId());
 
-        // 2. 如果有表信息，批量创建表
+        // 2. 更新 needAuth 和 authTable（如果在 batch 请求中指定）
+        boolean needUpdate = false;
+        if (appBatchVo.getNeedAuth() != null) {
+            appInfo.setNeedAuth(appBatchVo.getNeedAuth());
+            needUpdate = true;
+        }
+        if (StringUtils.isNotEmpty(appBatchVo.getAuthTable())) {
+            appInfo.setAuthTable(appBatchVo.getAuthTable());
+            needUpdate = true;
+        }
+        if (needUpdate) {
+            appInfoService.updateById(appInfo);
+        }
+
+        // 3. 如果有表信息，批量创建表
         if (appBatchVo.getTables() != null && !appBatchVo.getTables().isEmpty()) {
 
             // 显式同步创建数据库，避免异步创建导致的时序问题

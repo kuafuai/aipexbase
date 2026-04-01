@@ -25,6 +25,8 @@ public class AppBatchVo {
      */
     private String userId;
 
+    private String appId;
+
     /**
      * 是否需要认证
      */
