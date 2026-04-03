@@ -164,21 +164,7 @@ public class ManageBusinessService {
      */
     public AppInfo createAppWithTables(AppBatchVo appBatchVo) {
         // 1. 创建应用
-        AppInfo appInfo = createAppForApi(appBatchVo.getName(), appBatchVo.getUserId());
-
-        // 2. 更新 needAuth 和 authTable（如果在 batch 请求中指定）
-        boolean needUpdate = false;
-        if (appBatchVo.getNeedAuth() != null) {
-            appInfo.setNeedAuth(appBatchVo.getNeedAuth());
-            needUpdate = true;
-        }
-        if (StringUtils.isNotEmpty(appBatchVo.getAuthTable())) {
-            appInfo.setAuthTable(appBatchVo.getAuthTable());
-            needUpdate = true;
-        }
-        if (needUpdate) {
-            appInfoService.updateById(appInfo);
-        }
+        AppInfo appInfo = createAppForApi(appBatchVo.getName(), appBatchVo.getUserId(), appBatchVo.getNeedAuth(), appBatchVo.getAuthTable());
 
         // 3. 如果有表信息，批量创建表
         if (appBatchVo.getTables() != null && !appBatchVo.getTables().isEmpty()) {
@@ -216,6 +202,12 @@ public class ManageBusinessService {
         // 根据外部用户ID获取或创建本地用户
         Long owner = getOrCreateUserByExternalId(externalUserId);
         return createAppInternal(name, owner);
+    }
+
+    public AppInfo createAppForApi(String name, String externalUserId, Boolean needAuth, String authTable) {
+        // 根据外部用户ID获取或创建本地用户
+        Long owner = getOrCreateUserByExternalId(externalUserId);
+        return createAppInternal(name, owner, needAuth, authTable);
     }
 
     /**
@@ -1013,6 +1005,22 @@ public class ManageBusinessService {
         appInfo.setAppId(appId);
         appInfo.setAppName(name);
         appInfo.setNeedAuth(false);
+        appInfo.setConfigJson("{}");
+        appInfo.setStatus(ManageConstants.STATUS_DRAFT);
+        appInfo.setOwner(owner);
+        appInfoService.save(appInfo);
+
+        eventService.publishEvent(EventVo.builder().appId(appInfo.getAppId()).model(ManageConstants.EVENT_CREATE).build());
+        return appInfo;
+    }
+
+    private AppInfo createAppInternal(String name, Long owner, Boolean needAuth, String authTable) {
+        String appId = "baas_" + RandomStringUtils.generateRandomString(16);
+        AppInfo appInfo = new AppInfo();
+        appInfo.setAppId(appId);
+        appInfo.setAppName(name);
+        appInfo.setNeedAuth(needAuth != null ? needAuth : false);
+        appInfo.setAuthTable(authTable);
         appInfo.setConfigJson("{}");
         appInfo.setStatus(ManageConstants.STATUS_DRAFT);
         appInfo.setOwner(owner);
