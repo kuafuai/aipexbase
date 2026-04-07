@@ -2,6 +2,7 @@ package com.kuafuai.manage.service;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.kuafuai.common.domin.BaseResponse;
@@ -164,7 +165,9 @@ public class ManageBusinessService {
      */
     public AppInfo createAppWithTables(AppBatchVo appBatchVo) {
         // 1. 创建应用
-        AppInfo appInfo = createAppForApi(appBatchVo.getName(), appBatchVo.getUserId(), appBatchVo.getNeedAuth(), appBatchVo.getAuthTable());
+        List<String> readTables = appBatchVo.getTables() == null ? null
+                : appBatchVo.getTables().stream().map(TableVo::getTableName).collect(Collectors.toList());
+        AppInfo appInfo = createAppForApi(appBatchVo.getName(), appBatchVo.getUserId(), appBatchVo.getNeedAuth(), appBatchVo.getAuthTable(), readTables);
 
         // 3. 如果有表信息，批量创建表
         if (appBatchVo.getTables() != null && !appBatchVo.getTables().isEmpty()) {
@@ -205,9 +208,13 @@ public class ManageBusinessService {
     }
 
     public AppInfo createAppForApi(String name, String externalUserId, Boolean needAuth, String authTable) {
+        return createAppForApi(name, externalUserId, needAuth, authTable, null);
+    }
+
+    public AppInfo createAppForApi(String name, String externalUserId, Boolean needAuth, String authTable, List<String> readTables) {
         // 根据外部用户ID获取或创建本地用户
         Long owner = getOrCreateUserByExternalId(externalUserId);
-        return createAppInternal(name, owner, needAuth, authTable);
+        return createAppInternal(name, owner, needAuth, authTable, readTables);
     }
 
     /**
@@ -1014,20 +1021,34 @@ public class ManageBusinessService {
         return appInfo;
     }
 
-    private AppInfo createAppInternal(String name, Long owner, Boolean needAuth, String authTable) {
+    private AppInfo createAppInternal(String name, Long owner, Boolean needAuth, String authTable, List<String> readTables) {
         String appId = "baas_" + RandomStringUtils.generateRandomString(16);
         AppInfo appInfo = new AppInfo();
         appInfo.setAppId(appId);
         appInfo.setAppName(name);
         appInfo.setNeedAuth(needAuth != null ? needAuth : false);
         appInfo.setAuthTable(authTable);
-        appInfo.setConfigJson("{}");
+        appInfo.setConfigJson(buildConfigJson(readTables));
         appInfo.setStatus(ManageConstants.STATUS_DRAFT);
         appInfo.setOwner(owner);
         appInfoService.save(appInfo);
 
         eventService.publishEvent(EventVo.builder().appId(appInfo.getAppId()).model(ManageConstants.EVENT_CREATE).build());
         return appInfo;
+    }
+
+    private String buildConfigJson(List<String> readTables) {
+        if (readTables == null || readTables.isEmpty()) {
+            return "{}";
+        }
+        Map<String, Object> config = new HashMap<>();
+        config.put("read_table", readTables);
+        try {
+            return new ObjectMapper().writeValueAsString(config);
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            log.error("序列化 configJson 失败", e);
+            return "{}";
+        }
     }
 
 }
