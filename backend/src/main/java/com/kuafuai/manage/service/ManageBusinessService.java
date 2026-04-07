@@ -207,10 +207,6 @@ public class ManageBusinessService {
         return createAppInternal(name, owner);
     }
 
-    public AppInfo createAppForApi(String name, String externalUserId, Boolean needAuth, String authTable) {
-        return createAppForApi(name, externalUserId, needAuth, authTable, null);
-    }
-
     public AppInfo createAppForApi(String name, String externalUserId, Boolean needAuth, String authTable, List<String> readTables) {
         // 根据外部用户ID获取或创建本地用户
         Long owner = getOrCreateUserByExternalId(externalUserId);
