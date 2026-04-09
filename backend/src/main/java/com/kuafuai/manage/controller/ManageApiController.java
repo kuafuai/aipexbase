@@ -7,6 +7,8 @@ import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.manage.entity.vo.AppBatchVo;
 import com.kuafuai.manage.entity.vo.AppVo;
 import com.kuafuai.manage.entity.vo.TableVo;
+import com.kuafuai.manage.context.ManageApiContext;
+import com.kuafuai.manage.context.ManageApiContextHolder;
 import com.kuafuai.manage.service.ManageBusinessService;
 import com.kuafuai.system.entity.AppInfo;
 import lombok.RequiredArgsConstructor;
@@ -19,7 +21,9 @@ import java.util.Map;
 /**
  * 对外开放的管理API接口
  * 需要通过 X-Manage-Token 请求头或 token 参数进行身份验证
- * 需要在配置文件中设置 manage.api.enable=true 和 manage.api.token
+ * 支持两种场景：
+ * - 场景1：用户级Token，userId固化在token中
+ * - 场景2：企业级Token，userId优先从请求body获取，其次从X-User-Id header获取
  */
 @Slf4j
 @RestController
@@ -28,6 +32,27 @@ import java.util.Map;
 public class ManageApiController {
 
     private final ManageBusinessService manageBusinessService;
+
+    /**
+     * 获取当前操作人的userId
+     * - 场景1（用户级token）：直接使用token绑定的userId
+     * - 场景2（企业级token）：优先使用body中的userId，其次使用header中的userId
+     */
+    private String getUserIdFromContext(String bodyUserId) {
+        ManageApiContext context = ManageApiContextHolder.get();
+        if (context == null) {
+            throw new BusinessException("认证信息缺失");
+        }
+
+        String userId = context.isUserToken()
+                ? context.getUserId()
+                : StringUtils.defaultIfEmpty(bodyUserId, context.getUserId());
+
+        if (StringUtils.isEmpty(userId)) {
+            throw new BusinessException("用户ID缺失");
+        }
+        return userId;
+    }
 
     /**
      * 批量创建应用和表
@@ -40,13 +65,11 @@ public class ManageApiController {
         if (StringUtils.isEmpty(appBatchVo.getName())) {
             throw new BusinessException("error.param.required", "name");
         }
-        if (StringUtils.isEmpty(appBatchVo.getUserId())) {
-            appBatchVo.setUserId("agent_01");
-        }
 
-        log.info("对外API - 批量创建应用和表: name={}, owner={}, tables.size={}",
-                appBatchVo.getName(), appBatchVo.getUserId(),
-                appBatchVo.getTables() != null ? appBatchVo.getTables().size() : 0);
+        String userId = getUserIdFromContext(appBatchVo.getUserId());
+        appBatchVo.setUserId(userId);
+
+        log.info("对外API - 批量创建应用和表: name={}, userId={}, tables.size={}", appBatchVo.getName(), userId, appBatchVo.getTables() != null ? appBatchVo.getTables().size() : 0);
 
         AppInfo appInfo = manageBusinessService.createAppWithTables(appBatchVo);
 
@@ -61,7 +84,7 @@ public class ManageApiController {
     /**
      * 创建应用
      *
-     * @param appVo 应用信息（需要提供 name 和 owner）
+     * @param appVo 应用信息（需要提供 name）
      * @return 创建的应用信息
      */
     @PostMapping("/application")
@@ -69,12 +92,12 @@ public class ManageApiController {
         if (StringUtils.isEmpty(appVo.getName())) {
             throw new BusinessException("error.param.required", "name");
         }
-        if (StringUtils.isEmpty(appVo.getUserId())) {
-            throw new BusinessException("error.param.required", "owner");
-        }
 
-        log.info("对外API - 创建应用: name={}, owner={}", appVo.getName(), appVo.getUserId());
-        AppInfo appInfo = manageBusinessService.createAppForApi(appVo.getName(), appVo.getUserId());
+        // 获取userId（场景1来自token，场景2优先body其次header）
+        String userId = getUserIdFromContext(appVo.getUserId());
+
+        log.info("对外API - 创建应用: name={}, userId={}", appVo.getName(), userId);
+        AppInfo appInfo = manageBusinessService.createAppForApi(appVo.getName(), userId);
 
         // 返回 apiKey 和 appId
         Map<String, String> result = new HashMap<>();
