@@ -1,6 +1,7 @@
 package com.kuafuai.accesstoken.service.impl;
 
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
+import com.google.common.collect.Lists;
 import com.kuafuai.accesstoken.entity.AppAccessToken;
 import com.kuafuai.accesstoken.mapper.AppAccessTokenMapper;
 import com.kuafuai.accesstoken.service.AppAccessTokenService;
@@ -17,7 +18,7 @@ import java.util.List;
 @Service
 public class AppAccessTokenServiceImpl extends DynamicDataBaseServiceImpl<AppAccessTokenMapper, AppAccessToken> implements AppAccessTokenService {
 
-    private static final List<String> DEFAULT_ALLOWED_PATHS = Collections.singletonList("/api/data/invoke");
+    private static final List<String> DEFAULT_ALLOWED_PATHS = Lists.newArrayList("/api/data/invoke","/api/word2pic");
 
     @Override
     public AppAccessToken getOrCreate(String appId) {
