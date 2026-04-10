@@ -129,7 +129,7 @@ public class CommonController {
 
             // 写入 Redis 缓存
             if (redisTemplate != null) {
-                String cacheKey = "deploy:workspace:" + appId;
+                String cacheKey = "deploy:workspace:" + id;
                 if (deployConfig.getCacheExpireTime() > 0) {
                     redisTemplate.opsForValue().set(cacheKey, 1, deployConfig.getCacheExpireTime(), TimeUnit.HOURS);
                 } else {
