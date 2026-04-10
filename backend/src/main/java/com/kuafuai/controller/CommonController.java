@@ -1,6 +1,7 @@
 package com.kuafuai.controller;
 
 
+import cn.hutool.core.util.ZipUtil;
 import cn.hutool.http.HttpUtil;
 import com.google.common.collect.Maps;
 import com.kuafuai.common.config.DeployConfig;
@@ -14,7 +15,9 @@ import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
 import com.kuafuai.system.entity.AppInfo;
 import com.kuafuai.system.service.AppInfoService;
-import cn.hutool.core.util.ZipUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -25,6 +28,7 @@ import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 @RestController
 @RequestMapping({"/common", "/admin/common"})
@@ -44,6 +48,10 @@ public class CommonController {
 
     @Resource
     private DeployConfig deployConfig;
+
+    @Autowired(required = false)
+    @Qualifier(value = "dataRouterRedisTemplate")
+    private RedisTemplate<String, Object> redisTemplate;
 
     /**
      * 通用上传请求（单个）
@@ -118,6 +126,17 @@ public class CommonController {
 
             // 使用配置化的部署URL
             String deployUrl = deployConfig.getBaseUrl() + "/1" + id;
+
+            // 写入 Redis 缓存
+            if (redisTemplate != null) {
+                String cacheKey = "deploy:workspace:" + appId;
+                if (deployConfig.getCacheExpireTime() > 0) {
+                    redisTemplate.opsForValue().set(cacheKey, 1, deployConfig.getCacheExpireTime(), TimeUnit.HOURS);
+                } else {
+                    redisTemplate.opsForValue().set(cacheKey, 1);
+                }
+            }
+
             Map<String, String> data = Maps.newHashMap();
             data.put("url", deployUrl);
             return ResultUtils.success(data);

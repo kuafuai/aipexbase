@@ -22,4 +22,9 @@ public class DeployConfig {
      * zip文件最大大小（单位：MB）
      */
     private long maxFileSize = 100;
+
+    /**
+     * 部署记录缓存过期时间（单位：小时，0表示不过期）
+     */
+    private long cacheExpireTime = 0;
 }
