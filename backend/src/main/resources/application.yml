@@ -86,6 +86,11 @@ message:
   enable: ${MESSAGE_ENABLE:false}
   notifyUrl: ${MESSAGE_BASE_URL:xxx}
 
+deploy:
+  workspaceDir: ${DEPLOY_WORKSPACE_DIR:/data/codeflying/kuafu-runtime-agent/workspace}
+  baseUrl: ${DEPLOY_BASE_URL:http://124.71.176.202}
+  maxFileSize: ${DEPLOY_MAX_FILE_SIZE:100}
+
 
 storage:
   type: ${STORAGE_TYPE:local}

@@ -3,6 +3,7 @@ package com.kuafuai.controller;
 
 import cn.hutool.http.HttpUtil;
 import com.google.common.collect.Maps;
+import com.kuafuai.common.config.DeployConfig;
 import com.kuafuai.common.config.MessageConfig;
 import com.kuafuai.common.domin.BaseResponse;
 import com.kuafuai.common.domin.ResultUtils;
@@ -40,6 +41,9 @@ public class CommonController {
 
     @Resource
     private AppInfoService appInfoService;
+
+    @Resource
+    private DeployConfig deployConfig;
 
     /**
      * 通用上传请求（单个）
@@ -89,6 +93,12 @@ public class CommonController {
                 return ResultUtils.error("仅支持上传zip文件");
             }
 
+            // 检查文件大小限制（转换为字节）
+            long maxFileSizeBytes = deployConfig.getMaxFileSize() * 1024 * 1024;
+            if (file.getSize() > maxFileSizeBytes) {
+                return ResultUtils.error("文件大小超过限制，最大支持" + deployConfig.getMaxFileSize() + "MB");
+            }
+
             // 通过 appId 查询数据库获取 id
             AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
             if (appInfo == null || appInfo.getId() == null) {
@@ -96,8 +106,8 @@ public class CommonController {
             }
             Long id = appInfo.getId();
 
-            // 目标目录
-            String targetDir = "/data/codeflying/kuafu-runtime-agent/workspace/" + id + "/1" + id + "/";
+            // 使用配置化的目标目录
+            String targetDir = deployConfig.getWorkspaceDir() + "/" + id + "/1" + id + "/";
 
             // 解压 zip 到目标目录
             File targetPath = new File(targetDir);
@@ -106,7 +116,8 @@ public class CommonController {
             }
             ZipUtil.unzip(file.getInputStream(), targetPath, StandardCharsets.UTF_8);
 
-            String deployUrl = "http://124.71.176.202/1" + id;
+            // 使用配置化的部署URL
+            String deployUrl = deployConfig.getBaseUrl() + "/1" + id;
             Map<String, String> data = Maps.newHashMap();
             data.put("url", deployUrl);
             return ResultUtils.success(data);
