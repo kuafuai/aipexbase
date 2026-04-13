@@ -102,6 +102,9 @@ public class ManageBusinessService {
     @Autowired
     private RlsPolicyService rlsPolicyService;
 
+    @Autowired
+    private ApiMarketService apiMarketService;
+
     @Transactional
     public void recycle(String appId) {
         AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
@@ -1046,5 +1049,67 @@ public class ManageBusinessService {
             return "{}";
         }
     }
+
+    /**
+     * 初始化应用的 API 配置
+     * 从 ApiMarket 获取公共 API 并保存到 DynamicApiSetting
+     *
+     * @param appId 应用ID
+     */
+    public void initializeApiSettings(String appId) {
+        try {
+            // 获取所有ApiMarket数据
+            LambdaQueryWrapper<ApiMarket> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(ApiMarket::getStatus, 1);
+            wrapper.orderByDesc(ApiMarket::getCreatedAt);
+            List<ApiMarket> apiMarkets = apiMarketService.list(wrapper);
+
+            if (apiMarkets.isEmpty()) {
+                log.info("ApiMarket中没有可用的API数据 appId={}", appId);
+                return;
+            }
+
+            // 转换为DynamicApiSetting并保存
+            List<DynamicApiSetting> apiSettings = apiMarkets.stream()
+                    .map(marketVo -> DynamicApiSetting.builder()
+                            .appId(appId)
+                            .marketId(marketVo.getId())
+                            .keyName(marketVo.getName())
+                            .description(marketVo.getDescription())
+                            .url(marketVo.getUrl())
+                            .token(marketVo.getToken())
+                            .protocol(PROTOCOL_MAP.get(marketVo.getProtocol()))
+                            .method(METHOD_MAP.get(marketVo.getMethod()))
+                            .bodyTemplate(marketVo.getBodyTemplate())
+                            .header(marketVo.getHeaders())
+                            .dataType(DATA_TYPE_MAP.get(marketVo.getDataType()))
+                            .dataPath(marketVo.getDataPath())
+                            .build())
+                    .collect(Collectors.toList());
+
+            dynamicApiSettingService.saveBatch(apiSettings);
+            log.info("从ApiMarket初始化API配置成功 appId={}, count={}", appId, apiSettings.size());
+        } catch (Exception e) {
+            log.error("从ApiMarket获取API配置失败 appId={}", appId, e);
+        }
+    }
+
+    private static final Map<Integer, String> METHOD_MAP = new HashMap<Integer, String>() {{
+        put(0, "GET");
+        put(1, "POST");
+        put(2, "PUT");
+        put(3, "DELETE");
+    }};
+
+    private static final Map<Integer, String> DATA_TYPE_MAP = new HashMap<Integer, String>() {{
+        put(0, "TEXT");
+        put(1, "JSON");
+        put(2, "ARRAY");
+    }};
+
+    private static final Map<Integer, String> PROTOCOL_MAP = new HashMap<Integer, String>() {{
+        put(1, "HTTP");
+        put(2, "WSS");
+    }};
 
 }
