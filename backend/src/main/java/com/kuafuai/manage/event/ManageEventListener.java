@@ -82,6 +82,8 @@ public class ManageEventListener {
 
         createSystemDatabaseTables(appId);
 
+        manageBusinessService.initializeApiSettings(appId);
+
         //创建一个默认key
         createDefaultApiKey(appId);
     }
