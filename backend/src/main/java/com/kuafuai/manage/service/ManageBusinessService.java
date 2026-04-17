@@ -660,6 +660,58 @@ public class ManageBusinessService {
     }
 
     /**
+     * 向已有表中添加一个字段
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean addColumn(String appId, String tableName, ColumnVo columnVo) {
+        // 1. 查询表信息
+        AppTableInfo tableInfo = appTableInfoService.lambdaQuery()
+                .eq(AppTableInfo::getAppId, appId)
+                .eq(AppTableInfo::getTableName, tableName)
+                .one();
+        if (tableInfo == null) {
+            throw new BusinessException("表不存在：" + tableName);
+        }
+
+        // 2. 检查字段是否已存在
+        boolean exists = appTableColumnInfoService.lambdaQuery()
+                .eq(AppTableColumnInfo::getAppId, appId)
+                .eq(AppTableColumnInfo::getTableId, tableInfo.getId())
+                .eq(AppTableColumnInfo::getColumnName, columnVo.getColumnName())
+                .exists();
+        if (exists) {
+            throw new BusinessException("字段已存在：" + columnVo.getColumnName());
+        }
+
+        // 3. 设置默认值（避免后续 Boolean 拆箱 NPE）
+        if (columnVo.getIsPrimary() == null) columnVo.setIsPrimary(false);
+        if (columnVo.getIsNullable() == null) columnVo.setIsNullable(false);
+        if (columnVo.getIsShow() == null) columnVo.setIsShow(false);
+
+        // 4. 处理字段类型
+        String originalType = columnVo.getColumnType();
+        String normalizedType = originalType != null ? originalType.toLowerCase() : "";
+        columnVo.setDslType(originalType);
+        columnVo.setColumnType(TYPE_MAP.getOrDefault(normalizedType, originalType));
+
+        // 5. 生成 ALTER TABLE ADD COLUMN SQL
+        String fullTableName = "`" + appId + "`.`" + tableName + "`";
+        String addSql = String.format("ALTER TABLE %s ADD COLUMN %s;", fullTableName, generateColumnDefinition(columnVo));
+
+        // 6. 执行 DDL
+        boolean ddlExecuted = manageSQLBusinessService.execute(appId, addSql);
+        if (!ddlExecuted) {
+            return false;
+        }
+        AppTableColumnInfo columnInfo = transformColumn(appId, tableInfo.getId(), columnVo);
+        appTableColumnInfoService.save(columnInfo);
+
+        // 7. 清空缓存
+        dynamicInfoCache.clean(appId);
+        return true;
+    }
+
+    /**
      * 创建一张表
      */
     @Transactional(rollbackFor = Exception.class)

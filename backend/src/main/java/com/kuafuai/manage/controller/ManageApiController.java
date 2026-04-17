@@ -6,6 +6,7 @@ import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.manage.entity.vo.AppBatchVo;
 import com.kuafuai.manage.entity.vo.AppVo;
+import com.kuafuai.manage.entity.vo.ColumnVo;
 import com.kuafuai.manage.entity.vo.TableVo;
 import com.kuafuai.manage.context.ManageApiContext;
 import com.kuafuai.manage.context.ManageApiContextHolder;
@@ -141,6 +142,33 @@ public class ManageApiController {
 
         log.info("对外API - 创建表: appId={}, tableName={}", tableVo.getAppId(), tableVo.getTableName());
         boolean result = manageBusinessService.createTable(tableVo.getAppId(), tableVo);
+        return result ? ResultUtils.success() : ResultUtils.error("error.code.fail");
+    }
+
+    /**
+     * 向应用的表中添加字段
+     *
+     * @param columnVo 字段信息（需要提供 appId、tableName、columnName、columnType）
+     * @return 添加结果
+     */
+    @PostMapping("/column")
+    public BaseResponse addColumn(@RequestBody ColumnVo columnVo) {
+        if (StringUtils.isEmpty(columnVo.getAppId())) {
+            throw new BusinessException("error.param.required", "appId");
+        }
+        if (StringUtils.isEmpty(columnVo.getTableName())) {
+            throw new BusinessException("error.param.required", "tableName");
+        }
+        if (StringUtils.isEmpty(columnVo.getColumnName())) {
+            throw new BusinessException("error.param.required", "columnName");
+        }
+        if (StringUtils.isEmpty(columnVo.getColumnType())) {
+            throw new BusinessException("error.param.required", "columnType");
+        }
+
+        log.info("对外API - 添加字段: appId={}, tableName={}, columnName={}, columnType={}",
+                columnVo.getAppId(), columnVo.getTableName(), columnVo.getColumnName(), columnVo.getColumnType());
+        boolean result = manageBusinessService.addColumn(columnVo.getAppId(), columnVo.getTableName(), columnVo);
         return result ? ResultUtils.success() : ResultUtils.error("error.code.fail");
     }
 }
