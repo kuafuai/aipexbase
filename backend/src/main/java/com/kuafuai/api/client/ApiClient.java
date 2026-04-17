@@ -34,25 +34,23 @@ public class ApiClient {
                 .build();
     }
 
-    public String call(ApiDefinition apiDef, Map<String, Object> params) {
-
-        Map<String, String> templateMaps = params.entrySet().stream()
+    /**
+     * 构建模板参数映射
+     */
+    private Map<String, String> buildTemplateMaps(Map<String, Object> params) {
+        return params.entrySet().stream()
                 .filter(entry -> entry.getKey() != null && entry.getValue() != null)
                 .collect(Collectors.toMap(
                         Map.Entry::getKey,
                         entry -> {
                             Object value = entry.getValue();
-                            // 如果是字符串，直接返回
                             if (value instanceof String) {
                                 String raw = (String) value;
                                 if (raw.trim().startsWith("{") || raw.trim().startsWith("[")) {
-                                    //json格式
                                     return raw;
                                 } else {
-                                    // 检查是否含有需要转义的字符
                                     if (raw.contains("\"") || raw.contains("\\") || raw.contains("\n") || raw.contains("\r") || raw.contains("\t")) {
-                                        raw = JSON.toJSONString(value); // 会自动转义
-                                        // 去掉最外层引号
+                                        raw = JSON.toJSONString(value);
                                         if (raw.startsWith("\"") && raw.endsWith("\"")) {
                                             raw = raw.substring(1, raw.length() - 1);
                                         }
@@ -60,12 +58,15 @@ public class ApiClient {
                                     return raw;
                                 }
                             }
-                            // 如果是 List/Map，用 gson 序列化
                             return gson.toJson(entry.getValue());
                         }
                 ));
+    }
 
-        // 处理地址
+    /**
+     * 构建 OkHttp Request 对象
+     */
+    private Request buildRequest(ApiDefinition apiDef, Map<String, Object> params, Map<String, String> templateMaps) {
         String urlWithParams = ApiUtil.interpolateString(apiDef.url, templateMaps);
         Request.Builder requestBuilder;
 
@@ -80,16 +81,12 @@ public class ApiClient {
         } else if ("POST".equalsIgnoreCase(apiDef.method)) {
             RequestBody body;
             if ("template".equalsIgnoreCase(apiDef.bodyType)) {
-                // 通过 模版 转换
                 String rendered = ApiUtil.interpolateString(apiDef.bodyTemplate, templateMaps);
                 log.info("Rendered template: {}", rendered);
-
                 body = RequestBody.create(MediaType.get("application/json; charset=utf-8"), rendered);
             } else if ("form".equalsIgnoreCase(apiDef.bodyType)) {
                 String rendered = ApiUtil.interpolateString(apiDef.bodyTemplate, templateMaps);
                 log.info("Rendered form body: {}", rendered);
-
-                // 解析模板为 key=value 格式
                 FormBody.Builder formBuilder = new FormBody.Builder();
                 for (String pair : rendered.split("&")) {
                     String[] kv = pair.split("=", 2);
@@ -117,20 +114,55 @@ public class ApiClient {
             }
         }
 
-        Request request = requestBuilder.build();
+        return requestBuilder.build();
+    }
 
-        // 打印请求日志
+    /**
+     * 调用API并返回字符串响应（JSON等文本响应）
+     */
+    public String call(ApiDefinition apiDef, Map<String, Object> params) {
+        Map<String, String> templateMaps = buildTemplateMaps(params);
+        Request request = buildRequest(apiDef, params, templateMaps);
+
         logRequest(request, apiDef, templateMaps);
 
         try (Response response = httpClient.newCall(request).execute()) {
             String responseBody = response.body().string();
-
-            // 打印响应日志
             logResponse(response, responseBody);
-
             return responseBody;
         } catch (IOException e) {
-            log.error("API请求失败: url={}, method={}, error={}", urlWithParams, apiDef.method, e.getMessage());
+            log.error("API请求失败: url={}, method={}, error={}", apiDef.url, apiDef.method, e.getMessage());
+            throw new RuntimeException("API请求失败", e);
+        }
+    }
+
+    /**
+     * 调用API并返回二进制字节数组（用于音频、图片等二进制响应）
+     */
+    public byte[] callBytes(ApiDefinition apiDef, Map<String, Object> params) {
+        Map<String, String> templateMaps = buildTemplateMaps(params);
+        Request request = buildRequest(apiDef, params, templateMaps);
+
+        logRequest(request, apiDef, templateMaps);
+
+        try (Response response = httpClient.newCall(request).execute()) {
+            byte[] responseBytes = response.body().bytes();
+            log.info("============================================ API Response (binary) ==========");
+            log.info("Status Code: {}", response.code());
+            log.info("Content-Type: {}", response.header("Content-Type"));
+            log.info("Response Body Size: {} bytes", responseBytes.length);
+            log.info("====================================================================");
+
+            // 如果状态码不是200，尝试解析错误信息
+            if (response.code() != 200) {
+                String errorBody = new String(responseBytes, "UTF-8");
+                log.error("API返回非200状态码: {}, body: {}", response.code(), errorBody);
+                throw new RuntimeException("API返回错误: " + response.code() + ", " + errorBody);
+            }
+
+            return responseBytes;
+        } catch (IOException e) {
+            log.error("API请求失败(binary): url={}, method={}, error={}", apiDef.url, apiDef.method, e.getMessage());
             throw new RuntimeException("API请求失败", e);
         }
     }
@@ -144,7 +176,6 @@ public class ApiClient {
             log.info("URL: {}", request.url());
             log.info("Method: {}", request.method());
 
-            // 打印请求头
             if (!request.headers().names().isEmpty()) {
                 log.info("Headers: ");
                 for (String name : request.headers().names()) {
@@ -152,7 +183,6 @@ public class ApiClient {
                 }
             }
 
-            // 打印请求体
             if (request.body() != null) {
                 if ("template".equalsIgnoreCase(apiDef.bodyType)) {
                     String rendered = ApiUtil.interpolateString(apiDef.bodyTemplate, params);
@@ -181,6 +211,5 @@ public class ApiClient {
             log.warn("打印响应日志失败: {}", e.getMessage());
         }
     }
-
 
 }
