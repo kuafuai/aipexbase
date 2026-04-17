@@ -73,6 +73,18 @@ public class ApiBusinessService {
         return apiClient.call(apiDefinition, params);
     }
 
+    /**
+     * 调用HTTP API并返回二进制字节数组（用于音频、图片等二进制响应）
+     */
+    public byte[] callHttpApiBytes(DynamicApiSetting setting, Map<String, Object> params, ApiMarket apiMarket) {
+        ApiDefinition apiDefinition = getApiBySetting(setting);
+
+        // 判断鉴权方式
+        process_auth_type(setting, apiDefinition, apiMarket, params);
+
+        return apiClient.callBytes(apiDefinition, params);
+    }
+
     public DynamicApiSetting getByApiKey(String appId, String apiKey) {
         LambdaQueryWrapper<DynamicApiSetting> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(DynamicApiSetting::getAppId, appId);
@@ -111,6 +123,55 @@ public class ApiBusinessService {
         if (!StringUtils.equalsIgnoreCase(apiMarket.getUrl(), setting.getUrl())) {
             setting.setUrl(apiMarket.getUrl());
         }
+    }
+
+    /**
+     * 执行API调用并计费(事务方法) - 返回二进制字节数组
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public byte[] callApiWithBillingBytes(String appId, DynamicApiSetting setting, Map<String, Object> params) {
+        // 准备API配置
+        ApiMarket apiMarket = getApiMarket(setting.getMarketId());
+        mergeMarketSetting(apiMarket, setting);
+
+        // 1. 获取定价信息
+        ApiPricing pricing = getApiPricing(setting.getMarketId());
+        if (pricing == null) {
+            log.warn("API未配置定价信息,跳过计费, appId: {}, apiKey: {}", appId, setting.getKeyName());
+            return callHttpApiBytes(setting, params, apiMarket);
+        }
+
+        Integer billingModel = pricing.getPricingModel();
+        BigDecimal unitPrice = BigDecimal.valueOf(pricing.getUnitPrice());
+
+        // 2. 预检查余额
+        if (isPerCallBilling(billingModel) && !hasSufficientBalance(appId, unitPrice)) {
+            throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
+        }
+        if (isPerTokenBilling(billingModel) && !hasSufficientBalance(appId, BigDecimal.ZERO)) {
+            throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
+        }
+
+        // 3. 调用API
+        byte[] response;
+        try {
+            response = callHttpApiBytes(setting, params, apiMarket);
+        } catch (Exception e) {
+            log.error("API调用失败,不扣费, appId: {}, apiKey: {}, error: {}", appId, setting.getKeyName(), e.getMessage());
+            throw e;
+        }
+
+        // 4. 按次计费（二进制响应无法提取token）
+        if (isPerCallBilling(billingModel)) {
+            Long userId = getUserIdByAppId(appId);
+            boolean deductSuccess = userBalanceService.deductBalance(userId, unitPrice);
+            if (!deductSuccess) {
+                throw new BusinessException(ErrorCode.BALANCE_NOT_ENOUGH);
+            }
+            apiBillingService.recordBilling(appId, setting.getMarketId(), setting.getId(), billingModel, 1, unitPrice);
+        }
+
+        return response;
     }
 
     /**

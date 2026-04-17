@@ -127,6 +127,56 @@ public class UnifiedApiController {
         }
     }
 
+    /**
+     * ElevenLabs 文字转语音 - 返回二进制音频，上传OSS后返回URL
+     */
+    @PostMapping("/elevenLabsTTS")
+    public Object elevenLabsTTS(@RequestBody Map<String, Object> data) {
+        if (!data.containsKey("text")) {
+            return ResultUtils.error("login.register.params", "text");
+        }
+
+        String appId = GlobalAppIdFilter.getAppId();
+        DynamicApiSetting setting = apiBusinessService.getByApiKey(appId, "elevenLabsTTS");
+        if (setting == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
+        }
+
+        // 调用 ElevenLabs API，获取二进制音频
+        byte[] audioBytes;
+        if (setting.getMarketId() > 0) {
+            audioBytes = apiBusinessService.callApiWithBillingBytes(appId, setting, data);
+        } else {
+            audioBytes = apiBusinessService.callHttpApiBytes(setting, data, null);
+        }
+
+        try {
+            // 根据 output_format 参数确定文件格式和 MIME 类型
+            String outputFormat = (String) data.getOrDefault("output_format", "mp3_44100_128");
+            String fileExt;
+            String mimeType;
+            if (outputFormat.startsWith("pcm_")) {
+                fileExt = "pcm";
+                mimeType = "audio/pcm";
+            } else if (outputFormat.startsWith("ulaw_")) {
+                fileExt = "ulaw";
+                mimeType = "audio/basic";
+            } else {
+                fileExt = "mp3";
+                mimeType = "audio/mpeg";
+            }
+
+            // 上传到 OSS
+            String path = storageService.upload(audioBytes, appId, fileExt, mimeType);
+            return ResultUtils.success(path);
+
+        } catch (Exception e) {
+            log.error("=====ElevenLabs TTS失败:{}=====", e.getMessage());
+            throw new BusinessException(ErrorCode.OPERATION_ERROR);
+        }
+    }
+
+
     @PostMapping("/text2music")
     public Object text2music(@RequestBody Map<String, Object> data) {
         String apiKey = "text2music";
