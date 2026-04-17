@@ -682,7 +682,7 @@ public class ManageBusinessService {
 
         // 3. 设置默认值（避免后续 Boolean 拆箱 NPE）
         if (columnVo.getIsPrimary() == null) columnVo.setIsPrimary(false);
-        if (columnVo.getIsNullable() == null) columnVo.setIsNullable(true);
+        if (columnVo.getIsNullable() == null) columnVo.setIsNullable(false);
         if (columnVo.getIsShow() == null) columnVo.setIsShow(false);
 
         // 4. 处理字段类型
