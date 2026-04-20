@@ -190,6 +190,7 @@ public class CommonController {
     private BaseResponse processDeployResult(String appId, AppInfo appInfo) {
         Long id = appInfo.getId();
         String subdomain = appId.startsWith("baas_") ? appId.substring(5) : appId;
+        subdomain = subdomain.toLowerCase();
         String deployUrl = "https://" + subdomain + "." + deployConfig.getBaseUrl();
 
         // 写入 Redis 缓存
