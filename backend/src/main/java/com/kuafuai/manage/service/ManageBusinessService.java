@@ -325,7 +325,7 @@ public class ManageBusinessService {
         AppInfo originalAppInfo = appStructure.getAppInfo();
         String originalAppId = originalAppInfo.getAppId();
         if (StringUtils.isEmpty(targetAppId)) {
-            targetAppId = "baas_" + RandomStringUtils.generateRandomString(16);
+            targetAppId = "baas_" + RandomStringUtils.generateRandomString(8);
         }
 
         // ===== ID 映射 =====
@@ -1058,7 +1058,7 @@ public class ManageBusinessService {
     }
 
     private AppInfo createAppInternal(String name, Long owner) {
-        String appId = "baas_" + RandomStringUtils.generateRandomString(16);
+        String appId = "baas_" + RandomStringUtils.generateRandomString(8);
         AppInfo appInfo = new AppInfo();
         appInfo.setAppId(appId);
         appInfo.setAppName(name);
@@ -1073,7 +1073,7 @@ public class ManageBusinessService {
     }
 
     private AppInfo createAppInternal(String name, Long owner, Boolean needAuth, String authTable, List<String> readTables) {
-        String appId = "baas_" + RandomStringUtils.generateRandomString(16);
+        String appId = "baas_" + RandomStringUtils.generateRandomString(8);
         AppInfo appInfo = new AppInfo();
         appInfo.setAppId(appId);
         appInfo.setAppName(name);

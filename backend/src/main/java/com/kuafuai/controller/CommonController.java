@@ -112,10 +112,9 @@ public class CommonController {
             if (appInfo == null || appInfo.getId() == null) {
                 return ResultUtils.error("应用不存在");
             }
-            Long id = appInfo.getId();
 
             // 使用配置化的目标目录
-            String targetDir = deployConfig.getWorkspaceDir() + "/" + id + "/1" + id + "/";
+            String targetDir = deployConfig.getWorkspaceDir() + "/" + appInfo.getId();
 
             // 解压 zip 到目标目录
             File targetPath = new File(targetDir);
@@ -124,25 +123,90 @@ public class CommonController {
             }
             ZipUtil.unzip(file.getInputStream(), targetPath, StandardCharsets.UTF_8);
 
-            // 使用配置化的部署URL
-            String deployUrl = deployConfig.getBaseUrl() + "/1" + id;
-
-            // 写入 Redis 缓存
-            if (redisTemplate != null) {
-                String cacheKey = "deploy:workspace:" + id;
-                if (deployConfig.getCacheExpireTime() > 0) {
-                    redisTemplate.opsForValue().set(cacheKey, 1, deployConfig.getCacheExpireTime(), TimeUnit.HOURS);
-                } else {
-                    redisTemplate.opsForValue().set(cacheKey, 1);
-                }
-            }
-
-            Map<String, String> data = Maps.newHashMap();
-            data.put("url", deployUrl);
-            return ResultUtils.success(data);
+            return processDeployResult(appId, appInfo);
         } catch (Exception e) {
             return ResultUtils.error(e.getMessage());
         }
+    }
+
+    @PostMapping("/deployByUrl")
+    public BaseResponse deployByUrl(@RequestBody Map<String, String> params, @RequestParam String appId) {
+        File tempFile = null;
+        try {
+            String zipUrl = params.get("zipUrl");
+
+            if (StringUtils.isEmpty(zipUrl)) {
+                return ResultUtils.error("zipUrl参数不能为空");
+            }
+            if (StringUtils.isEmpty(appId)) {
+                return ResultUtils.error("appId参数不能为空");
+            }
+
+            // 验证URL是否为zip文件
+            if (!zipUrl.toLowerCase().endsWith(".zip")) {
+                return ResultUtils.error("仅支持zip文件");
+            }
+
+            // 通过 appId 查询数据库获取 id
+            AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
+            if (appInfo == null || appInfo.getId() == null) {
+                return ResultUtils.error("应用不存在");
+            }
+
+            // 下载 zip 文件到临时目录
+            tempFile = File.createTempFile("deploy_", ".zip");
+            HttpUtil.downloadFile(zipUrl, tempFile);
+
+            // 检查文件大小限制（转换为字节）
+            long maxFileSizeBytes = deployConfig.getMaxFileSize() * 1024 * 1024;
+            if (tempFile.length() > maxFileSizeBytes) {
+                return ResultUtils.error("文件大小超过限制，最大支持" + deployConfig.getMaxFileSize() + "MB");
+            }
+
+            // 使用配置化的目标目录
+            String targetDir = deployConfig.getWorkspaceDir() + "/" + appInfo.getId();
+
+            // 解压 zip 到目标目录
+            File targetPath = new File(targetDir);
+            if (!targetPath.exists()) {
+                targetPath.mkdirs();
+            }
+            ZipUtil.unzip(tempFile, targetPath, StandardCharsets.UTF_8);
+
+            return processDeployResult(appId, appInfo);
+        } catch (Exception e) {
+            return ResultUtils.error(e.getMessage());
+        } finally {
+            // 清理临时文件
+            if (tempFile != null && tempFile.exists()) {
+                tempFile.delete();
+            }
+        }
+    }
+
+    /**
+     * 处理部署结果，生成URL并写入Redis缓存
+     */
+    private BaseResponse processDeployResult(String appId, AppInfo appInfo) {
+        Long id = appInfo.getId();
+        String subdomain = appId.startsWith("baas_") ? appId.substring(5) : appId;
+        String deployUrl = "https://" + subdomain + "." + deployConfig.getBaseUrl();
+
+        // 写入 Redis 缓存
+        if (redisTemplate != null) {
+            String cacheKey = "deploy:workspace:" + subdomain;
+            if ("active_1".equals(appInfo.getStatus())) {
+                redisTemplate.opsForValue().set(cacheKey, id);
+            } else if (deployConfig.getCacheExpireTime() > 0) {
+                redisTemplate.opsForValue().set(cacheKey, id, deployConfig.getCacheExpireTime(), TimeUnit.HOURS);
+            } else {
+                redisTemplate.opsForValue().set(cacheKey, id);
+            }
+        }
+
+        Map<String, String> data = Maps.newHashMap();
+        data.put("url", deployUrl);
+        return ResultUtils.success(data);
     }
 
 
