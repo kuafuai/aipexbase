@@ -141,12 +141,12 @@
           <span class="flex items-center space-x-1">
             <div class="w-2 h-2 rounded-full"
                  :class="{
-                    'bg-green-400': project.status === 'active',
-                    'bg-gray-400': project.status !== 'active' ,
+                    'bg-green-400': project.status?.startsWith('active'),
+                    'bg-gray-400': !project.status?.startsWith('active') ,
                   }">
             </div>
             <span>{{
-                project.status === 'active'
+                project.status?.startsWith('active')
                     ? t('page.project.status_running')
                     : t('page.project.status_creating')
               }}</span>
@@ -361,7 +361,7 @@ function handlePageChange(val) {
 }
 
 function openProject(project) {
-  if (project.status !== 'active') {
+  if (!project.status?.startsWith('active')) {
     proxy.$modal.msgWarning(t('page.project.creating_warning'));
   } else {
     proxy.$router.push({name: 'ProjectDetail', params: {id: project.appId}});
