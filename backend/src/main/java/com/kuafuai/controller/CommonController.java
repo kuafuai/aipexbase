@@ -142,11 +142,6 @@ public class CommonController {
                 return ResultUtils.error("appId参数不能为空");
             }
 
-            // 验证URL是否为zip文件
-            if (!zipUrl.toLowerCase().endsWith(".zip")) {
-                return ResultUtils.error("仅支持zip文件");
-            }
-
             // 通过 appId 查询数据库获取 id
             AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
             if (appInfo == null || appInfo.getId() == null) {
