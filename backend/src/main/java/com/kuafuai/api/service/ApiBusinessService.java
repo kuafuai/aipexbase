@@ -111,6 +111,8 @@ public class ApiBusinessService {
         if (StringUtils.isNotEmpty(apiMarket.getBodyTemplate())) {
             if (apiMarket.getBodyType() == 1) {
                 setting.setBodyType("form");
+            } else if (apiMarket.getBodyType() == 5) {
+                setting.setBodyType("multipart");
             } else {
                 setting.setBodyType("template");
             }

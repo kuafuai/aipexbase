@@ -19,6 +19,7 @@ import java.util.stream.Collectors;
 public class ApiClient {
 
     private final OkHttpClient httpClient;
+    private final MultipartBuilder multipartBuilder;
     private final Gson gson = new Gson();
 
     private final Type header_value_type = new TypeToken<Map<String, String>>() {
@@ -32,6 +33,7 @@ public class ApiClient {
                 .readTimeout(10, TimeUnit.MINUTES)
                 .writeTimeout(50, TimeUnit.MINUTES)
                 .build();
+        this.multipartBuilder = new MultipartBuilder(httpClient);
     }
 
     /**
@@ -95,6 +97,8 @@ public class ApiClient {
                     }
                 }
                 body = formBuilder.build();
+            } else if ("multipart".equalsIgnoreCase(apiDef.bodyType)) {
+                body = buildMultipartBody(params);
             } else {
                 body = RequestBody.create(
                         MediaType.get("application/json; charset=utf-8"),
@@ -210,6 +214,13 @@ public class ApiClient {
         } catch (Exception e) {
             log.warn("打印响应日志失败: {}", e.getMessage());
         }
+    }
+
+    /**
+     * 构建 Multipart 请求体（委托给 MultipartBuilder）
+     */
+    private RequestBody buildMultipartBody(Map<String, Object> params) {
+        return multipartBuilder.buildMultipartBody(params);
     }
 
 }

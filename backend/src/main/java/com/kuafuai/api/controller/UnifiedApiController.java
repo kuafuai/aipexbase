@@ -91,7 +91,7 @@ public class UnifiedApiController {
     }
 
 
-    @PostMapping("/word2pic")
+    @PostMapping("/word2pic_old")
     public Object word2pic(@RequestBody Map<String, Object> data) {
         String apiKey = "word2pic";
         if (!data.containsKey("text")) {
@@ -239,6 +239,59 @@ public class UnifiedApiController {
         } catch (Exception e) {
             log.error("=====音乐生成失败:{}=====", e.getMessage() + "\n" + result);
             throw new BusinessException(ErrorCode.OPERATION_ERROR);
+        }
+    }
+
+    /**
+     * 智能图像生成/编辑 API
+     * - 有 image 参数 → 调用图像编辑 API (multipart)
+     * - 无 image 参数 → 调用图像生成 API (json)
+     */
+    @PostMapping("/word2pic")
+    public Object smartImage(@RequestBody Map<String, Object> data) {
+        if (!data.containsKey("text")) {
+            return ResultUtils.error("login.register.params", "text");
+        }
+
+        String appId = GlobalAppIdFilter.getAppId();
+        String apiKey;
+        DynamicApiSetting setting;
+
+        // 判断是图像编辑还是图像生成
+        if (data.containsKey("file")) {
+            // 图像编辑模式
+            apiKey = "image_edit";
+            data.put("model", "gpt-image-2");
+
+            data.put("prompt", data.get("text"));
+            data.put("image", data.get("file"));
+            data.remove("file");
+            data.remove("text");
+        } else {
+            // 图像生成模式
+            apiKey = "image_generation";
+        }
+
+        setting = apiBusinessService.getByApiKey(appId, apiKey);
+        if (setting == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "API配置不存在: " + apiKey);
+        }
+
+        // 调用 API（走计费流程）
+        String result = apiBusinessService.callApiWithBilling(appId, setting, data);
+
+        // 解析结果
+        try {
+            String dataPath = setting.getDataPath();
+            if (StringUtils.isNotEmpty(dataPath)) {
+                Object content = JsonPath.read(result, dataPath);
+                return ResultUtils.success(content);
+            } else {
+                return gson.fromJson(result, return_value_type);
+            }
+        } catch (Exception e) {
+            log.error("=====智能图像API失败:{}=====", e.getMessage() + "\n" + result);
+            throw new BusinessException(e.getMessage() + "\n" + result);
         }
     }
 
