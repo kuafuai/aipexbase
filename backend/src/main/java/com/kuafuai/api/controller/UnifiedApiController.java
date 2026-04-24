@@ -278,8 +278,21 @@ public class UnifiedApiController {
         try {
             String dataPath = setting.getDataPath();
             if (StringUtils.isNotEmpty(dataPath)) {
+
                 Object content = JsonPath.read(result, dataPath);
-                return ResultUtils.success(content);
+                String base64String = (String) content;
+                // 处理 Data URL 格式（如：data:image/png;base64,iVBORw0...）
+                if (base64String.startsWith("data:")) {
+                    int commaIndex = base64String.indexOf(",");
+                    if (commaIndex > 0) {
+                        base64String = base64String.substring(commaIndex + 1);
+                    }
+                }
+
+                byte[] imageBytes = Base64.getDecoder().decode(base64String);
+                String path = storageService.upload(imageBytes, GlobalAppIdFilter.getAppId(), "png", "image/png");
+                return ResultUtils.success(path);
+
             } else {
                 return gson.fromJson(result, return_value_type);
             }
