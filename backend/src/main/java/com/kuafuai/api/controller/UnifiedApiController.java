@@ -258,15 +258,9 @@ public class UnifiedApiController {
         DynamicApiSetting setting;
 
         // 判断是图像编辑还是图像生成
-        if (data.containsKey("file")) {
+        if (data.containsKey("files")) {
             // 图像编辑模式
             apiKey = "image_edit";
-            data.put("model", "gpt-image-2");
-
-            data.put("prompt", data.get("text"));
-            data.put("image", data.get("file"));
-            data.remove("file");
-            data.remove("text");
         } else {
             // 图像生成模式
             apiKey = "image_generation";
