@@ -1,5 +1,6 @@
 package com.kuafuai.manage.entity.vo;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -20,6 +21,7 @@ public class ColumnVo {
     private String dslType;
     private String defaultValue;
     private Boolean isPrimary;
+    @JsonAlias("isRequired")
     private Boolean isNullable;
     private Boolean isShow;
     private Long referenceTableId;
