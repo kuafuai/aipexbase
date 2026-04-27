@@ -90,43 +90,6 @@ public class UnifiedApiController {
         }
     }
 
-
-    @PostMapping("/word2pic_old")
-    public Object word2pic(@RequestBody Map<String, Object> data) {
-        String apiKey = "word2pic";
-        if (!data.containsKey("text")) {
-            return ResultUtils.error("login.register.params", "text");
-        }
-
-        String appId = GlobalAppIdFilter.getAppId();
-        DynamicApiSetting setting = apiBusinessService.getByApiKey(appId, apiKey);
-        if (setting == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR);
-        }
-
-        List<Map<String, Object>> contents = Lists.newArrayList();
-
-        addText(contents, data);
-        addImages(contents, data);
-
-        Map<String, Object> contentMap = Maps.newHashMap();
-        contentMap.put("content", contents);
-
-        String result = apiBusinessService.callApiWithBilling(appId, setting, contentMap);
-        try {
-            String dataPath = setting.getDataPath();
-            Object content = JsonPath.read(result, dataPath);
-
-            byte[] imageBytes = Base64.getDecoder().decode((String) content);
-            String path = storageService.upload(imageBytes, GlobalAppIdFilter.getAppId(), "png", "image/png");
-            return ResultUtils.success(path);
-
-        } catch (Exception e) {
-            log.error("=====文生图失败:{}=====", e.getMessage() + "\n" + result);
-            throw new BusinessException(ErrorCode.OPERATION_ERROR);
-        }
-    }
-
     /**
      * ElevenLabs 文字转语音 - 返回二进制音频，上传OSS后返回URL
      */
@@ -246,6 +209,7 @@ public class UnifiedApiController {
      * 智能图像生成/编辑 API
      * - 有 image 参数 → 调用图像编辑 API (multipart)
      * - 无 image 参数 → 调用图像生成 API (json)
+     * - 失败时降级到 word2pic_old 方式
      */
     @PostMapping("/word2pic")
     public Object smartImage(@RequestBody Map<String, Object> data) {
@@ -271,11 +235,11 @@ public class UnifiedApiController {
             throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "API配置不存在: " + apiKey);
         }
 
-        // 调用 API（走计费流程）
-        String result = apiBusinessService.callApiWithBilling(appId, setting, data);
-
-        // 解析结果
         try {
+            // 调用 API（走计费流程）
+            String result = apiBusinessService.callApiWithBilling(appId, setting, data);
+
+            // 解析结果
             String dataPath = setting.getDataPath();
             if (StringUtils.isNotEmpty(dataPath)) {
 
@@ -297,8 +261,46 @@ public class UnifiedApiController {
                 return gson.fromJson(result, return_value_type);
             }
         } catch (Exception e) {
-            log.error("=====智能图像API失败:{}=====", e.getMessage() + "\n" + result);
-            throw new BusinessException(e.getMessage() + "\n" + result);
+            // 主流程失败，降级到 word2pic_old 方式
+            log.warn("=====智能图像API失败，降级到word2pic_old:{}=====", e.getMessage());
+            try {
+                return callWord2PicOldApi(appId, data);
+            } catch (Exception fallbackException) {
+                log.error("=====word2pic_old降级也失败:{}=====", fallbackException.getMessage());
+                throw new BusinessException(e.getMessage() + "\n降级失败: " + fallbackException.getMessage());
+            }
+        }
+    }
+
+    /**
+     * word2pic_old 方式的核心逻辑（作为降级方案）
+     */
+    private Object callWord2PicOldApi(String appId, Map<String, Object> data) {
+        String apiKey = "word2pic";
+        DynamicApiSetting setting = apiBusinessService.getByApiKey(appId, apiKey);
+        if (setting == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "word2pic API配置不存在");
+        }
+
+        List<Map<String, Object>> contents = Lists.newArrayList();
+        addText(contents, data);
+        addImages(contents, data);
+
+        Map<String, Object> contentMap = Maps.newHashMap();
+        contentMap.put("content", contents);
+
+        String result = apiBusinessService.callApiWithBilling(appId, setting, contentMap);
+        try {
+            String dataPath = setting.getDataPath();
+            Object content = JsonPath.read(result, dataPath);
+
+            byte[] imageBytes = Base64.getDecoder().decode((String) content);
+            String path = storageService.upload(imageBytes, GlobalAppIdFilter.getAppId(), "png", "image/png");
+            return ResultUtils.success(path);
+
+        } catch (Exception e) {
+            log.error("=====文生图失败:{}=====", e.getMessage() + "\n" + result);
+            throw new BusinessException(ErrorCode.OPERATION_ERROR);
         }
     }
 
