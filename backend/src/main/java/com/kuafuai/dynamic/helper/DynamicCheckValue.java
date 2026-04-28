@@ -101,28 +101,13 @@ public class DynamicCheckValue {
             Object value = conditions.get(columnName);
 
             if (value instanceof Map) {
-                logAndSend(columnInfo, columnName, "Map");
                 conditions.put(columnName, processMapValue(columnName, (Map<?, ?>) value, columnInfo));
-
             } else if (value instanceof List) {
-                logAndSend(columnInfo, columnName, "List");
                 conditions.put(columnName, processListValue(columnName, (List<?>) value, columnInfo));
-
             } else {
                 log.info("check:APP_ID:{} = {} ==== 原始值", columnInfo.getAppId(), columnName);
             }
         }
-    }
-
-
-    private static void logAndSend(AppTableColumnInfo columnInfo, String columnName, String type) {
-        log.info("check:APP_ID:{} = {} ==== {}", columnInfo.getAppId(), columnName, type);
-        sendMessage(columnInfo.getAppId(), "传入列: " + columnName + " 数据是" + type + ", 请跟进一下！！！");
-    }
-
-    private static void sendMessage(String appId, String message) {
-        SystemBusinessService systemBusinessService = SpringUtils.getBean(SystemBusinessService.class);
-        systemBusinessService.sendMessage(appId, message);
     }
 
 
