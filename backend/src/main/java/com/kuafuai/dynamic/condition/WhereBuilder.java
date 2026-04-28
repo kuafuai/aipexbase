@@ -18,7 +18,7 @@ public class WhereBuilder {
 
     public String build() {
         // 验证查询条件中的日期值
-        QueryConditionValidator.validate(ctx.getColumns(), ctx.getConditions());
+        // QueryConditionValidator.validate(ctx.getColumns(), ctx.getConditions());
 
         List<String> parts = DynamicWhereStatement.gen_where_statement(
                 useAlias ? ctx.tableAlias() : null, ctx.getColumns(), ctx.getConditions(), useAlias

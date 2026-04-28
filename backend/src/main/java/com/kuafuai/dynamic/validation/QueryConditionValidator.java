@@ -21,11 +21,11 @@ import java.util.Map;
 public class QueryConditionValidator {
 
     private static final DateTimeFormatter DATE_FORMATTER = DateTimeFormatter
-            .ofPattern("yyyy-MM-dd")
+            .ofPattern("uuuu-MM-dd")
             .withResolverStyle(ResolverStyle.STRICT);
 
     private static final DateTimeFormatter DATETIME_FORMATTER = DateTimeFormatter
-            .ofPattern("yyyy-MM-dd HH:mm:ss")
+            .ofPattern("uuuu-MM-dd HH:mm:ss")
             .withResolverStyle(ResolverStyle.STRICT);
 
     /**
@@ -82,19 +82,14 @@ public class QueryConditionValidator {
         }
 
         try {
-            if ("datetime".equalsIgnoreCase(dslType)) {
-                // datetime 类型：支持 "2026-04-31" 或 "2026-04-31 00:00:00"
-                if (dateStr.contains(" ")) {
-                    // 包含时间部分
-                    LocalDateTime.parse(dateStr, DATETIME_FORMATTER);
-                } else {
-                    // 只有日期部分
-                    LocalDate.parse(dateStr, DATE_FORMATTER);
-                }
-            } else {
-                // date 类型：只支持 "2026-04-31"
+            if (dateStr.length() == 10) {
+                // 长度为 10：yyyy-MM-dd
                 LocalDate.parse(dateStr, DATE_FORMATTER);
+            } else if (dateStr.length() == 19) {
+                // 长度为 19：yyyy-MM-dd HH:mm:ss
+                LocalDateTime.parse(dateStr, DATETIME_FORMATTER);
             }
+            // 其他长度：跳过验证（如 like 的 "2026-04%"）
         } catch (DateTimeParseException e) {
             throw new BusinessException("字段 " + columnName + " 的日期参数不正确: " + dateStr);
         }
