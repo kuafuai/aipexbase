@@ -23,7 +23,6 @@ import com.kuafuai.manage.entity.vo.AppVo;
 import com.kuafuai.manage.entity.vo.ColumnVo;
 import com.kuafuai.manage.entity.vo.TableVo;
 import com.kuafuai.manage.util.Table2SQL;
-import com.kuafuai.config.db.DynamicDataSourceContextHolder;
 import com.kuafuai.system.DynamicInfoCache;
 import com.kuafuai.system.SystemBusinessService;
 import com.kuafuai.system.entity.*;
@@ -790,23 +789,20 @@ public class ManageBusinessService {
             }).collect(Collectors.toList());
         }
 
-        // 2. 获取目标表的有效列名（排除主键，主键由数据库自增）
-        String currentDs = DynamicDataSourceContextHolder.getDataSourceType();
-        Set<String> validColumns;
-        try {
-            DynamicDataSourceContextHolder.setDataSourceType("DEFAULT");
-            validColumns = dynamicInfoCache.getAppTableColumnInfo(appId, tableName)
-                    .stream()
-                    .filter(col -> !col.isPrimary())
-                    .map(AppTableColumnInfo::getColumnName)
-                    .collect(Collectors.toSet());
-        } finally {
-            if (currentDs == null) {
-                DynamicDataSourceContextHolder.clearDataSourceType();
-            } else {
-                DynamicDataSourceContextHolder.setDataSourceType(currentDs);
-            }
-        }
+        // 2. 获取目标表的列信息（排除主键）
+        List<AppTableColumnInfo> columnInfos = dynamicInfoCache.getAppTableColumnInfo(appId, tableName);
+        Set<String> validColumns = columnInfos.stream()
+                .filter(col -> !col.isPrimary())
+                .map(AppTableColumnInfo::getColumnName)
+                .collect(Collectors.toSet());
+
+        // 识别资源类型字段（image/images/file/files/video/videos）
+        List<String> resourceColumnNames = columnInfos.stream()
+                .filter(col -> !col.isPrimary()
+                        && StringUtils.equalsAnyIgnoreCase(col.getDslType(),
+                        "image", "images", "file", "files", "video", "videos"))
+                .map(AppTableColumnInfo::getColumnName)
+                .collect(Collectors.toList());
 
         // 3. 过滤每行数据，只保留目标表存在的字段
         List<Map<String, Object>> filtered = rows.stream()
@@ -815,7 +811,59 @@ public class ManageBusinessService {
                         .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
                 .collect(Collectors.toList());
 
+        // 4. 若表中存在资源字段，逐行插入以便获取自增 ID，再写入 static_resources
+        if (!resourceColumnNames.isEmpty()) {
+            for (Map<String, Object> row : filtered) {
+                // 提取资源字段原始值，并将主表字段值替换为字段名占位符
+                Map<String, Object> resourceData = new HashMap<>();
+                for (String colName : resourceColumnNames) {
+                    Object val = row.get(colName);
+                    if (val != null) {
+                        resourceData.put(colName, val);
+                    }
+                    row.put(colName, colName);
+                }
+                dynamicMapper.insert(appId, tableName, row);
+                long id = dynamicMapper.getLastId();
+                saveBatchResources(appId, tableName, id, resourceData);
+            }
+            return filtered.size();
+        }
+
         return dynamicMapper.insertBatch(appId, tableName, filtered);
+    }
+
+    private void saveBatchResources(String database, String table, long keyValue, Map<String, Object> resourceMapData) {
+        if (resourceMapData.isEmpty()) return;
+        for (Map.Entry<String, Object> entry : resourceMapData.entrySet()) {
+            String columnName = entry.getKey();
+            Object resourceValueObj = entry.getValue();
+            if (resourceValueObj instanceof String) {
+                saveBatchResource(database, table, columnName, keyValue, (String) resourceValueObj);
+            } else if (resourceValueObj instanceof List) {
+                for (Object item : (List<?>) resourceValueObj) {
+                    if (item instanceof String) {
+                        saveBatchResource(database, table, columnName, keyValue, (String) item);
+                    } else if (item instanceof Map) {
+                        Object url = ((Map<?, ?>) item).get("url");
+                        if (url instanceof String) {
+                            saveBatchResource(database, table, columnName, keyValue, (String) url);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private void saveBatchResource(String database, String table, String columnName, long id, String url) {
+        if (StringUtils.startsWithAny(url, "https://", "http://")) {
+            Map<String, Object> params = new HashMap<>();
+            params.put("related_table_name", table);
+            params.put("relate_table_column_name", columnName);
+            params.put("related_table_key", id);
+            params.put("resource_path", url);
+            dynamicMapper.insert(database, "static_resources", params);
+        }
     }
 
     private Map<String, Object> applyFieldMapping(Map<String, Object> row, Map<String, String> fieldMapping) {
