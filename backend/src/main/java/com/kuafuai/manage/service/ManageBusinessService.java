@@ -13,6 +13,7 @@ import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.DateUtils;
 import com.kuafuai.common.util.RandomStringUtils;
 import com.kuafuai.common.util.StringUtils;
+import com.kuafuai.dynamic.mapper.DynamicMapper;
 import com.kuafuai.dynamic.service.DynamicInterfaceService;
 import com.kuafuai.dynamic.service.DynamicService;
 import com.kuafuai.manage.entity.dto.AppInfoCopyDTO;
@@ -22,6 +23,7 @@ import com.kuafuai.manage.entity.vo.AppVo;
 import com.kuafuai.manage.entity.vo.ColumnVo;
 import com.kuafuai.manage.entity.vo.TableVo;
 import com.kuafuai.manage.util.Table2SQL;
+import com.kuafuai.config.db.DynamicDataSourceContextHolder;
 import com.kuafuai.system.DynamicInfoCache;
 import com.kuafuai.system.SystemBusinessService;
 import com.kuafuai.system.entity.*;
@@ -101,6 +103,9 @@ public class ManageBusinessService {
 
     @Autowired
     private RlsPolicyService rlsPolicyService;
+
+    @Resource
+    private DynamicMapper dynamicMapper;
 
     @Autowired
     private ApiMarketService apiMarketService;
@@ -753,6 +758,70 @@ public class ManageBusinessService {
      */
     public BaseResponse saveData(String appId, String tableName, Map<String, Object> data) {
         return dynamicService.add(appId, tableName, data);
+    }
+
+    /**
+     * 批量写入数据（支持字段映射）
+     * fieldMapping: {"源字段名": "目标字段名"}，null 表示不转换；未出现在映射里的源字段会按原名保留（若与目标列名一致则会写入）。
+     * extraFields: 目标列名 -> 值，在映射后并入每一行，仅当该行缺少该键或值为 null 时填入（便于必填列、统一默认值）。
+     * HTTP 侧见 ，由控制器解析后传入。
+     * 自动过滤目标表不存在的字段
+     */
+    public long saveDataBatch(String appId, String tableName, List<Map<String, Object>> dataList, Map<String, String> fieldMapping) {
+        return saveDataBatch(appId, tableName, dataList, fieldMapping, null);
+    }
+
+    public long saveDataBatch(String appId, String tableName, List<Map<String, Object>> dataList, Map<String, String> fieldMapping, Map<String, Object> extraFields) {
+        // 1. 应用字段映射
+        List<Map<String, Object>> rows = (fieldMapping == null || fieldMapping.isEmpty())
+                ? dataList
+                : dataList.stream().map(row -> applyFieldMapping(row, fieldMapping)).collect(Collectors.toList());
+
+        // 1b. 合并补充字段（目标列名）
+        if (extraFields != null && !extraFields.isEmpty()) {
+            rows = rows.stream().map(row -> {
+                Map<String, Object> merged = new HashMap<>(row);
+                extraFields.forEach((k, v) -> {
+                    if (!merged.containsKey(k) || merged.get(k) == null) {
+                        merged.put(k, v);
+                    }
+                });
+                return merged;
+            }).collect(Collectors.toList());
+        }
+
+        // 2. 获取目标表的有效列名（排除主键，主键由数据库自增）
+        String currentDs = DynamicDataSourceContextHolder.getDataSourceType();
+        Set<String> validColumns;
+        try {
+            DynamicDataSourceContextHolder.setDataSourceType("DEFAULT");
+            validColumns = dynamicInfoCache.getAppTableColumnInfo(appId, tableName)
+                    .stream()
+                    .filter(col -> !col.isPrimary())
+                    .map(AppTableColumnInfo::getColumnName)
+                    .collect(Collectors.toSet());
+        } finally {
+            if (currentDs == null) {
+                DynamicDataSourceContextHolder.clearDataSourceType();
+            } else {
+                DynamicDataSourceContextHolder.setDataSourceType(currentDs);
+            }
+        }
+
+        // 3. 过滤每行数据，只保留目标表存在的字段
+        List<Map<String, Object>> filtered = rows.stream()
+                .map(row -> row.entrySet().stream()
+                        .filter(e -> validColumns.contains(e.getKey()))
+                        .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue)))
+                .collect(Collectors.toList());
+
+        return dynamicMapper.insertBatch(appId, tableName, filtered);
+    }
+
+    private Map<String, Object> applyFieldMapping(Map<String, Object> row, Map<String, String> fieldMapping) {
+        Map<String, Object> result = Maps.newHashMap();
+        row.forEach((key, value) -> result.put(fieldMapping.getOrDefault(key, key), value));
+        return result;
     }
 
     public BaseResponse updateData(String appId, String tableName, Map<String, Object> data) {
