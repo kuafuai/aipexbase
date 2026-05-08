@@ -10,19 +10,35 @@ import com.kuafuai.system.service.UsersService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
 
 import javax.annotation.Resource;
 import java.math.BigDecimal;
+import java.util.HashMap;
+import java.util.Map;
+
 
 @Service
 @Slf4j
 public class UserBalanceServiceImpl extends ServiceImpl<UserBalanceMapper, UserBalance> implements UserBalanceService {
 
     private static final String USER_CODEFLYING_MAPPING_KEY = "user:codeflying:balance:";
-    private static final BigDecimal DEFAULT_BALANCE = new BigDecimal("2.00"); // 默认余额2元
+    private static final BigDecimal DEFAULT_BALANCE = new BigDecimal("2.00");
+
+    private final RestTemplate restTemplate = new RestTemplate();
+
+    @Value("${backend.url:}")
+    private String backendUrl;
+
+    @Value("${backend.internal.auth-key:b54igLGJ1DpB8OMF}")
+    private String backendAuthKey;
 
     @Resource
     private UsersService usersService;
@@ -107,6 +123,9 @@ public class UserBalanceServiceImpl extends ServiceImpl<UserBalanceMapper, UserB
 
             log.info("Redis余额扣减成功, userId: {}, 扣减金额: {}, 新余额: {}", userId, amount, deductedAmount);
 
+            // 通知 backend 写入 DB 持久化
+            notifyBackendStat(Long.parseLong(codeflyingUserId), "consume", amount);
+
             // 5. 同步到数据库
             syncBalanceToDb(userId, BigDecimal.valueOf(deductedAmount));
 
@@ -130,6 +149,7 @@ public class UserBalanceServiceImpl extends ServiceImpl<UserBalanceMapper, UserB
             log.error("同步余额到数据库异常, codeFlyingUserId: {}, newBalance: {}", userId, newBalance, e);
         }
     }
+
 
     @Override
     public UserBalance getByCodeFlyingUserId(String codeFlyingUserId) {
@@ -199,11 +219,36 @@ public class UserBalanceServiceImpl extends ServiceImpl<UserBalanceMapper, UserB
 
             log.info("Redis余额增加成功, codeFlyingUserId: {}:{}, 原余额: {}, 增加金额: {}, 新余额: {}", codeFlyingUserId, codeFlyingUserId, currentBalance, amount, newBalance);
 
+            // 通知 backend 写入充值统计
+            notifyBackendStat(Long.parseLong(codeFlyingUserId), "recharge", amount);
+
             return true;
 
         } catch (Exception e) {
             log.error("增加用户余额异常, codeFlyingUserId: {}:{}, amount: {}", codeFlyingUserId, codeFlyingUserId, amount, e);
             return false;
+        }
+    }
+
+    /**
+     * 通知 backend 记录积分变动统计（消费/充值）
+     * 失败只打 warn，不影响主流程
+     */
+    private void notifyBackendStat(Long userId, String type, BigDecimal amount) {
+        if (backendUrl == null || backendUrl.isEmpty()) return;
+        try {
+            String url = backendUrl + "/balance_stat/record";
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_JSON);
+            headers.set("X-Auth-Key", backendAuthKey);
+            Map<String, Object> body = new HashMap<>();
+            body.put("user_id", userId);
+            body.put("type", type);
+            body.put("amount", amount);
+            restTemplate.postForObject(url, new HttpEntity<>(body, headers), String.class);
+            log.info("通知 backend 写入统计成功, userId: {}, type: {}, amount: {}", userId, type, amount);
+        } catch (Exception e) {
+            log.warn("通知 backend 写入统计失败, userId: {}, type: {}, amount: {}, error: {}", userId, type, amount, e.getMessage());
         }
     }
 }
