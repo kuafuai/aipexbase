@@ -26,6 +26,7 @@ import com.kuafuai.system.entity.AppTableColumnInfo;
 import com.kuafuai.system.entity.AppTableRelation;
 import jodd.net.URLCoder;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.poi.ss.usermodel.HorizontalAlignment;
 import org.apache.poi.ss.usermodel.IndexedColors;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -323,11 +324,19 @@ public class DynamicInterfaceService {
     }
 
     /**
-     * 处理关联表
+     * 处理关联表数据
+     * 主要功能：
+     * 1. 处理资源类型字段（image、file、video 等）
+     * 2. 处理 quote 类型字段（关联其他表的数据）
+     * 3. 对敏感字段进行脱敏处理
+     * <p>
+     * 性能优化：
+     * - 资源字段：根据字段数量选择不同的查询策略
+     * - quote 字段：使用批量查询，避免 N+1 问题
      *
-     * @param database
-     * @param table
-     * @param list
+     * @param database 数据库名
+     * @param table    表名
+     * @param list     待处理的数据列表
      */
     private void process_relation_table(String database,
                                         String table,
@@ -346,13 +355,7 @@ public class DynamicInterfaceService {
                 .collect(Collectors.toList());
 
         if (!quoteColumns.isEmpty()) {
-
-            if (list.size() > 10) {
-                // todo 后续优化
-                // 如果超过 10 条 , 不处理 关联表查询
-                log.info("======================:{}:{}:{}==========================", database, table, list.size());
-                return;
-            }
+            log.debug("Processing {} quote columns for table: {}, data count: {}", quoteColumns.size(), table, list.size());
 
             for (AppTableColumnInfo appTableColumnInfo : quoteColumns) {
                 Long columnId = appTableColumnInfo.getId();
@@ -364,7 +367,7 @@ public class DynamicInterfaceService {
                 if (relationOptional.isPresent()) {
                     process_quote_column(database, appTableColumnInfo, relationOptional.get(), list);
                 } else {
-                    log.info("========================={}:{}: {} has no quote column", database, table, appTableColumnInfo.getColumnName());
+                    log.warn("Quote column {} in table {} has no relation defined", appTableColumnInfo.getColumnName(), table);
                 }
             }
         }
@@ -442,6 +445,16 @@ public class DynamicInterfaceService {
     }
 
 
+    /**
+     * 处理 quote 类型字段（批量查询优化版本）
+     * 优化前：N+1 查询问题，每条记录执行一次数据库查询
+     * 优化后：批量查询，将 N 次查询优化为 1 次（或少数几次）
+     *
+     * @param database   数据库名
+     * @param columnInfo quote 字段信息
+     * @param relation   关联关系
+     * @param list       待处理的数据列表
+     */
     private void process_quote_column(String database,
                                       AppTableColumnInfo columnInfo,
                                       AppTableRelation relation,
@@ -455,25 +468,86 @@ public class DynamicInterfaceService {
         // 查询出 quote表的 资源类型
         List<AppTableColumnInfo> columnInfos = dynamicInfoCache.getAppTableColumnInfo(database, tableName);
 
+        // 步骤1: 收集所有需要查询的 quote ID（去重 + 过滤 null）
+        List<Object> quoteIds = list.stream()
+                .map(data -> data.get(columnInfo.getColumnName()))
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+
+        if (quoteIds.isEmpty()) {
+            log.debug("No quote IDs to process for column: {}", columnInfo.getColumnName());
+            return;
+        }
+
+        log.info("Batch querying {} quote records for column: {}, table: {}, ids count: {}", tableName, columnInfo.getColumnName(), database, quoteIds.size());
+
+        // 步骤2: 批量查询关联数据（支持大数据量分批）
+        List<Map<String, Object>> allQuoteData = batchQueryQuoteData(database, tableName, primaryKey, quoteIds);
+
+        if (allQuoteData.isEmpty()) {
+            log.warn("No quote data found for column: {}, table: {}", columnInfo.getColumnName(), tableName);
+            return;
+        }
+
+        // 步骤3: 处理关联表的资源字段
+        process_resource_column(database, tableName, columnInfos, allQuoteData);
+
+        // 步骤4: 建立索引 Map，key 为主键值，便于快速查找
+        Map<Object, Map<String, Object>> quoteDataMap = allQuoteData.stream()
+                .collect(Collectors.toMap(
+                        m -> m.get(primaryKey),
+                        m -> m,
+                        (existing, replacement) -> {
+                            log.warn("Duplicate quote data found for key: {}, keeping first one", existing.get(primaryKey));
+                            return existing;
+                        }
+                ));
+
+        // 步骤5: 填充数据到原始 list
         for (Map<String, Object> data : list) {
             Object columnValue = data.get(columnInfo.getColumnName());
             if (Objects.isNull(columnValue)) {
                 continue;
             }
-            Map<String, Object> params = Maps.newHashMap();
-            params.put(primaryKey, columnValue);
 
-            Map<String, Object> quoteDataMap = dynamicMapper.getOne(database, tableName, params);
-            if (quoteDataMap != null) {
-
-                List<Map<String, Object>> quoteDataMapList = Lists.newArrayList(quoteDataMap);
-                process_resource_column(database, tableName, columnInfos, quoteDataMapList);
-
-                quoteDataMap.forEach(data::putIfAbsent);
-                // 将引用字段的数据放入对象里
-                data.put(columnInfo.getColumnName() + "_map", quoteDataMap);
+            Map<String, Object> quoteData = quoteDataMap.get(columnValue);
+            if (quoteData != null) {
+                // 将引用字段的完整数据放入 {columnName}_map
+                data.put(columnInfo.getColumnName() + "_map", quoteData);
+            } else {
+                log.debug("Quote data not found for column: {}, value: {}", columnInfo.getColumnName(), columnValue);
             }
         }
+    }
+
+    /**
+     * 批量查询 quote 数据，支持大数据量分批查询
+     * 单次 IN 查询建议不超过 1000 条，超过则分批处理
+     *
+     * @param database   数据库名
+     * @param tableName  表名
+     * @param primaryKey 主键字段名
+     * @param quoteIds   需要查询的 ID 列表
+     * @return 查询结果列表
+     */
+    private List<Map<String, Object>> batchQueryQuoteData(String database,
+                                                          String tableName,
+                                                          String primaryKey,
+                                                          List<Object> quoteIds) {
+        final int BATCH_SIZE = 1000;
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        for (int i = 0; i < quoteIds.size(); i += BATCH_SIZE) {
+            List<Object> batchIds = quoteIds.subList(i, Math.min(i + BATCH_SIZE, quoteIds.size()));
+            Map<String, Object> params = Collections.singletonMap(primaryKey, batchIds);
+            List<Map<String, Object>> batchResult = dynamicMapper.list(database, tableName, params);
+            if (CollectionUtils.isNotEmpty(batchResult)) {
+                result.addAll(batchResult);
+            }
+        }
+
+        return result;
     }
 
     private void mask_sensitive_fields(List<Map<String, Object>> list, String appId) {
