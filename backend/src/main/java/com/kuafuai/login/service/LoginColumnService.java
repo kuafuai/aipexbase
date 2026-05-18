@@ -46,6 +46,19 @@ public class LoginColumnService {
     }
 
 
+    public Optional<String> findPhoneColumnName(List<AppTableColumnInfo> columnInfoList) {
+        return columnInfoList.stream()
+                .filter(p -> StringUtils.equalsIgnoreCase(p.getDslType(), "phone"))
+                .findFirst()
+                .map(AppTableColumnInfo::getColumnName)
+                .map(Optional::of)
+                .orElseGet(() -> columnInfoList.stream()
+                        .filter(p -> phoneKeys.stream().anyMatch(k -> StringUtils.equalsIgnoreCase(k, p.getColumnName())))
+                        .findFirst()
+                        .map(AppTableColumnInfo::getColumnName));
+    }
+
+
 
     private Optional<Object> findFirstMatchingColumn(Map<String, Object> mapData,
                                                      List<AppTableColumnInfo> columnInfoList,

@@ -174,6 +174,28 @@ public class LoginBusinessService {
         return login;
     }
 
+    public Login createNewLoginByPhone(String phone) {
+        String appId = GlobalAppIdFilter.getAppId();
+        String authTable = DynamicAuthFilter.getAppInfo().getAuthTable();
+
+        List<AppTableColumnInfo> columnInfoList = dynamicInfoCache.getAppTableColumnInfo(appId, authTable);
+        Map<String, Object> valueMap = createAuthDataMap(columnInfoList);
+        loginColumnService.findPhoneColumnName(columnInfoList)
+                .ifPresent(col -> valueMap.put(col, phone));
+
+        Long id = dynamicInterfaceService.add(appId, authTable, valueMap);
+
+        Login login = new Login();
+        login.setPhoneNumber(phone);
+        login.setUserName(phone);
+        login.setPassword(SecurityUtils.encryptPassword("123456"));
+        login.setRelevanceTable(StringUtils.dbStrToHumpLower(authTable));
+        login.setRelevanceId(String.valueOf(id));
+
+        loginService.save(appId, login);
+        return login;
+    }
+
 
     private Login createLogin(String openId, String tableName, Long id) {
         Login login = new Login();

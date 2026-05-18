@@ -12,7 +12,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.AuthenticationException;
-import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -41,7 +40,7 @@ public class PhoneProvider implements AuthenticationProvider {
 
         Login current = loginBusinessService.getUserBySelectKey(phone, loginVo.getRelevanceTable());
         if (current == null) {
-            throw new UsernameNotFoundException("");
+            current = loginBusinessService.createNewLoginByPhone(phone);
         }
 
         LoginUser loginUser = loginBusinessService.getLoginUser(current, loginVo.getRelevanceTable());
