@@ -74,6 +74,10 @@ logging:
         manage:
           mcp: ${LOG_LEVEL:info}
 
+huawei:
+  client-id: ${HW_CLIENT_ID:xxx}
+  client-secret: ${HW_CLIENT_SECRET:xxxx}
+
 token:
   expireTime: 43200
 

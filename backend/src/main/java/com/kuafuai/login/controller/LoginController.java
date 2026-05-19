@@ -15,6 +15,7 @@ import com.kuafuai.login.config.WechatConfig;
 import com.kuafuai.login.entity.LoginVo;
 import com.kuafuai.login.handle.DynamicAuthFilter;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
+import com.kuafuai.login.provider.huawei.HwAuthentication;
 import com.kuafuai.login.service.LoginBusinessService;
 import com.kuafuai.login.service.TokenService;
 import com.kuafuai.login.service.WxAppService;
@@ -176,6 +177,27 @@ public class LoginController {
         }
 
 
+    }
+
+    /**
+     * 华为账号登录（鸿蒙元服务）
+     * 前端传入华为授权码 code，后端换取 openID 并完成登录或自动注册。
+     *
+     * 请求体:
+     *   code           : 华为授权码（HarmonyOS 客户端通过 Account Kit 获取）
+     *   relevanceTable : 关联用户表（可选）
+     * 返回:
+     *   token : JWT 登录令牌
+     */
+    @PostMapping("/login/huawei")
+    public BaseResponse loginByHuawei(@Validated @RequestParam @NotBlank(message = "code不能为空") String code) {
+        LoginVo loginVo = new LoginVo();
+        loginVo.setCode(code);
+        HwAuthentication authentication = new HwAuthentication(loginVo);
+        Authentication returnAuth = authenticationManager.authenticate(authentication);
+        LoginUser loginUser = (LoginUser) returnAuth.getPrincipal();
+        String token = tokenService.createToken(loginUser);
+        return ResultUtils.success(token);
     }
 
 }
