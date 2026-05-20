@@ -85,6 +85,7 @@ cache:
 message:
   enable: ${MESSAGE_ENABLE:false}
   notifyUrl: ${MESSAGE_BASE_URL:xxx}
+  notifyUrl2: ${MESSAGE_BASE_URL2:xxx}
 
 deploy:
   workspaceDir: ${DEPLOY_WORKSPACE_DIR:/data/codeflying/kuafu-runtime-agent/workspace}

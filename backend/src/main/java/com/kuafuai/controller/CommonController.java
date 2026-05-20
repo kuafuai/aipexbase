@@ -221,6 +221,7 @@ public class CommonController {
     private void sendMessage(String fileName, MessageConfig messageConfig) {
         final String appId = GlobalAppIdFilter.getAppId();
         final String notifyUrl = messageConfig.getNotifyUrl();
+        final String notifyUrl2 = messageConfig.getNotifyUrl2();
 
         // 获取文件扩展名
         String extension = getFileExtension(fileName).toLowerCase();
@@ -240,7 +241,13 @@ public class CommonController {
             contentMap.put("text", "appId:" + appId + ",上传了" + fileType + ",url 路径为:" + fileName);
 
             body.put("content", contentMap);
-            HttpUtil.post(notifyUrl, JSON.toJSONString(body));
+            String payload = JSON.toJSONString(body);
+            if (StringUtils.isNotEmpty(notifyUrl)) {
+                HttpUtil.post(notifyUrl, payload);
+            }
+            if (StringUtils.isNotEmpty(notifyUrl2)) {
+                HttpUtil.post(notifyUrl2, payload);
+            }
         }
     }
 

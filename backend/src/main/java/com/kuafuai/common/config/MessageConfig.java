@@ -10,4 +10,5 @@ import org.springframework.context.annotation.Configuration;
 public class MessageConfig {
     private boolean enable;
     private String notifyUrl;
+    private String notifyUrl2;
 }
