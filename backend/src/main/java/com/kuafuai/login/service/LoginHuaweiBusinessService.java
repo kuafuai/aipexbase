@@ -24,7 +24,7 @@ public class LoginHuaweiBusinessService {
     private HuaweiConfig huaweiConfig;
 
     private static final String HW_TOKEN_URL = "https://oauth-login.cloud.huawei.com/oauth2/v3/token";
-    private static final String HW_USER_INFO_URL = "https://account.cloud.huawei.com/rest.php?nsp_svc=GOpen.User.getInfo&nsp_ts=1&access_token={}";
+    private static final String HW_USER_INFO_URL = "https://account.cloud.huawei.com/rest.php";
 
     /**
      * 用授权码换取华为 openID。
@@ -35,6 +35,8 @@ public class LoginHuaweiBusinessService {
     public String getOpenId(String authCode) {
         String clientId = huaweiConfig.getClientId();
         String clientSecret = huaweiConfig.getClientSecret();
+        log.info("[HW Login] 使用 client_id={}", clientId);
+        log.info("[HW Login] 使用 client_secret={}", clientSecret);
 
         if (StringUtils.isEmpty(clientId) || StringUtils.equalsAnyIgnoreCase(authCode, "codeflying")) {
             return "codeflying";
@@ -63,8 +65,15 @@ public class LoginHuaweiBusinessService {
         }
 
         // 2. 用 access_token 获取用户 openID
-        String userInfoUrl = StringUtils.format(HW_USER_INFO_URL, accessToken);
-        String userInfoStr = HttpUtil.get(userInfoUrl);
+        String ts = String.valueOf(System.currentTimeMillis() / 1000);
+        String userInfoStr;
+        try {
+            String encodedToken = java.net.URLEncoder.encode(accessToken, "UTF-8");
+            String userInfoUrl = HW_USER_INFO_URL + "?nsp_svc=GOpen.User.getInfo&nsp_ts=" + ts + "&access_token=" + encodedToken;
+            userInfoStr = HttpUtil.get(userInfoUrl);
+        } catch (java.io.UnsupportedEncodingException e) {
+            throw new BusinessException("login.huawei.userinfo.failed");
+        }
         log.info("[HW Login] 获取用户信息响应: {}", userInfoStr);
 
         Map<?, ?> userInfo = JSON.parseObject(userInfoStr, Map.class);
