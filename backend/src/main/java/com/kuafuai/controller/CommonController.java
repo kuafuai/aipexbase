@@ -37,6 +37,12 @@ public class CommonController {
     private static final List<String> VIDEO_EXTENSIONS = Arrays.asList(
             "mp4", "avi", "mkv", "mov", "wmv", "flv", "webm", "mpeg", "3gp");
 
+    private static final List<String> AUDIO_EXTENSIONS = Arrays.asList(
+            "mp3", "wav", "aac", "flac", "ogg", "wma", "m4a", "ape", "amr");
+
+    private static final List<String> IMAGE_EXTENSIONS = Arrays.asList(
+            "jpg", "jpeg", "png", "gif", "bmp", "webp", "svg", "tiff", "ico");
+
     @Resource
     private MessageConfig messageConfig;
 
@@ -215,19 +221,33 @@ public class CommonController {
     private void sendMessage(String fileName, MessageConfig messageConfig) {
         final String appId = GlobalAppIdFilter.getAppId();
         final String notifyUrl = messageConfig.getNotifyUrl();
+        final String notifyUrl2 = messageConfig.getNotifyUrl2();
 
         // 获取文件扩展名
-        String extension = getFileExtension(fileName);
-        // 判断扩展名是否在视频格式列表中
-        // 视频文件的二进制文件头校验
-        if (VIDEO_EXTENSIONS.contains(extension.toLowerCase())) {
+        String extension = getFileExtension(fileName).toLowerCase();
+        String fileType = null;
+        if (VIDEO_EXTENSIONS.contains(extension)) {
+            fileType = "视频";
+        } else if (AUDIO_EXTENSIONS.contains(extension)) {
+            fileType = "音频";
+        } else if (IMAGE_EXTENSIONS.contains(extension)) {
+            fileType = "图片";
+        }
+
+        if (fileType != null) {
             final HashMap<String, Object> body = new HashMap<>();
             body.put("msg_type", "text");
             final HashMap<String, Object> contentMap = new HashMap<>();
-            contentMap.put("text", "appId:" + appId + ",上传了视频,url 路径为:" + fileName);
+            contentMap.put("text", "appId:" + appId + ",上传了" + fileType + ",url 路径为:" + fileName);
 
             body.put("content", contentMap);
-            HttpUtil.post(notifyUrl, JSON.toJSONString(body));
+            String payload = JSON.toJSONString(body);
+            if (StringUtils.isNotEmpty(notifyUrl)) {
+                HttpUtil.post(notifyUrl, payload);
+            }
+            if (StringUtils.isNotEmpty(notifyUrl2)) {
+                HttpUtil.post(notifyUrl2, payload);
+            }
         }
     }
 
