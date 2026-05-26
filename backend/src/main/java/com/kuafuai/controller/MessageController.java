@@ -8,6 +8,7 @@ import com.kuafuai.common.mail.client.MailClient;
 import com.kuafuai.common.mail.spec.MailDefinition;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,6 +28,18 @@ public class MessageController {
     private static final String CONFIG_MAIL_PASSWD = "mail.passwd";
     private static final String CONFIG_MAIL_PORT = "mail.port";
 
+    @Value("${mail.default.host:smtp.126.com}")
+    private String host;
+
+    @Value("${mail.default.user:user}")
+    private String user;
+
+    @Value("${mail.default.passwd:123456}")
+    private String passwd;
+
+    @Value("${mail.default.port:465}")
+    private String port;
+
     @PostMapping("/common/mail/send")
     public BaseResponse mailSend(@RequestBody Map<String, Object> data) {
         if (!data.containsKey("title")) {
@@ -35,13 +48,13 @@ public class MessageController {
         if (!data.containsKey("content")) {
             return ResultUtils.error("login.register.params", "content");
         }
-        if (!data.containsKey("mail")) {
-            return ResultUtils.error("login.register.params", "mail");
+        if (!data.containsKey("to")) {
+            return ResultUtils.error("login.register.params", "to");
         }
 
         String title = Objects.toString(data.get("title"), "");
         String content = Objects.toString(data.get("content"), "");
-        String mail = Objects.toString(data.get("mail"), "");
+        String mail = Objects.toString(data.get("to"), "");
         Map<String, String> params = Maps.newHashMap();
         if (data.containsKey("params") && data.get("params") instanceof Map) {
             Map<?, ?> paramMap = (Map<?, ?>) data.get("params");
@@ -61,10 +74,10 @@ public class MessageController {
 
     private MailDefinition createMailDefinition(String appId, String content) {
         Map<String, String> configMap = dynamicConfigBusinessService.getSystemConfig(appId);
-        String host = configMap.getOrDefault(CONFIG_MAIL_HOST, "smtp.126.com");
-        String userName = configMap.getOrDefault(CONFIG_MAIL_USER, "");
-        String password = configMap.getOrDefault(CONFIG_MAIL_PASSWD, "");
-        Integer port = Integer.parseInt(configMap.getOrDefault(CONFIG_MAIL_PORT, "465"));
+        String host = configMap.getOrDefault(CONFIG_MAIL_HOST, this.host);
+        String userName = configMap.getOrDefault(CONFIG_MAIL_USER, this.user);
+        String password = configMap.getOrDefault(CONFIG_MAIL_PASSWD, this.passwd);
+        Integer port = Integer.parseInt(configMap.getOrDefault(CONFIG_MAIL_PORT, this.port));
 
         return MailDefinition.builder()
                 .host(host)
