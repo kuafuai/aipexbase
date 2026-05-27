@@ -1,6 +1,6 @@
 package com.kuafuai.system.service;
 
-import com.kuafuai.api.spec.TokenUsageReportRequest;
+import com.kuafuai.system.entity.vo.TokenUsageReportRequest;
 
 import java.math.BigDecimal;
 

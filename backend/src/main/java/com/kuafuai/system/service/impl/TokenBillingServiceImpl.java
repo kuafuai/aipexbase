@@ -1,9 +1,9 @@
 package com.kuafuai.system.service.impl;
 
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.kuafuai.api.spec.TokenUsageReportRequest;
 import com.kuafuai.system.entity.ModelPricing;
 import com.kuafuai.system.entity.TokenBillingRecord;
+import com.kuafuai.system.entity.vo.TokenUsageReportRequest;
 import com.kuafuai.system.mapper.TokenBillingRecordMapper;
 import com.kuafuai.system.service.ModelPricingService;
 import com.kuafuai.system.service.TokenBillingService;
