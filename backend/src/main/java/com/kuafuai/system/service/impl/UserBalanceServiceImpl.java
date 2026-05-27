@@ -189,6 +189,46 @@ public class UserBalanceServiceImpl extends ServiceImpl<UserBalanceMapper, UserB
         }
     }
 
+    @Override
+    public boolean deductBalanceByCodeFlyingUserId(String codeFlyingUserId, BigDecimal amount) {
+        log.info("开始扣减用户余额, codeFlyingUserId: {}, 扣减金额: {}", codeFlyingUserId, amount);
+
+        if (!isRedisEnabled()) {
+            Users user = usersService.getByCodeFlyingUserId(codeFlyingUserId);
+            if (user == null) {
+                log.error("用户不存在, codeFlyingUserId: {}", codeFlyingUserId);
+                return false;
+            }
+            int rows = getBaseMapper().deductBalance(user.getId(), amount);
+            if (rows <= 0) {
+                log.error("余额不足或账户异常（DB），codeFlyingUserId: {}, amount: {}", codeFlyingUserId, amount);
+                return false;
+            }
+            log.info("DB余额扣减成功, codeFlyingUserId: {}, 扣减金额: {}", codeFlyingUserId, amount);
+            return true;
+        }
+
+        try {
+            BigDecimal currentBalance = fetchCurrentBalance(codeFlyingUserId);
+            BigDecimal newBalance = currentBalance.subtract(amount);
+
+            if (newBalance.compareTo(BigDecimal.ZERO) < 0) {
+                log.error("余额不足（Redis）, codeFlyingUserId: {}, 当前余额: {}, 扣减金额: {}", codeFlyingUserId, currentBalance, amount);
+                return false;
+            }
+
+            redisTemplate.opsForValue().set(USER_CODEFLYING_MAPPING_KEY + codeFlyingUserId, newBalance.toPlainString());
+            log.info("Redis余额扣减成功, codeFlyingUserId: {}, 扣减金额: {}, 新余额: {}", codeFlyingUserId, amount, newBalance);
+
+            notifyBackendStat(Long.parseLong(codeFlyingUserId), "consume", amount);
+            return true;
+
+        } catch (Exception e) {
+            log.error("扣减余额异常, codeFlyingUserId: {}, amount: {}", codeFlyingUserId, amount, e);
+            return false;
+        }
+    }
+
     /**
      * 从 Redis 取余额，miss 时初始化为默认余额。
      * 调用方须保证 isRedisEnabled() == true。

@@ -49,4 +49,13 @@ public interface UserBalanceService extends IService<UserBalance> {
      * @return 是否成功
      */
     boolean increaseBalanceByCodeFlyingUserId(String codeFlyingUserId, BigDecimal amount);
+
+    /**
+     * 扣减用户余额（通过 codeFlyingUserId）
+     *
+     * @param codeFlyingUserId 码上飞用户ID
+     * @param amount           扣减金额（正数）
+     * @return 是否成功
+     */
+    boolean deductBalanceByCodeFlyingUserId(String codeFlyingUserId, BigDecimal amount);
 }
