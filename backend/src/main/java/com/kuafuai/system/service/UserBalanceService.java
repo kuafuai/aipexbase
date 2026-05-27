@@ -51,6 +51,14 @@ public interface UserBalanceService extends IService<UserBalance> {
     boolean increaseBalanceByCodeFlyingUserId(String codeFlyingUserId, BigDecimal amount);
 
     /**
+     * 检查用户余额是否大于 0（通过 codeFlyingUserId）
+     *
+     * @param codeFlyingUserId 码上飞用户ID
+     * @return true=余额 > 0 且账户正常
+     */
+    boolean checkBalanceByCodeFlyingUserId(String codeFlyingUserId);
+
+    /**
      * 扣减用户余额（通过 codeFlyingUserId）
      *
      * @param codeFlyingUserId 码上飞用户ID

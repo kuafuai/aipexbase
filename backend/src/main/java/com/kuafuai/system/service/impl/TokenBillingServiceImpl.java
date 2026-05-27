@@ -17,10 +17,11 @@ import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 @Service
 @Slf4j
@@ -43,44 +44,54 @@ public class TokenBillingServiceImpl extends ServiceImpl<TokenBillingRecordMappe
             return BigDecimal.ZERO;
         }
 
+        // 按 model 合并 token 消耗
+        Map<String, MergedTokens> mergedByModel = new LinkedHashMap<>();
+        for (TokenUsageReportRequest.RecordItem item : request.getRecords()) {
+            if (StringUtils.isBlank(item.getModel())) continue;
+            mergedByModel.compute(item.getModel(), (m, acc) -> {
+                if (acc == null) acc = new MergedTokens();
+                acc.promptTokens += safeInt(item.getPromptTokens());
+                acc.completionTokens += safeInt(item.getCompletionTokens());
+                acc.cachedTokens += safeInt(item.getCachedTokens());
+                acc.totalTokens += safeInt(item.getTotalTokens());
+                return acc;
+            });
+        }
+
         List<TokenBillingRecord> billingRecords = new ArrayList<>();
         BigDecimal totalCharge = BigDecimal.ZERO;
 
-        for (TokenUsageReportRequest.RecordItem item : request.getRecords()) {
-            ModelPricing pricing = resolveModelPricing(item.getModel());
+        for (Map.Entry<String, MergedTokens> entry : mergedByModel.entrySet()) {
+            String model = entry.getKey();
+            MergedTokens merged = entry.getValue();
+
+            ModelPricing pricing = modelPricingService.getByModelName(model);
             if (pricing == null) {
-                log.warn("未找到模型定价，跳过计费, model: {}, messageId: {}", item.getModel(), item.getMessageId());
+                log.warn("未找到模型定价，跳过计费, model: {}", model);
                 continue;
             }
 
-            // cached tokens 已包含在 prompt_tokens 中，先扣除再补 cached 价格
-            int nonCachedPromptTokens = safeInt(item.getPromptTokens()) - safeInt(item.getCachedTokens());
-            if (nonCachedPromptTokens < 0) nonCachedPromptTokens = 0;
-
-            BigDecimal promptAmount = calcTokenCost(nonCachedPromptTokens, pricing.getPromptUnitPrice());
-            BigDecimal cacheAmount = calcTokenCost(safeInt(item.getCachedTokens()), pricing.getCacheUnitPrice());
-            BigDecimal completionAmount = calcTokenCost(safeInt(item.getCompletionTokens()), pricing.getCompletionUnitPrice());
+            // prompt、cached、completion 各自独立按对应单价计费
+            BigDecimal promptAmount = calcTokenCost(merged.promptTokens, pricing.getPromptUnitPrice());
+            BigDecimal cacheAmount = calcTokenCost(merged.cachedTokens, pricing.getCacheUnitPrice());
+            BigDecimal completionAmount = calcTokenCost(merged.completionTokens, pricing.getCompletionUnitPrice());
             BigDecimal recordTotal = promptAmount.add(cacheAmount).add(completionAmount);
 
-            TokenBillingRecord record = TokenBillingRecord.builder()
+            billingRecords.add(TokenBillingRecord.builder()
                     .codeFlyingUserId(request.getCodeFlyingUserId())
                     .chatId(request.getChatId())
-                    .messageId(item.getMessageId())
-                    .agentId(item.getAgentId())
-                    .model(item.getModel())
-                    .promptTokens(item.getPromptTokens())
-                    .completionTokens(item.getCompletionTokens())
-                    .cachedTokens(item.getCachedTokens())
-                    .totalTokens(item.getTotalTokens())
+                    .model(model)
+                    .promptTokens(merged.promptTokens)
+                    .completionTokens(merged.completionTokens)
+                    .cachedTokens(merged.cachedTokens)
+                    .totalTokens(merged.totalTokens)
                     .promptAmount(promptAmount)
                     .completionAmount(completionAmount)
                     .cacheAmount(cacheAmount)
                     .totalAmount(recordTotal)
-                    .messageTime(parseTimestamp(item.getTimestamp()))
                     .createdAt(new Date())
-                    .build();
+                    .build());
 
-            billingRecords.add(record);
             totalCharge = totalCharge.add(recordTotal);
         }
 
@@ -88,24 +99,29 @@ public class TokenBillingServiceImpl extends ServiceImpl<TokenBillingRecordMappe
             return BigDecimal.ZERO;
         }
 
+        if (!userBalanceService.checkBalanceByCodeFlyingUserId(request.getCodeFlyingUserId())) {
+            log.warn("余额不足，拒绝扣费, codeFlyingUserId: {}", request.getCodeFlyingUserId());
+            throw new RuntimeException("余额不足");
+        }
+
         saveBatch(billingRecords);
 
-        boolean deducted = userBalanceService.deductBalanceByCodeFlyingUserId(
-                request.getCodeFlyingUserId(), totalCharge);
+        boolean deducted = userBalanceService.deductBalanceByCodeFlyingUserId(request.getCodeFlyingUserId(), totalCharge);
         if (!deducted) {
             log.error("扣减余额失败, codeFlyingUserId: {}, amount: {}", request.getCodeFlyingUserId(), totalCharge);
             throw new RuntimeException("余额不足或扣减失败");
         }
 
-        log.info("token计费完成, codeFlyingUserId: {}, chatId: {}, records: {}, totalCharge: {}",
-                request.getCodeFlyingUserId(), request.getChatId(), billingRecords.size(), totalCharge);
+        log.info("token计费完成, codeFlyingUserId: {}, chatId: {}, models: {}, totalCharge: {}", request.getCodeFlyingUserId(), request.getChatId(), mergedByModel.keySet(), totalCharge);
 
         return totalCharge;
     }
 
-    private ModelPricing resolveModelPricing(String model) {
-        if (StringUtils.isBlank(model)) return null;
-        return modelPricingService.getByModelName(model);
+    private static class MergedTokens {
+        int promptTokens;
+        int completionTokens;
+        int cachedTokens;
+        int totalTokens;
     }
 
     private BigDecimal calcTokenCost(int tokens, BigDecimal unitPrice) {
@@ -119,13 +135,8 @@ public class TokenBillingServiceImpl extends ServiceImpl<TokenBillingRecordMappe
         return val == null ? 0 : val;
     }
 
-    private Date parseTimestamp(String timestamp) {
-        if (StringUtils.isBlank(timestamp)) return new Date();
-        try {
-            return Date.from(Instant.parse(timestamp));
-        } catch (Exception e) {
-            log.warn("解析 timestamp 失败: {}", timestamp);
-            return new Date();
-        }
+    @Override
+    public boolean hasBalance(String codeFlyingUserId) {
+        return userBalanceService.checkBalanceByCodeFlyingUserId(codeFlyingUserId);
     }
 }

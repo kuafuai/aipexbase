@@ -22,6 +22,13 @@ public interface UserBalanceMapper extends BaseMapper<UserBalance> {
     int deductBalance(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
     
     /**
+     * 强制扣减用户余额（不校验余额是否充足，允许扣成负数）
+     */
+    @Update("UPDATE user_balance SET balance = balance - #{amount}, updated_at = NOW() " +
+            "WHERE user_id = #{userId} AND status = 1")
+    int forceDeductBalance(@Param("userId") Long userId, @Param("amount") BigDecimal amount);
+
+    /**
      * 增加用户余额
      * @param userId 用户ID
      * @param amount 增加金额

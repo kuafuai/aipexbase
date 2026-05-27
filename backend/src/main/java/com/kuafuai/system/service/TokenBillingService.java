@@ -14,4 +14,12 @@ public interface TokenBillingService {
      * @return 本次扣减的总金额
      */
     BigDecimal reportAndCharge(TokenUsageReportRequest request);
+    /**
+     * 检查用户余额是否大于 0
+     *
+     * @param codeFlyingUserId codeflying 用户ID
+     * @return true=有余额，false=余额不足或账户不存在
+     */
+    boolean hasBalance(String codeFlyingUserId);
+
 }
