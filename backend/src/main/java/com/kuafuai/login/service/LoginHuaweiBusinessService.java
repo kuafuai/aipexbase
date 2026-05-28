@@ -65,18 +65,17 @@ public class LoginHuaweiBusinessService {
      */
     public String getOpenId(String authCode) {
         String appId = GlobalAppIdFilter.getAppId();
-        Map<String, String> config = dynamicConfigBusinessService.getSystemConfig(appId);
 
         // keyId / privateKey 从配置读取，用于 JWT 签名
-        String keyId      = config.getOrDefault("huawei.key-id",      huaweiConfig.getKeyId());
-        String privateKey = config.getOrDefault("huawei.private-key", huaweiConfig.getPrivateKey());
+        String keyId      = huaweiConfig.getKeyId();
+        String privateKey = huaweiConfig.getPrivateKey();
+        String subAccount = huaweiConfig.getAccountId();
         log.info("[HW Login] keyId={}, privateKey configured={}", keyId, StringUtils.isNotEmpty(privateKey));
 
         // projectId / subAccount 从 backend 接口获取，用于 Token 请求 Header 和 JWT iss/sub
         log.info("[HW Login] 从 backend 获取华为应用凭证, appId={}", appId);
         Map<String, String> hwAppCredentials = fetchHwAppCredentials(appId);
         String projectId  = hwAppCredentials.get("projectId");
-        String subAccount = hwAppCredentials.get("subAccount");
         log.info("[HW Login] project_id={}, sub_account={}", projectId, subAccount);
 
         if (StringUtils.isEmpty(projectId) || StringUtils.equalsAnyIgnoreCase(authCode, "codeflying")) {
@@ -181,8 +180,8 @@ public class LoginHuaweiBusinessService {
             if (resp != null && resp.containsKey("data")) {
                 Map<String, Object> data = (Map<String, Object>) resp.get("data");
                 Map<String, String> result = new HashMap<>();
-                result.put("projectId",  String.valueOf(data.getOrDefault("platform_app_id", "")));
-                result.put("subAccount", String.valueOf(data.getOrDefault("hw_app_id", "")));
+                result.put("projectId",  String.valueOf(data.getOrDefault("hw_app_id", "")));
+                result.put("subAccount", String.valueOf(data.getOrDefault("platform_app_id", "")));
                 return result;
             }
             log.warn("[HW Login] backend 凭证接口返回数据为空, appId={}", appId);
@@ -214,8 +213,8 @@ public class LoginHuaweiBusinessService {
         long now = System.currentTimeMillis() / 1000;
         String payload = base64UrlEncode(
                 ("{\"iss\":\"" + subAccount + "\",\"sub\":\"" + projectId +
-                 "\",\"aud\":\"" + JWT_AUD + "\",\"iat\":" + now + ",\"exp\":" + (now + 3600) + "}")
-                .getBytes(StandardCharsets.UTF_8));
+                        "\",\"aud\":\"" + JWT_AUD + "\",\"iat\":" + now + ",\"exp\":" + (now + 3600) + "}")
+                        .getBytes(StandardCharsets.UTF_8));
 
         // RSASSA-PSS (PS256)：SHA-256 + MGF1(SHA-256)，salt length = 32
         String signingInput = header + "." + payload;

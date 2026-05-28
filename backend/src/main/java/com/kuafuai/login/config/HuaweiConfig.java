@@ -14,4 +14,7 @@ public class HuaweiConfig {
 
     /** RSA 私钥 PEM（PS256 签名用，凭据文件 private_key） */
     private String privateKey;
+
+    /** 服务商账号ID */
+    private String accountId;
 }
