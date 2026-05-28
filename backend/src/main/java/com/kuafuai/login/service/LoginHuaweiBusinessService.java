@@ -13,6 +13,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -170,7 +172,8 @@ public class LoginHuaweiBusinessService {
             log.info("[HW Login] 请求 backend 凭证接口, url={}", url);
             HttpHeaders headers = new HttpHeaders();
             headers.set("X-Auth-Key", backendAuthKey);
-            String respStr = restTemplate.getForObject(url, String.class, new HttpEntity<>(headers));
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+            String respStr = response.getBody();
             log.info("[HW Login] backend 凭证接口响应: {}", respStr);
             Map<String, Object> resp = JSON.parseObject(respStr, Map.class);
             if (resp != null && resp.containsKey("data")) {
