@@ -97,18 +97,18 @@ public class LoginHuaweiBusinessService {
 
         // 2. 授权码换用户级 access_token
         log.info("[HW Login] 开始换取用户级 access_token, authCode={}", authCode);
-        String tokenBody = JSON.toJSONString(new HashMap<String, Object>() {{
-            put("grant_type", "authorization_code");
-            put("code", authCode);
-            put("client_assertion_type", CLIENT_ASSERTION_TYPE);
-            put("client_assertion", clientAssertion);
-        }});
+        Map<String, Object> tokenBodyMap = new HashMap<>();
+        tokenBodyMap.put("grant_type", "authorization_code");
+        tokenBodyMap.put("code", authCode);
+        tokenBodyMap.put("client_assertion_type", CLIENT_ASSERTION_TYPE);
+        tokenBodyMap.put("client_assertion", clientAssertion);
+        String tokenBody = JSON.toJSONString(tokenBodyMap);
+        log.info("[HW Login] Token 请求体: {}", tokenBody);
 
         HttpResponse tokenResp = HttpRequest.post(HW_TOKEN_URL)
                 .header("x-client-id", projectId)
                 .header("x-agent-client-id", subAccount)
-                .header("Content-Type", "application/json")
-                .body(tokenBody)
+                .body(tokenBody, "application/json")
                 .execute();
 
         log.info("[HW Login] 换取 token 响应 status={}", tokenResp.getStatus());
