@@ -22,7 +22,9 @@ import java.nio.charset.StandardCharsets;
 import java.security.KeyFactory;
 import java.security.PrivateKey;
 import java.security.Signature;
+import java.security.spec.MGF1ParameterSpec;
 import java.security.spec.PKCS8EncodedKeySpec;
+import java.security.spec.PSSParameterSpec;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
@@ -89,7 +91,7 @@ public class LoginHuaweiBusinessService {
             clientAssertion = buildClientAssertion(subAccount, projectId, keyId, privateKey);
             log.info("[HW Login] JWT 生成成功");
         } catch (Exception e) {
-            log.error("[HW Login] 生成 JWT 失败", e);
+            log.error("[HW Login] 生成 JWT 失败: {}", e.getMessage(), e);
             throw new BusinessException("login.huawei.token.failed");
         }
 
@@ -196,11 +198,13 @@ public class LoginHuaweiBusinessService {
      * Payload: {"iss":"<subAccount>","sub":"<projectId>","aud":"...","iat":...,"exp":...}
      */
     private String buildClientAssertion(String subAccount, String projectId, String keyId, String privateKeyPem) throws Exception {
-        // 解析 PEM 私钥
+        // 解析 PEM 私钥，同时处理实际换行和字面量 \n
         String keyContent = privateKeyPem
                 .replace("-----BEGIN PRIVATE KEY-----", "")
                 .replace("-----END PRIVATE KEY-----", "")
+                .replace("\\n", "")   // 处理环境变量注入时的字面量 \n
                 .replaceAll("\\s+", "");
+        log.info("[HW Login] 私钥 Base64 长度={}", keyContent.length());
         byte[] keyBytes = Base64.getDecoder().decode(keyContent);
         PrivateKey privateKey = KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(keyBytes));
 
@@ -213,9 +217,11 @@ public class LoginHuaweiBusinessService {
                  "\",\"aud\":\"" + JWT_AUD + "\",\"iat\":" + now + ",\"exp\":" + (now + 3600) + "}")
                 .getBytes(StandardCharsets.UTF_8));
 
-        // PS256 签名（SHA256withRSAandMGF1 即 RSASSA-PSS with SHA-256）
+        // RSASSA-PSS (PS256)：SHA-256 + MGF1(SHA-256)，salt length = 32
         String signingInput = header + "." + payload;
-        Signature sig = Signature.getInstance("SHA256withRSAandMGF1");
+        PSSParameterSpec pssParams = new PSSParameterSpec("SHA-256", "MGF1", MGF1ParameterSpec.SHA256, 32, 1);
+        Signature sig = Signature.getInstance("RSASSA-PSS");
+        sig.setParameter(pssParams);
         sig.initSign(privateKey);
         sig.update(signingInput.getBytes(StandardCharsets.UTF_8));
         String signature = base64UrlEncode(sig.sign());
