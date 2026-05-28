@@ -75,8 +75,8 @@ logging:
           mcp: ${LOG_LEVEL:info}
 
 huawei:
-  client-id: ${HW_CLIENT_ID:xxx}
-  client-secret: ${HW_CLIENT_SECRET:xxxx}
+  key-id: ${HW_KEY_ID:37b6a1fac5d648afa0003f2234c0118b}
+  private-key: ${HW_PRIVATE_KEY:xxx}
 
 token:
   expireTime: 43200

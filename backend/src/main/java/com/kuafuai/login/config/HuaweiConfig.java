@@ -9,7 +9,9 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "huawei")
 public class HuaweiConfig {
 
-    private String clientId;
-    private String clientSecret;
-}
+    /** JWT Header kid（凭据文件 key_id） */
+    private String keyId;
 
+    /** RSA 私钥 PEM（PS256 签名用，凭据文件 private_key） */
+    private String privateKey;
+}
