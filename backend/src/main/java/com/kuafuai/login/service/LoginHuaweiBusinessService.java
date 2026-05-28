@@ -181,8 +181,8 @@ public class LoginHuaweiBusinessService {
             if (resp != null && resp.containsKey("data")) {
                 Map<String, Object> data = (Map<String, Object>) resp.get("data");
                 Map<String, String> result = new HashMap<>();
-                result.put("projectId",  String.valueOf(data.getOrDefault("hw_app_id", "")));
-                result.put("subAccount", String.valueOf(data.getOrDefault("platform_app_id", "")));
+                result.put("projectId",  String.valueOf(data.getOrDefault("platform_app_id", "")));
+                result.put("subAccount", String.valueOf(data.getOrDefault("hw_app_id", "")));
                 return result;
             }
             log.warn("[HW Login] backend 凭证接口返回数据为空, appId={}", appId);
