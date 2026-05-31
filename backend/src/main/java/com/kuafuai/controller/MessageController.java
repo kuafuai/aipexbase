@@ -5,7 +5,9 @@ import com.kuafuai.common.domin.BaseResponse;
 import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.dynamic_config.service.DynamicConfigBusinessService;
 import com.kuafuai.common.mail.client.MailClient;
+import com.kuafuai.common.mail.client.MailReceiveClient;
 import com.kuafuai.common.mail.spec.MailDefinition;
+import com.kuafuai.common.mail.spec.MailMessage;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,12 +15,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
 @RestController
 public class MessageController {
     private final MailClient client = new MailClient();
+    private final MailReceiveClient receiveClient = new MailReceiveClient();
 
     @Autowired
     private DynamicConfigBusinessService dynamicConfigBusinessService;
@@ -70,6 +74,34 @@ public class MessageController {
 
         client.send(definition, mail, title, params);
         return ResultUtils.success();
+    }
+
+    @PostMapping("/common/mail/receive")
+    public BaseResponse mailReceive(@RequestBody Map<String, Object> data) {
+        if (!data.containsKey("host")) {
+            return ResultUtils.error("login.register.params", "host");
+        }
+        if (!data.containsKey("user")) {
+            return ResultUtils.error("login.register.params", "user");
+        }
+        if (!data.containsKey("passwd")) {
+            return ResultUtils.error("login.register.params", "passwd");
+        }
+
+        String host = Objects.toString(data.get("host"), "");
+        int port = Integer.parseInt(Objects.toString(data.getOrDefault("port", "993"), "993"));
+        String user = Objects.toString(data.get("user"), "");
+        String passwd = Objects.toString(data.get("passwd"), "");
+        String folder = Objects.toString(data.getOrDefault("folder", "INBOX"), "INBOX");
+        int count = Integer.parseInt(Objects.toString(data.getOrDefault("count", "20"), "20"));
+        long lastUid = Long.parseLong(Objects.toString(data.getOrDefault("lastUid", "0"), "0"));
+
+        try {
+            List<MailMessage> messages = receiveClient.receive(host, port, user, passwd, folder, count, lastUid);
+            return ResultUtils.success(messages);
+        } catch (Exception e) {
+            return ResultUtils.error("mail.receive.failed", e.getMessage());
+        }
     }
 
     private MailDefinition createMailDefinition(String appId, String content) {
