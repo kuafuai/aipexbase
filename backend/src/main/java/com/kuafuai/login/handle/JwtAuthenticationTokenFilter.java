@@ -1,8 +1,6 @@
 package com.kuafuai.login.handle;
 
 
-import com.kuafuai.common.constant.HttpStatus;
-import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.login.LoginUser;
 import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.*;
@@ -60,12 +58,6 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
                 UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(loginUser, null, loginUser.getAuthorities());
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
-            } else {
-                // 登录失效
-                int code = HttpStatus.UNAUTHORIZED;
-                String msg = I18nUtils.get("login.auth", request.getRequestURI());
-                ServletUtils.renderString(response, JSON.toJSONString(ResultUtils.error(code, msg)));
-                return;
             }
         }
         chain.doFilter(request, response);

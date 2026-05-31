@@ -94,7 +94,8 @@ public class DynamicAuthFilter extends OncePerRequestFilter {
         if ((appInfo.getNeedAuth() || StringUtils.equalsIgnoreCase(appType, "admin")) && StringUtils.isNull(SecurityUtils.getAuthentication())) {
             // 需要登录,验证登录信息是否存在
             LoginUser loginUser = getLoginUser(request);
-            if (loginUser == null) {
+            TokenService tokenService = SpringUtils.getBean(TokenService.class);
+            if (loginUser == null || !tokenService.verifyToken(loginUser, appId)) {
                 unauthorizedResponse(response, "error.code.not_login");
                 return;
             }
