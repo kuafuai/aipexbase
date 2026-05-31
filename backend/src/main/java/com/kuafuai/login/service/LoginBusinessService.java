@@ -26,7 +26,6 @@ import org.springframework.stereotype.Component;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 
 @Component
 @Slf4j
@@ -51,15 +50,17 @@ public class LoginBusinessService {
      */
     public boolean checkAuthRecordExist(String appId, String table, Map<String, Object> mapData) {
         List<AppTableColumnInfo> columnInfoList = dynamicInfoCache.getAppTableColumnInfo(appId, table);
-        Optional<Object> userNameOrPhoneOptional = loginColumnService.findUserIdentifier(mapData, columnInfoList);
 
-        if (userNameOrPhoneOptional.isPresent()) {
-            String value = Convert.toStr(userNameOrPhoneOptional.get());
-            Login login = getUserBySelectKey(appId, value, table);
-            return login != null;
-        } else {
-            return false;
+        String phone = loginColumnService.findPhone(mapData, columnInfoList).map(Convert::toStr).orElse(null);
+        String userName = loginColumnService.findUserName(mapData, columnInfoList).map(Convert::toStr).orElse(null);
+        String email = loginColumnService.findEmail(mapData, columnInfoList).map(Convert::toStr).orElse(null);
+
+        for (String identifier : new String[]{phone, userName, email}) {
+            if (identifier != null && getUserBySelectKey(appId, identifier, table) != null) {
+                return true;
+            }
         }
+        return false;
     }
 
     public Login getUserBySelectKey(String appId, String key, String relevanceTable) {
