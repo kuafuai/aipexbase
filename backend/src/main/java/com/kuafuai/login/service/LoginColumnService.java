@@ -36,6 +36,25 @@ public class LoginColumnService {
                 .orElseGet(() -> findFirstMatchingColumn(mapData, columnInfoList, "email"));
     }
 
+    public Optional<Object> findPhone(Map<String, Object> mapData,
+                                      List<AppTableColumnInfo> columnInfoList) {
+        return findFirstMatchingColumn(mapData, columnInfoList, "phone")
+                .map(Optional::of)
+                .orElseGet(() -> findFirstMatchingKey(mapData, phoneKeys));
+    }
+
+    public Optional<Object> findUserName(Map<String, Object> mapData,
+                                         List<AppTableColumnInfo> columnInfoList) {
+        return findFirstMatchingColumn(mapData, columnInfoList, "username")
+                .map(Optional::of)
+                .orElseGet(() -> findFirstMatchingKey(mapData, usernameKeys));
+    }
+
+    public Optional<Object> findEmail(Map<String, Object> mapData,
+                                      List<AppTableColumnInfo> columnInfoList) {
+        return findFirstMatchingColumn(mapData, columnInfoList, "email");
+    }
+
 
     public Optional<Object> findUserPassword(Map<String, Object> mapData,
                                              List<AppTableColumnInfo> columnInfoList) {

@@ -20,6 +20,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -78,8 +80,8 @@ public class LoginEventListener {
             String model = event.getModel();
 
             if (StringUtils.equalsIgnoreCase(model, "add")) {
-                Login login = convert(database, tableName, event.getData());
-                if (login != null) {
+                List<Login> logins = convert(database, tableName, event.getData());
+                for (Login login : logins) {
                     loginService.save(database, login);
                 }
             }
@@ -105,32 +107,40 @@ public class LoginEventListener {
         return true;
     }
 
-    private Login convert(String appId, String tableName, Object data) {
-
+    private List<Login> convert(String appId, String tableName, Object data) {
+        if (!(data instanceof Map)) {
+            log.warn("Login event data is not a Map, appId={}, table={}", appId, tableName);
+            return Collections.emptyList();
+        }
         Map<String, Object> mapData = (Map<String, Object>) data;
         List<AppTableColumnInfo> columnInfoList = dynamicInfoCache.getAppTableColumnInfo(appId, tableName);
 
-        String password;
-        Optional<Object> passwordOptional = loginColumnService.findUserPassword(mapData, columnInfoList);
-        if (passwordOptional.isPresent()) {
-            password = Convert.toStr(passwordOptional.get());
-        } else {
-            password = "123456";
+        String encryptedPassword = SecurityUtils.encryptPassword(loginColumnService.findUserPassword(mapData, columnInfoList).map(Convert::toStr).orElse("123456"));
+        String relevanceTable = StringUtils.dbStrToHumpLower(tableName);
+        String relevanceId = String.valueOf(mapData.getOrDefault("_system_primary_id", "0"));
+
+        List<Login> logins = new ArrayList<>();
+
+        String phone = loginColumnService.findPhone(mapData, columnInfoList).map(Convert::toStr).orElse(null);
+        String userName = loginColumnService.findUserName(mapData, columnInfoList).map(Convert::toStr).orElse(null);
+        String email = loginColumnService.findEmail(mapData, columnInfoList).map(Convert::toStr).orElse(null);
+
+        for (String identifier : new String[]{phone, userName, email}) {
+            if (identifier == null) continue;
+            Login login = new Login();
+            login.setPhoneNumber(identifier);
+            login.setUserName(identifier);
+
+            login.setPassword(encryptedPassword);
+            login.setRelevanceTable(relevanceTable);
+            login.setRelevanceId(relevanceId);
+            logins.add(login);
         }
 
-        Optional<Object> userNameOrPhoneOptional = loginColumnService.findUserIdentifier(mapData, columnInfoList);
-        if (userNameOrPhoneOptional.isPresent()) {
-            String value = Convert.toStr(userNameOrPhoneOptional.get());
-            Login login = new Login();
-            login.setUserName(value);
-            login.setPhoneNumber(value);
-            login.setPassword(SecurityUtils.encryptPassword(password));
-            login.setRelevanceTable(StringUtils.dbStrToHumpLower(tableName));
-            login.setRelevanceId(String.valueOf(mapData.getOrDefault("_system_primary_id", "0")));
-            return login;
-        } else {
-            return null;
+        if (logins.isEmpty()) {
+            log.warn("No identifier found, appId={}, table={}", appId, tableName);
         }
+        return logins;
     }
 
 }
