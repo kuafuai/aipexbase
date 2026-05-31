@@ -56,7 +56,7 @@ public class LoginBusinessService {
         String email = loginColumnService.findEmail(mapData, columnInfoList).map(Convert::toStr).orElse(null);
 
         for (String identifier : new String[]{phone, userName, email}) {
-            if (identifier != null && getUserBySelectKey(appId, identifier, table) != null) {
+            if (StringUtils.isNotBlank(identifier) && getUserBySelectKey(appId, identifier, table) != null) {
                 return true;
             }
         }

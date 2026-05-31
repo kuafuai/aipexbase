@@ -22,8 +22,10 @@ import org.springframework.stereotype.Component;
 import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Component
 @Slf4j
@@ -124,8 +126,14 @@ public class LoginEventListener {
         String userName = loginColumnService.findUserName(mapData, columnInfoList).map(Convert::toStr).orElse(null);
         String email = loginColumnService.findEmail(mapData, columnInfoList).map(Convert::toStr).orElse(null);
 
+        Set<String> identifiers = new LinkedHashSet<>();
         for (String identifier : new String[]{phone, userName, email}) {
-            if (identifier == null) continue;
+            if (StringUtils.isNotBlank(identifier)) {
+                identifiers.add(identifier);
+            }
+        }
+
+        for (String identifier : identifiers) {
             Login login = new Login();
             login.setPhoneNumber(identifier);
             login.setUserName(identifier);
