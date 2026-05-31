@@ -70,7 +70,7 @@ public class LoginEventListener {
                 return;
             }
 
-            if (!appInfo.getNeedAuth() || !StringUtils.equalsIgnoreCase(tableName, appInfo.getAuthTable())) {
+            if (!StringUtils.equalsIgnoreCase(tableName, appInfo.getAuthTable())) {
                 log.info("app not need auth or table not same :{},{},{}", database, tableName, appInfo.getAuthTable());
                 return;
             }
