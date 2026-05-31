@@ -93,7 +93,7 @@ public class MessageController {
         String user = Objects.toString(data.get("user"), "");
         String passwd = Objects.toString(data.get("passwd"), "");
         String folder = Objects.toString(data.getOrDefault("folder", "INBOX"), "INBOX");
-        int count = Integer.parseInt(Objects.toString(data.getOrDefault("count", "20"), "20"));
+        int count = Integer.parseInt(Objects.toString(data.getOrDefault("count", "5"), "5"));
         long lastUid = Long.parseLong(Objects.toString(data.getOrDefault("lastUid", "0"), "0"));
 
         try {

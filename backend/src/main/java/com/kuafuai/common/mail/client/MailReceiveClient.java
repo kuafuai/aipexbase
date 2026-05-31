@@ -50,7 +50,7 @@ public class MailReceiveClient {
                 result.add(parseMessage(message, uidFolder));
             }
         } catch (MessagingException | IOException e) {
-            // return whatever was collected before the error
+            throw new RuntimeException(e.getMessage());
         } finally {
             if (folder != null && folder.isOpen()) {
                 try {
@@ -84,6 +84,12 @@ public class MailReceiveClient {
         ParsedContent content = new ParsedContent();
         parseMimePart(message, content);
 
+        if (content.plainText.isEmpty() && !content.htmlBody.isEmpty()) {
+            content.plainText = content.htmlBody.replaceAll("<[^>]+>", "").trim();
+        } else if (content.htmlBody.isEmpty() && !content.plainText.isEmpty()) {
+            content.htmlBody = "<pre>" + content.plainText + "</pre>";
+        }
+
         return MailMessage.builder()
                 .uid(uid)
                 .messageId(messageId)
@@ -93,7 +99,6 @@ public class MailReceiveClient {
                 .subject(subject)
                 .sentDate(message.getSentDate())
                 .body(content.plainText)
-                .htmlBody(content.htmlBody)
                 .attachments(content.attachments)
                 .build();
     }

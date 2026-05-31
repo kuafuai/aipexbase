@@ -19,7 +19,6 @@ public class MailMessage {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     private Date sentDate;
     private String body;
-    private String htmlBody;
     private List<MailAttachment> attachments;
 
     @Override
