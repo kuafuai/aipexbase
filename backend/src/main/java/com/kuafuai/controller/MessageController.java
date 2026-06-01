@@ -70,7 +70,19 @@ public class MessageController {
             }
         }
 
-        MailDefinition definition = createMailDefinition(GlobalAppIdFilter.getAppId(), content);
+        MailDefinition definition;
+        if (data.containsKey("host") && data.containsKey("user") && data.containsKey("passwd")) {
+            int sendPort = Integer.parseInt(Objects.toString(data.getOrDefault("port", "465"), "465"));
+            definition = MailDefinition.builder()
+                    .host(Objects.toString(data.get("host"), ""))
+                    .port(sendPort)
+                    .userName(Objects.toString(data.get("user"), ""))
+                    .password(Objects.toString(data.get("passwd"), ""))
+                    .contentTemplate(content)
+                    .build();
+        } else {
+            definition = createMailDefinition(GlobalAppIdFilter.getAppId(), content);
+        }
 
         client.send(definition, mail, title, params);
         return ResultUtils.success();
