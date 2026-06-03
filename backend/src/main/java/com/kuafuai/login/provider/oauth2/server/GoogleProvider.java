@@ -7,6 +7,9 @@ import com.kuafuai.login.entity.OAuth2UserInfo;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
@@ -16,6 +19,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 
@@ -29,13 +33,21 @@ public class GoogleProvider implements OAuth2ProviderInterface {
     private static final String googleAuthorizeUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     private static final String googleTokenGetUrl = "https://oauth2.googleapis.com/token";
     private static final String googleUserInfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
+    private static final String googleJwksUrl = "https://www.googleapis.com/oauth2/v3/certs";
 
     @Resource
     private DynamicConfigBusinessService dynamicConfigBusinessService;
 
-
-//    WebClient webClient = WebClient.builder().clientConnector(new ReactorClientHttpConnector(HttpClient.create().proxy(x -> x.type(ProxyProvider.Proxy.SOCKS5).host("127.0.0.1").port(7897)))).build();
+    /**
+     * 用于验证 Google 签发的 ID Token；NimbusJwtDecoder 内部会按默认策略缓存 JWKs
+     * 并自动校验签名 + exp。其余 claims (iss / aud) 由本类手动校验。
+     */
+    private final JwtDecoder idTokenDecoder = NimbusJwtDecoder
+            .withJwkSetUri(googleJwksUrl)
+            .build();
+    
     WebClient webClient = WebClient.builder().build();
+
     @Override
     public String getProviderName() {
         return "google";
@@ -74,7 +86,7 @@ public class GoogleProvider implements OAuth2ProviderInterface {
                 return "";
             }
 
-            System.out.println("getAccessToken: " +response);
+            System.out.println("getAccessToken: " + response);
 
             JsonObject jsonResponse = JsonParser.parseString(response).getAsJsonObject();
             return jsonResponse.get("access_token").getAsString();
@@ -100,11 +112,11 @@ public class GoogleProvider implements OAuth2ProviderInterface {
                     })
                     .block();
 
-            System.out.println("getUserInfo: "+response);
-            
+            System.out.println("getUserInfo: " + response);
+
             // 解析Google返回的用户信息JSON
             JsonObject userJson = JsonParser.parseString(response).getAsJsonObject();
-            
+
             OAuth2UserInfo userInfo = new OAuth2UserInfo();
             // 设置用户ID (Google使用sub字段作为唯一标识)
             userInfo.setId(getStringValue(userJson, "sub"));
@@ -118,12 +130,57 @@ public class GoogleProvider implements OAuth2ProviderInterface {
             userInfo.setNickname(getStringValue(userJson, "name"));
             // 设置原始用户信息
             userInfo.setRawUserInfo(userJson);
-            
+
             return userInfo;
         } catch (Exception e) {
             log.error("获取Google用户信息失败", e);
             throw new RuntimeException("获取用户信息失败: " + e.getMessage());
         }
+    }
+
+    /**
+     * 验证 Google 通过 GIS (Google Identity Services) 直接发给前端的 ID Token (JWT)
+     * 流程：前端拿到 response.credential 后 POST 到后端，本方法负责验签 + 提取用户信息
+     * 与 getAccessToken/getUserInfo 互不依赖（GIS 流程不需要 code → access_token 这一步）
+     *
+     * @param idToken Google 签发的 JWT 字符串
+     * @return 解析后的 OAuth2UserInfo（sub 作为 id）
+     */
+    public OAuth2UserInfo verifyIdToken(String idToken) {
+        String appId = GlobalAppIdFilter.getAppId();
+        Map<String, String> map = dynamicConfigBusinessService.getSystemConfig(appId);
+        String clientId = map.getOrDefault("google.oauth.client_id", "");
+        if (clientId.isEmpty()) {
+            throw new RuntimeException("Google OAuth client_id 未配置 (dynamic config: google.oauth.client_id)");
+        }
+
+        Jwt jwt;
+        try {
+            jwt = idTokenDecoder.decode(idToken);
+        } catch (Exception e) {
+            log.error("Google ID Token 验签失败", e);
+            throw new RuntimeException("ID Token 验签失败: " + e.getMessage());
+        }
+
+        String iss = jwt.getClaimAsString("iss");
+        if (!"https://accounts.google.com".equals(iss) && !"accounts.google.com".equals(iss)) {
+            throw new RuntimeException("无效的 token issuer: " + iss);
+        }
+
+        List<String> aud = jwt.getAudience();
+        if (aud == null || !aud.contains(clientId)) {
+            throw new RuntimeException("ID Token 的 aud 与配置的 client_id 不匹配");
+        }
+
+        OAuth2UserInfo userInfo = new OAuth2UserInfo();
+        userInfo.setId(jwt.getSubject());
+        userInfo.setUsername(jwt.getClaimAsString("email"));
+        userInfo.setEmail(jwt.getClaimAsString("email"));
+        userInfo.setAvatar(jwt.getClaimAsString("picture"));
+        userInfo.setNickname(jwt.getClaimAsString("name"));
+        userInfo.setLocale(jwt.getClaimAsString("locale"));
+        userInfo.setRawUserInfo(jwt.getClaims());
+        return userInfo;
     }
 
     @Override
@@ -160,14 +217,16 @@ public class GoogleProvider implements OAuth2ProviderInterface {
     private String buildQueryString(String baseUrl, Map<String, String> params) {
         return getString(baseUrl, params);
     }
+
     private String buildFormData(Map<String, String> params) {
-        return getString("",params);
+        return getString("", params);
     }
 
     /**
      * 安全地从JsonObject中获取字符串值
+     *
      * @param jsonObject JSON对象
-     * @param key 键名
+     * @param key        键名
      * @return 字符串值，如果不存在或为null则返回空字符串
      */
     private String getStringValue(JsonObject jsonObject, String key) {
@@ -183,12 +242,12 @@ public class GoogleProvider implements OAuth2ProviderInterface {
     }
 
     @NotNull
-    static String getString(String baseUrl, Map<String, String> params)  {
+    static String getString(String baseUrl, Map<String, String> params) {
         StringBuilder queryString;
         if (baseUrl != null && !baseUrl.isEmpty()) {
             queryString = new StringBuilder(baseUrl);
             queryString.append("?");
-        }else {
+        } else {
             queryString = new StringBuilder();
         }
         try {
@@ -200,7 +259,7 @@ public class GoogleProvider implements OAuth2ProviderInterface {
                         .append("=")
                         .append(URLEncoder.encode(entry.getValue(), StandardCharsets.UTF_8.name()));
             }
-        }catch (UnsupportedEncodingException e){
+        } catch (UnsupportedEncodingException e) {
             return "";
         }
 
