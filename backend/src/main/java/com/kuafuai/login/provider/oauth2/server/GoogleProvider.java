@@ -7,6 +7,7 @@ import com.kuafuai.login.entity.OAuth2UserInfo;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
 import lombok.extern.slf4j.Slf4j;
 import org.jetbrains.annotations.NotNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
+import javax.annotation.PostConstruct;
 import javax.annotation.Resource;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -33,7 +35,13 @@ public class GoogleProvider implements OAuth2ProviderInterface {
     private static final String googleAuthorizeUrl = "https://accounts.google.com/o/oauth2/v2/auth";
     private static final String googleTokenGetUrl = "https://oauth2.googleapis.com/token";
     private static final String googleUserInfoUrl = "https://www.googleapis.com/oauth2/v3/userinfo";
-    private static final String googleJwksUrl = "https://www.googleapis.com/oauth2/v3/certs";
+
+    /**
+     * Google JWKs 地址，可在 application.yml 通过 google.oauth.jwks-url 覆盖
+     * 国内服务器访问不到官方地址时，配置成可访问的反向代理地址
+     */
+    @Value("${google.oauth.jwks-url:https://www.googleapis.com/oauth2/v3/certs}")
+    private String googleJwksUrl;
 
     @Resource
     private DynamicConfigBusinessService dynamicConfigBusinessService;
@@ -42,10 +50,16 @@ public class GoogleProvider implements OAuth2ProviderInterface {
      * 用于验证 Google 签发的 ID Token；NimbusJwtDecoder 内部会按默认策略缓存 JWKs
      * 并自动校验签名 + exp。其余 claims (iss / aud) 由本类手动校验。
      */
-    private final JwtDecoder idTokenDecoder = NimbusJwtDecoder
-            .withJwkSetUri(googleJwksUrl)
-            .build();
-    
+    private JwtDecoder idTokenDecoder;
+
+    @PostConstruct
+    public void initIdTokenDecoder() {
+        idTokenDecoder = NimbusJwtDecoder.withJwkSetUri(googleJwksUrl).build();
+        log.info("Google ID Token decoder initialized with JWKs URL: {}", googleJwksUrl);
+    }
+
+
+    //    WebClient webClient = WebClient.builder().clientConnector(new ReactorClientHttpConnector(HttpClient.create().proxy(x -> x.type(ProxyProvider.Proxy.SOCKS5).host("127.0.0.1").port(7897)))).build();
     WebClient webClient = WebClient.builder().build();
 
     @Override
