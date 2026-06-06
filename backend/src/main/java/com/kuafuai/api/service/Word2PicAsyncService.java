@@ -11,6 +11,8 @@ import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.file.ImageUtils;
 import com.kuafuai.common.storage.StorageService;
+import com.kuafuai.config.db.DatabaseRouterAspect;
+import com.kuafuai.config.db.DynamicDataSourceContextHolder;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
 import com.kuafuai.system.entity.DynamicApiSetting;
 import lombok.extern.slf4j.Slf4j;
@@ -128,19 +130,34 @@ public class Word2PicAsyncService {
      */
     @Async("word2PicExecutor")
     public void process(String appId, String taskId, Map<String, Object> data) {
-        try {
-            log.info("thread============{}", Thread.currentThread().getName());
-            Object out = doSmartImage(appId, data);
-            saveSuccess(taskId, out);
-        } catch (Exception e) {
-            log.warn("=====智能图像API失败，降级到word2pic_old taskId={}:{}=====", taskId, e.getMessage());
+        withAppDb(appId, () -> {
             try {
-                String url = callWord2PicOld(appId, data);
-                saveSuccess(taskId, url);
-            } catch (Exception fallbackException) {
-                log.error("=====word2pic_old降级也失败 taskId={}:{}=====", taskId, fallbackException.getMessage());
-                saveFail(taskId, e.getMessage() + "\n降级失败: " + fallbackException.getMessage());
+                log.info("thread============{}", Thread.currentThread().getName());
+                Object out = doSmartImage(appId, data);
+                saveSuccess(taskId, out);
+            } catch (Exception e) {
+                log.warn("=====智能图像API失败，降级到word2pic_old taskId={}:{}=====", taskId, e.getMessage());
+                try {
+                    String url = callWord2PicOld(appId, data);
+                    saveSuccess(taskId, url);
+                } catch (Exception fallbackException) {
+                    log.error("=====word2pic_old降级也失败 taskId={}:{}=====", taskId, fallbackException.getMessage());
+                    saveFail(taskId, e.getMessage() + "\n降级失败: " + fallbackException.getMessage());
+                }
             }
+        });
+    }
+
+    /**
+     * 异步线程不会继承请求线程的数据源 ThreadLocal，按 appId 手动切换。
+     */
+    private void withAppDb(String appId, Runnable action) {
+        String rdsKey = DatabaseRouterAspect.getOrAllocateRdsKey(appId, "app");
+        try {
+            DynamicDataSourceContextHolder.setDataSourceType(rdsKey);
+            action.run();
+        } finally {
+            DynamicDataSourceContextHolder.clearDataSourceType();
         }
     }
 
