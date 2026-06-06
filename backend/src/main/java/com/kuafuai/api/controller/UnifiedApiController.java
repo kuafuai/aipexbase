@@ -1,18 +1,17 @@
 package com.kuafuai.api.controller;
 
 
-import com.google.common.collect.Lists;
 import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.jayway.jsonpath.JsonPath;
 import com.kuafuai.api.parser.ApiResultParser;
 import com.kuafuai.api.service.ApiBusinessService;
+import com.kuafuai.api.service.Word2PicAsyncService;
 import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.file.FileUtils;
-import com.kuafuai.common.file.ImageUtils;
 import com.kuafuai.common.storage.StorageService;
 import com.kuafuai.common.util.ServletUtils;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
@@ -24,8 +23,6 @@ import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
 import java.lang.reflect.Type;
-import java.util.Base64;
-import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -37,6 +34,8 @@ public class UnifiedApiController {
     private ApiBusinessService apiBusinessService;
     @Resource
     private StorageService storageService;
+    @Resource
+    private Word2PicAsyncService word2PicAsyncService;
 
     private final Gson gson = new Gson();
 
@@ -207,145 +206,23 @@ public class UnifiedApiController {
 
     /**
      * 智能图像生成/编辑 API
-     * - 有 image 参数 → 调用图像编辑 API (multipart)
-     * - 无 image 参数 → 调用图像生成 API (json)
+     * - 有 files 参数 → 调用图像编辑 API；否则调用图像生成 API
      * - 失败时降级到 word2pic_old 方式
+     * - 请求里携带 async=true 时走异步：立即返回 taskId，前端通过
+     *   GET /api/word2pic/result/{taskId} 轮询结果，缓存保留 10 分钟。
      */
     @PostMapping("/word2pic")
     public Object smartImage(@RequestBody Map<String, Object> data) {
-        if (!data.containsKey("text")) {
-            return ResultUtils.error("login.register.params", "text");
-        }
-
-        String appId = GlobalAppIdFilter.getAppId();
-        String apiKey;
-        DynamicApiSetting setting;
-
-        // 判断是图像编辑还是图像生成
-        if (data.containsKey("files")) {
-            // 图像编辑模式
-            apiKey = "image_edit";
-        } else {
-            // 图像生成模式
-            apiKey = "image_generation";
-        }
-
-        setting = apiBusinessService.getByApiKey(appId, apiKey);
-        if (setting == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "API配置不存在: " + apiKey);
-        }
-
-        try {
-            // 调用 API（走计费流程）
-            String result = apiBusinessService.callApiWithBilling(appId, setting, data);
-
-            // 解析结果
-            String dataPath = setting.getDataPath();
-            if (StringUtils.isNotEmpty(dataPath)) {
-
-                Object content = JsonPath.read(result, dataPath);
-                String base64String = (String) content;
-                // 处理 Data URL 格式（如：data:image/png;base64,iVBORw0...）
-                if (base64String.startsWith("data:")) {
-                    int commaIndex = base64String.indexOf(",");
-                    if (commaIndex > 0) {
-                        base64String = base64String.substring(commaIndex + 1);
-                    }
-                }
-
-                byte[] imageBytes = Base64.getDecoder().decode(base64String);
-                String path = storageService.upload(imageBytes, GlobalAppIdFilter.getAppId(), "png", "image/png");
-                return ResultUtils.success(path);
-
-            } else {
-                return gson.fromJson(result, return_value_type);
-            }
-        } catch (Exception e) {
-            // 主流程失败，降级到 word2pic_old 方式
-            log.warn("=====智能图像API失败，降级到word2pic_old:{}=====", e.getMessage());
-            try {
-                return callWord2PicOldApi(appId, data);
-            } catch (Exception fallbackException) {
-                log.error("=====word2pic_old降级也失败:{}=====", fallbackException.getMessage());
-                throw new BusinessException(e.getMessage() + "\n降级失败: " + fallbackException.getMessage());
-            }
-        }
+        return word2PicAsyncService.handle(data);
     }
 
     /**
-     * word2pic_old 方式的核心逻辑（作为降级方案）
+     * 查询 word2pic 异步任务结果
+     * 返回字段：status = PENDING / SUCCESS / FAIL；成功带 result，失败带 message
      */
-    private Object callWord2PicOldApi(String appId, Map<String, Object> data) {
-        String apiKey = "word2pic";
-        DynamicApiSetting setting = apiBusinessService.getByApiKey(appId, apiKey);
-        if (setting == null) {
-            throw new BusinessException(ErrorCode.NOT_FOUND_ERROR, "word2pic API配置不存在");
-        }
-
-        List<Map<String, Object>> contents = Lists.newArrayList();
-        addText(contents, data);
-        addImages(contents, data);
-
-        Map<String, Object> contentMap = Maps.newHashMap();
-        contentMap.put("content", contents);
-
-        String result = apiBusinessService.callApiWithBilling(appId, setting, contentMap);
-        try {
-            String dataPath = setting.getDataPath();
-            Object content = JsonPath.read(result, dataPath);
-
-            byte[] imageBytes = Base64.getDecoder().decode((String) content);
-            String path = storageService.upload(imageBytes, GlobalAppIdFilter.getAppId(), "png", "image/png");
-            return ResultUtils.success(path);
-
-        } catch (Exception e) {
-            log.error("=====文生图失败:{}=====", e.getMessage() + "\n" + result);
-            throw new BusinessException(ErrorCode.OPERATION_ERROR);
-        }
-    }
-
-    private void addText(List<Map<String, Object>> contents, Map<String, Object> data) {
-        Map<String, Object> map = Maps.newHashMap();
-        map.put("text", data.get("text"));
-        contents.add(map);
-    }
-
-    private void addImages(List<Map<String, Object>> contents, Map<String, Object> data) {
-        // 支持单个 file 或多个 files 数组
-        Object fileObj = data.get("file");
-        Object filesObj = data.get("files");
-
-        List<String> fileList = Lists.newArrayList();
-
-        // 处理单个 file 的情况
-        if (fileObj instanceof String && StringUtils.isNotEmpty((String) fileObj)) {
-            fileList.add((String) fileObj);
-        }
-
-        // 处理 files 数组的情况
-        if (filesObj instanceof List) {
-            List<?> filesList = (List<?>) filesObj;
-            for (Object file : filesList) {
-                if (file instanceof String && StringUtils.isNotEmpty((String) file)) {
-                    fileList.add((String) file);
-                }
-            }
-        }
-
-        // 将所有图片添加到 contents
-        for (String file : fileList) {
-            byte[] imageBytes = ImageUtils.readFile(file);
-            String base64 = Base64.getEncoder().encodeToString(imageBytes);
-
-            Map<String, Object> imageMap = Maps.newHashMap();
-            imageMap.put("mime_type", "image/png");
-            imageMap.put("data", base64);
-
-            Map<String, Object> inlineMap = Maps.newHashMap();
-            inlineMap.put("inline_data", imageMap);
-
-            contents.add(inlineMap);
-        }
+    @GetMapping("/word2pic/result/{taskId}")
+    public Object word2picResult(@PathVariable("taskId") String taskId) {
+        return word2PicAsyncService.getTaskResult(taskId);
     }
 
 }

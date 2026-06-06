@@ -25,4 +25,15 @@ public class EventBusConfig {
     public EventBus createAsyncEventBus(@Qualifier("eventTaskExecutor") ThreadPoolTaskExecutor threadPool) {
         return new AsyncEventBus(threadPool);
     }
+
+    @Bean("word2PicExecutor")
+    public ThreadPoolTaskExecutor word2PicExecutor() {
+        ThreadPoolTaskExecutor executor = new ThreadPoolTaskExecutor();
+        executor.setCorePoolSize(10);
+        executor.setMaxPoolSize(50);
+        executor.setQueueCapacity(500);
+        executor.setThreadNamePrefix("word2pic-");
+        executor.initialize();
+        return executor;
+    }
 }
