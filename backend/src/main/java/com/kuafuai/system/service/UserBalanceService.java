@@ -46,9 +46,10 @@ public interface UserBalanceService extends IService<UserBalance> {
      *
      * @param codeFlyingUserId 码上飞用户ID
      * @param amount           增加金额
+     * @param rechargeType     充值来源类型（PURCHASE/REDEMPTION/FEEDBACK/WORKORDER/REGISTER/ADMIN/OTHER）
      * @return 是否成功
      */
-    boolean increaseBalanceByCodeFlyingUserId(String codeFlyingUserId, BigDecimal amount);
+    boolean increaseBalanceByCodeFlyingUserId(String codeFlyingUserId, BigDecimal amount, String rechargeType);
 
     /**
      * 检查用户余额是否大于 0（通过 codeFlyingUserId）
@@ -66,4 +67,11 @@ public interface UserBalanceService extends IService<UserBalance> {
      * @return 是否成功
      */
     boolean deductBalanceByCodeFlyingUserId(String codeFlyingUserId, BigDecimal amount);
+
+    /**
+     * 清除用户积分缓存日期标记，使下次请求时重新从 kuafu 同步
+     *
+     * @param codeFlyingUserId 码上飞用户ID
+     */
+    void invalidatePointsCache(String codeFlyingUserId);
 }
