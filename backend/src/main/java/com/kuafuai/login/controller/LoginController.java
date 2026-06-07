@@ -11,6 +11,7 @@ import com.kuafuai.common.login.LoginUser;
 import com.kuafuai.common.util.JSON;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.dynamic.service.DynamicService;
+import com.kuafuai.dynamic.policy.RlsBypass;
 import com.kuafuai.login.config.WechatConfig;
 import com.kuafuai.login.entity.LoginVo;
 import com.kuafuai.login.handle.DynamicAuthFilter;
@@ -73,17 +74,20 @@ public class LoginController {
             @RequestParam(value = "table", required = false) String table,
             @RequestBody Map<String, Object> data) {
         String appId = GlobalAppIdFilter.getAppId();
-        if (StringUtils.isEmpty(table)) {
-            table = DynamicAuthFilter.getAppInfo().getAuthTable();
-        }
+        String finalTable = StringUtils.isEmpty(table)
+                ? DynamicAuthFilter.getAppInfo().getAuthTable()
+                : table;
 
-        BaseResponse response = dynamicService.add(appId, table, data);
-        Object id = response.getData();
-        if (id != null) {
-            return ResultUtils.success(loginBusinessService.getUserById(id, appId, table));
-        } else {
-            return response;
-        }
+        // 注册场景：用户身份尚未建立，临时以 bypassRls 身份执行，绕过 RLS WITH CHECK
+        return RlsBypass.runAs(appId, () -> {
+            BaseResponse response = dynamicService.add(appId, finalTable, data);
+            Object id = response.getData();
+            if (id != null) {
+                return ResultUtils.success(loginBusinessService.getUserById(id, appId, finalTable));
+            } else {
+                return response;
+            }
+        });
     }
 
 
