@@ -1,11 +1,9 @@
 package com.kuafuai.common.entity;
 
-import com.google.common.util.concurrent.RateLimiter;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
 
 import java.util.concurrent.ConcurrentLinkedDeque;
-import java.util.concurrent.TimeUnit;
 
 /**
  * 应用限流统计信息 - 混合限流实现
@@ -26,20 +24,10 @@ public class AppRateLimitInfo {
      */
     private String ipAddress;
 
-    /**
-     * 秒级限流器 (每秒20个请求) - 令牌桶算法
-     */
-    private final RateLimiter secondRateLimiter;
-
-    /**
-     * 分钟级请求时间戳队列 - 滑动窗口
-     */
-    private final ConcurrentLinkedDeque<Long> minuteRequestTimestamps;
-
-    /**
-     * 每分钟允许的最大请求数
-     */
+    private final int maxRequestsPerSecond;
     private final int maxRequestsPerMinute;
+    private final ConcurrentLinkedDeque<Long> secondRequestTimestamps;
+    private final ConcurrentLinkedDeque<Long> minuteRequestTimestamps;
 
     /**
      * 上次尝试获取许可的时间戳（毫秒）
@@ -49,11 +37,10 @@ public class AppRateLimitInfo {
     public AppRateLimitInfo(String appId, String ipAddress, double permitsPerSecond, double permitsPerMinute) {
         this.appId = appId;
         this.ipAddress = ipAddress;
-        // 秒级限流：使用令牌桶算法
-        this.secondRateLimiter = RateLimiter.create(permitsPerSecond);
-        // 分钟级限流：使用滑动窗口计数器
-        this.minuteRequestTimestamps = new ConcurrentLinkedDeque<>();
+        this.maxRequestsPerSecond = (int) permitsPerSecond;
         this.maxRequestsPerMinute = (int) permitsPerMinute;
+        this.secondRequestTimestamps = new ConcurrentLinkedDeque<>();
+        this.minuteRequestTimestamps = new ConcurrentLinkedDeque<>();
         this.lastAttemptTime = System.currentTimeMillis();
         log.info("限流:{},{}====={},{}====", appId, ipAddress, permitsPerSecond, permitsPerMinute);
     }
@@ -63,34 +50,33 @@ public class AppRateLimitInfo {
      *
      * @return true表示允许请求，false表示被限流
      */
-    public boolean tryAcquire() {
-        this.lastAttemptTime = System.currentTimeMillis();
-        long now = this.lastAttemptTime;
+    public synchronized boolean tryAcquire() {
+        long now = System.currentTimeMillis();
+        this.lastAttemptTime = now;
 
-        // 1. 检查秒级限流（令牌桶）
-        boolean secondAllowed = secondRateLimiter.tryAcquire(20, TimeUnit.MILLISECONDS);
-        log.info("限流:{}:{}:{}====秒级限流", appId, ipAddress, secondAllowed);
-        if (!secondAllowed) {
+        // 1. 秒级滑动窗口
+        long oneSecondAgo = now - 1000;
+        while (!secondRequestTimestamps.isEmpty() && secondRequestTimestamps.peekFirst() < oneSecondAgo) {
+            secondRequestTimestamps.pollFirst();
+        }
+        if (secondRequestTimestamps.size() >= maxRequestsPerSecond) {
+            log.info("限流:{}:{}====秒级触发：{}", appId, ipAddress, secondRequestTimestamps.size());
             return false;
         }
 
-        // 2. 检查分钟级限流（滑动窗口）
-        // 清理60秒前的旧请求记录
+        // 2. 分钟级滑动窗口
         long oneMinuteAgo = now - 60_000;
-        while (!minuteRequestTimestamps.isEmpty() &&
-                minuteRequestTimestamps.peekFirst() < oneMinuteAgo) {
+        while (!minuteRequestTimestamps.isEmpty() && minuteRequestTimestamps.peekFirst() < oneMinuteAgo) {
             minuteRequestTimestamps.pollFirst();
         }
-
-        // 检查当前窗口内的请求数
-        int currentMinuteRequests = minuteRequestTimestamps.size();
-
-        log.info("限流:{}:{}====分钟级限流：{}", appId, ipAddress, currentMinuteRequests);
-        if (currentMinuteRequests >= maxRequestsPerMinute) {
+        if (minuteRequestTimestamps.size() >= maxRequestsPerMinute) {
+            log.info("限流:{}:{}====分钟级触发：{}", appId, ipAddress, minuteRequestTimestamps.size());
             return false;
         }
 
-        return minuteRequestTimestamps.offerLast(now);
+        secondRequestTimestamps.offerLast(now);
+        minuteRequestTimestamps.offerLast(now);
+        return true;
     }
 
     /**
@@ -99,19 +85,12 @@ public class AppRateLimitInfo {
      *
      * @return true表示允许请求，false表示当前处于限流状态
      */
-    public boolean canAcquire() {
+    public synchronized boolean canAcquire() {
         long now = System.currentTimeMillis();
-
-        // 检查分钟级限流（滑动窗口）
-        // 清理60秒前的旧请求记录
         long oneMinuteAgo = now - 60_000;
-        while (!minuteRequestTimestamps.isEmpty() &&
-                minuteRequestTimestamps.peekFirst() < oneMinuteAgo) {
+        while (!minuteRequestTimestamps.isEmpty() && minuteRequestTimestamps.peekFirst() < oneMinuteAgo) {
             minuteRequestTimestamps.pollFirst();
         }
-
-        // 检查当前窗口内的请求数
-        int currentMinuteRequests = minuteRequestTimestamps.size();
-        return currentMinuteRequests < maxRequestsPerMinute;
+        return minuteRequestTimestamps.size() < maxRequestsPerMinute;
     }
 }
