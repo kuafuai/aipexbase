@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.util.SpringUtils;
+import com.kuafuai.dynamic.helper.SqlGuard;
 import com.kuafuai.system.DynamicInfoCache;
 import com.kuafuai.system.entity.AppTableColumnInfo;
 import com.kuafuai.system.entity.AppTableInfo;
@@ -79,7 +80,7 @@ public class DynamicSqlProvider {
         sql.append(String.join(", ", valueSqlList));
 
         log.info("===========insert batch sql : {}", sql);
-        return sql.toString();
+        return SqlGuard.check(sql.toString());
     }
 
     public static String buildDynamicDeleteBatch(String database,
@@ -121,7 +122,7 @@ public class DynamicSqlProvider {
                 .append(")");
 
         log.info("===========delete batch sql : {}", sql);
-        return sql.toString();
+        return SqlGuard.check(sql.toString());
     }
 
 
