@@ -87,6 +87,17 @@ public class PolicyExpressionParser {
                         log.debug("替换函数: {}.{}() → {} (类型: {})", namespace, method, sqlLiteral, rlsValue.getType());
 
                         i += 4;
+
+                        // 补齐替换值与下一个 token 之间的间距
+                        if (i + 1 < tokens.size()) {
+                            Token next = tokens.get(i + 1);
+                            TokenType nt = next.getType();
+                            if (nt != TokenType.EOF && nt != TokenType.RPAREN && nt != TokenType.COMMA
+                                    && nt != TokenType.DOT && nt != TokenType.LPAREN) {
+                                result.append(" ");
+                            }
+                        }
+
                         continue;
                     }
                 }
