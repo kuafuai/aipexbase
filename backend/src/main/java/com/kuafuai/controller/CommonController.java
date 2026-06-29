@@ -208,6 +208,8 @@ public class CommonController {
 
         Map<String, String> data = Maps.newHashMap();
         data.put("url", deployUrl);
+        data.put("duration", String.valueOf(deployConfig.getCacheExpireTime()));
+        data.put("description", "预览地址：" + deployUrl + " \n 预览时长：" + deployConfig.getCacheExpireTime() + "小时");
         return ResultUtils.success(data);
     }
 
