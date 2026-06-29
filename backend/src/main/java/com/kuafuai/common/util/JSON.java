@@ -3,6 +3,7 @@ package com.kuafuai.common.util;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
+import com.google.gson.ToNumberPolicy;
 import com.google.gson.reflect.TypeToken;
 import com.kuafuai.common.json.FlexibleBooleanAdapter;
 
@@ -18,6 +19,7 @@ public class JSON {
         this.gson = new GsonBuilder()
                 .registerTypeAdapter(Boolean.class, new FlexibleBooleanAdapter())
                 .registerTypeAdapter(boolean.class, new FlexibleBooleanAdapter())
+                .setObjectToNumberStrategy(ToNumberPolicy.LONG_OR_DOUBLE)
                 .create();
     }
 
