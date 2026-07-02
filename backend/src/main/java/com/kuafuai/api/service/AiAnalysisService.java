@@ -185,8 +185,13 @@ public class AiAnalysisService {
         try {
             answer = JsonPath.read(raw, "$.choices[0].message.content");
         } catch (Exception e) {
+            // 详细原因（JsonPath 报错 + 上游原始响应）只进日志，不外泄给用户
             log.error("=====AiAnalysis 解析响应失败:{}=====\n{}", e.getMessage(), raw);
-            throw new BusinessException("AI分析失败: " + e.getMessage());
+            throw new BusinessException("AI分析失败，请稍后重试");
+        }
+        if (StringUtils.isEmpty(answer)) {
+            log.error("=====AiAnalysis 响应内容为空=====\n{}", raw);
+            throw new BusinessException("AI分析失败，请稍后重试");
         }
 
         Integer totalTokens = null;
