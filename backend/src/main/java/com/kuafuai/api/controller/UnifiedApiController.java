@@ -8,6 +8,7 @@ import com.jayway.jsonpath.JsonPath;
 import com.kuafuai.api.parser.ApiResultParser;
 import com.kuafuai.api.service.ApiBusinessService;
 import com.kuafuai.api.service.Word2PicAsyncService;
+import com.kuafuai.api.service.AiAnalysisService;
 import com.kuafuai.common.domin.ErrorCode;
 import com.kuafuai.common.domin.ResultUtils;
 import com.kuafuai.common.exception.BusinessException;
@@ -36,6 +37,8 @@ public class UnifiedApiController {
     private StorageService storageService;
     @Resource
     private Word2PicAsyncService word2PicAsyncService;
+    @Resource
+    private AiAnalysisService aiAnalysisService;
 
     private final Gson gson = new Gson();
 
@@ -223,6 +226,17 @@ public class UnifiedApiController {
     @GetMapping("/word2pic/result/{taskId}")
     public Object word2picResult(@PathVariable("taskId") String taskId) {
         return word2PicAsyncService.getTaskResult(taskId);
+    }
+
+    /**
+     * AI 图文理解（去 Dify 版）
+     * 入参：prompt(职责) / query(用户需求) / files(图片 url 或 base64 data uri，支持数组) / conversation_id / model(可选)
+     * 返回：{answer, conversation_id, metadata.usage} —— 与原 Dify 结构一致，前端读 .answer
+     */
+    @PostMapping("/AiAnalysis")
+    public Object aiAnalysis(@RequestBody Map<String, Object> data) {
+        data.put("ip", ServletUtils.getClientIp());
+        return aiAnalysisService.analyze(GlobalAppIdFilter.getAppId(), data);
     }
 
 }
