@@ -32,8 +32,8 @@ import java.util.Map;
 public class AiAnalysisService {
 
     public static final String API_KEY = "AiAnalysis";
-    /** 默认模型名，可被入参 model 覆盖；按文档默认 gpt-image-2。 */
-    public static final String DEFAULT_MODEL = "gpt-image-2";
+    /** 默认模型名，可被入参 model 覆盖； */
+    public static final String DEFAULT_MODEL = "gpt-4o-mini";
 
     @Autowired
     private ApiBusinessService apiBusinessService;
