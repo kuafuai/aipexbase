@@ -9,13 +9,13 @@ import java.util.Map;
 /**
  * RLS 表达式求值引擎
  * 基于 Token 流，支持复杂表达式的求值
- *
+ * <p>
  * 支持的运算：
  * - 逻辑运算：AND, OR, NOT
  * - 比较运算：=, !=, <, >, <=, >=
  * - IN 操作符
  * - 函数调用（通过 PolicyExpressionParser 预处理）
- *
+ * <p>
  * 示例：
  * - "'123' = user_id" + {user_id: '123'} → true
  * - "age >= 18 AND status = 'active'" + {age: 20, status: 'active'} → true
@@ -122,6 +122,11 @@ public class ExpressionEvaluator {
         Object leftValue = evaluateValue();
 
         Token op = current();
+
+        // 裸值：没有后续运算符，直接当布尔结果
+        if (op.getType() == TokenType.EOF || op.getType() == TokenType.RPAREN) {
+            return isTruthy(leftValue);
+        }
 
         // 处理 IN 操作符
         if (op.getType() == TokenType.KEYWORD_IN) {
@@ -230,6 +235,17 @@ public class ExpressionEvaluator {
         return String.valueOf(left).equals(String.valueOf(right));
     }
 
+
+    /**
+     * 真值判断：裸值作为布尔表达式
+     */
+    private boolean isTruthy(Object value) {
+        if (value == null) return false;
+        if (value instanceof Boolean) return (Boolean) value;
+        if (value instanceof Number) return ((Number) value).doubleValue() != 0;
+        return true;
+    }
+
     /**
      * 数字比较
      */
@@ -263,11 +279,11 @@ public class ExpressionEvaluator {
      */
     private boolean isComparisonOperator(TokenType type) {
         return type == TokenType.EQUAL ||
-               type == TokenType.NOT_EQUAL ||
-               type == TokenType.LESS_THAN ||
-               type == TokenType.LESS_EQUAL ||
-               type == TokenType.GREATER_THAN ||
-               type == TokenType.GREATER_EQUAL;
+                type == TokenType.NOT_EQUAL ||
+                type == TokenType.LESS_THAN ||
+                type == TokenType.LESS_EQUAL ||
+                type == TokenType.GREATER_THAN ||
+                type == TokenType.GREATER_EQUAL;
     }
 
     // ========== Token 流操作辅助方法 ==========
