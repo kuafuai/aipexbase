@@ -88,6 +88,12 @@
         </dependency>
 
         <dependency>
+            <groupId>org.junit.vintage</groupId>
+            <artifactId>junit-vintage-engine</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-aop</artifactId>
         </dependency>
@@ -269,13 +275,20 @@
         <dependency>
             <groupId>com.stripe</groupId>
             <artifactId>stripe-java</artifactId>
-            <version>30.0.0</version>
+            <version>33.1.0</version>
         </dependency>
 
         <dependency>
             <groupId>com.github.kuaidi100-api</groupId>
             <artifactId>sdk</artifactId>
             <version>1.0.19</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.huawei.petalpay</groupId>
+            <artifactId>pay-java</artifactId>
+            <version>1.0.1.302</version>
+            <scope>compile</scope>
         </dependency>
 
     </dependencies>
@@ -298,5 +311,20 @@
             </plugin>
         </plugins>
     </build>
+
+    <repositories>
+        <repository>
+            <id>huawei</id>
+            <name>huawei</name>
+            <url>https://developer.huawei.com/repo/</url>
+            <releases>
+                <enabled>true</enabled>
+            </releases>
+            <snapshots>
+                <enabled>true</enabled>
+                <updatePolicy>always</updatePolicy>
+            </snapshots>
+        </repository>
+    </repositories>
 
 </project>
