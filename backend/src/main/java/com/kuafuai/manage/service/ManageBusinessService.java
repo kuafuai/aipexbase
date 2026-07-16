@@ -17,6 +17,7 @@ import com.kuafuai.dynamic.mapper.DynamicMapper;
 import com.kuafuai.dynamic.service.DynamicInterfaceService;
 import com.kuafuai.dynamic.service.DynamicService;
 import com.kuafuai.manage.entity.dto.AppInfoCopyDTO;
+import com.kuafuai.manage.entity.vo.APIKeyCreatedVO;
 import com.kuafuai.manage.entity.vo.APIKeyVo;
 import com.kuafuai.manage.entity.vo.AppBatchVo;
 import com.kuafuai.manage.entity.vo.AppVo;
@@ -140,6 +141,13 @@ public class ManageBusinessService {
         queryWrapper.eq(Users::getEmail, email);
 
         return usersService.getOne(queryWrapper);
+    }
+
+    public Users getCurrentUser() {
+        Long owner = SecurityUtils.getUserId();
+        Users currentUser = usersService.getById(owner);
+        currentUser.setPassword("");
+        return currentUser;
     }
 
     public boolean register(Users users) {
@@ -1147,7 +1155,16 @@ public class ManageBusinessService {
      * 创建 api key
      */
 
-    public boolean saveAPIKey(String appId, APIKeyVo apiKeyVo) {
+    /**
+     * Create a new API key. Returns the created row with the FULL PLAINTEXT
+     * {@code keyName} — this is the only place the plaintext is exposed.
+     * Subsequent list/detail calls return masked values via
+     * {@link com.kuafuai.manage.entity.vo.APIKeyMaskedVO}.
+     *
+     * @return the created VO with plaintext key, or {@code null} when the
+     *         active-key quota is exceeded.
+     */
+    public APIKeyCreatedVO saveAPIKey(String appId, APIKeyVo apiKeyVo) {
         String keyName = "kf_api_" + RandomStringUtils.generateRandomString(32);
 
         LambdaQueryWrapper<APIKey> queryWrapper = new LambdaQueryWrapper<>();
@@ -1158,7 +1175,7 @@ public class ManageBusinessService {
         long count = applicationAPIKeysService.count(queryWrapper);
 
         if (count > 10) {
-            return false;
+            return null;
         }
 
         APIKey apiKeys = APIKey.builder()
@@ -1171,7 +1188,21 @@ public class ManageBusinessService {
                 .createAt(DateUtils.getTime())
                 .build();
 
-        return applicationAPIKeysService.save(apiKeys);
+        boolean saved = applicationAPIKeysService.save(apiKeys);
+        if (!saved) {
+            return null;
+        }
+
+        return APIKeyCreatedVO.builder()
+                .id(apiKeys.getId())
+                .appId(apiKeys.getAppId())
+                .name(apiKeys.getName())
+                .keyName(apiKeys.getKeyName())   // plaintext — only returned here
+                .description(apiKeys.getDescription())
+                .status(apiKeys.getStatus())
+                .createAt(apiKeys.getCreateAt())
+                .expireAt(apiKeys.getExpireAt())
+                .build();
     }
 
     private AppInfo createAppInternal(String name, Long owner) {

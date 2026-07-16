@@ -15,7 +15,8 @@
                am.created_at,
                u.nick_name as provider_name,
                am.data_type,
-               am.data_path
+               am.data_path,
+               am.is_billing
         from api_market am left join users u on am.provider_id = u.id
         ${ew.customSqlSegment}
     </select>
@@ -33,7 +34,8 @@
                am.created_at,
                u.nick_name as provider_name,
                am.data_type,
-               am.data_path
+               am.data_path,
+               am.is_billing
         from api_market am left join users u on am.provider_id = u.id
         ${ew.customSqlSegment}
     </select>

@@ -51,6 +51,7 @@ public class GeneralOrderBusinessController {
             final Boolean wxEnable = wxV3PayConfig.getWxEnable();
             final Boolean mockEnable = wxV3PayConfig.getMockEnable();
             final Boolean stripeEnable = wxV3PayConfig.getStripeEnable();
+            final Boolean huaweiEnable = wxV3PayConfig.getHuaweiEnable();
 
             if (wxEnable) {
                 strings.add("wechat");
@@ -62,6 +63,10 @@ public class GeneralOrderBusinessController {
 
             if (stripeEnable) {
                 strings.add("stripe");
+            }
+
+            if (huaweiEnable != null && huaweiEnable) {
+                strings.add("huawei");
             }
 
             return ResultUtils.success(strings);

@@ -5,7 +5,6 @@ import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.jayway.jsonpath.JsonPath;
-import com.kuafuai.api.parser.ApiResultParser;
 import com.kuafuai.api.service.ApiBusinessService;
 import com.kuafuai.api.service.Word2PicAsyncService;
 import com.kuafuai.api.service.AiAnalysisService;
@@ -62,7 +61,6 @@ public class UnifiedApiController {
             result = apiBusinessService.callApiWithBilling(appId, setting, data);
         } else {
             result = apiBusinessService.callHttpApi(setting, data, null);
-            ApiResultParser.parser(result);
         }
         String dataPath = setting.getDataPath();
         String dataType = setting.getDataType();
@@ -212,7 +210,7 @@ public class UnifiedApiController {
      * - 有 files 参数 → 调用图像编辑 API；否则调用图像生成 API
      * - 失败时降级到 word2pic_old 方式
      * - 请求里携带 async=true 时走异步：立即返回 taskId，前端通过
-     *   GET /api/word2pic/result/{taskId} 轮询结果，缓存保留 10 分钟。
+     * GET /api/word2pic/result/{taskId} 轮询结果，缓存保留 10 分钟。
      */
     @PostMapping("/word2pic")
     public Object smartImage(@RequestBody Map<String, Object> data) {

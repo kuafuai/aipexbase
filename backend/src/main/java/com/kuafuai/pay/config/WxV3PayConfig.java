@@ -59,6 +59,14 @@ public class WxV3PayConfig {
 
     private Boolean stripeEnable;
 
+    /**
+     * Huawei Petal Pay enable flag (config key: huawei.pay.enable).
+     * When true, `GET /generalOrder/payMethod` includes "huawei" so the client
+     * can offer Huawei Pay as an option. The concrete provider bean will be
+     * @Component("huawei_petal") once implemented.
+     */
+    private Boolean huaweiEnable;
+
 
 //    @Value("${wx.pay.order_pre_key:000000-}")
     private String orderPreKey;
@@ -100,6 +108,7 @@ public class WxV3PayConfig {
             config.wxEnable = Boolean.parseBoolean(parseMap.getOrDefault("wx.pay.wechat_enable", "false"));
             config.mockEnable = Boolean.parseBoolean(parseMap.getOrDefault("wx.pay.mock_enable", "true"));
             config.stripeEnable = Boolean.parseBoolean(parseMap.getOrDefault("stripe.pay.enable", "false"));
+            config.huaweiEnable = Boolean.parseBoolean(parseMap.getOrDefault("huawei.pay.enable", "false"));
             config.orderPreKey = parseMap.getOrDefault("wx.pay.order_pre_key", "xxxx");
 
             return config;
@@ -125,6 +134,10 @@ public class WxV3PayConfig {
 
     public Boolean getStripeEnable() {
         return stripeEnable;
+    }
+
+    public Boolean getHuaweiEnable() {
+        return huaweiEnable;
     }
 
     public void setMockEnable(Boolean mockEnable) {

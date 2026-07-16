@@ -2,6 +2,7 @@ package com.kuafuai.login.config;
 
 import com.kuafuai.login.handle.AdminAuthFilter;
 import com.kuafuai.login.handle.AuthenticationEntryPointImpl;
+import com.kuafuai.login.handle.LogoutSuccessHandlerImpl;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Configuration;
@@ -22,6 +23,8 @@ public class AdminSecurityConfig extends WebSecurityConfigurerAdapter {
      */
     @Autowired
     private AuthenticationEntryPointImpl unauthorizedHandler;
+    @Autowired
+    private LogoutSuccessHandlerImpl logoutSuccessHandler;
 
     @Override
     protected void configure(HttpSecurity http) throws Exception {
@@ -39,6 +42,7 @@ public class AdminSecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/admin/login", "/admin/register", "/admin/app", "/admin/app/**", "/admin/permission-strategy/**").permitAll()
                 .anyRequest().authenticated()
                 .and()
+                .logout().logoutUrl("/admin/logout").logoutSuccessHandler(logoutSuccessHandler).and()
                 .addFilterBefore(new AdminAuthFilter(), UsernamePasswordAuthenticationFilter.class);
     }
 

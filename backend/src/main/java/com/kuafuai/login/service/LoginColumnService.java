@@ -15,7 +15,7 @@ public class LoginColumnService {
 
     public final List<String> passwordKeys = Arrays.asList("passwd", "password", "pwd", "pass", "pword", "pws", "pswd");
 
-    public final List<String> usernameKeys = Arrays.asList("username", "userName", "user_name", "usrname", "uname", "accountName", "acctName");
+    public final List<String> usernameKeys = Arrays.asList("username", "userName", "user_name", "usrname", "uname", "accountName", "acctName", "account");
     public final List<String> phoneKeys = Arrays.asList(
             "phone", "phone_number", "phonenumber", "phoneNumber", "mobile",
             "mobile_number", "mobileNumber", "tel", "tel_number",

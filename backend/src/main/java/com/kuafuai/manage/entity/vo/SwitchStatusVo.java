@@ -7,5 +7,7 @@ import lombok.Data;
 public class SwitchStatusVo {
 
     private String status;
-    private String keyName;
+
+    /** Numeric API key row id (primary key). */
+    private Long id;
 }

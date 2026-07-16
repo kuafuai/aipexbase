@@ -13,12 +13,17 @@ import com.kuafuai.common.exception.BusinessException;
 import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.DateUtils;
 import com.kuafuai.common.util.StringUtils;
+import com.kuafuai.manage.entity.vo.APIKeyMaskedVO;
 import com.kuafuai.manage.entity.vo.APIKeyVo;
 import com.kuafuai.manage.entity.vo.ApiMarketVo;
+import com.kuafuai.manage.entity.vo.DynamicApiTestResultVO;
+import com.kuafuai.manage.entity.vo.DynamicApiTestVo;
 import com.kuafuai.manage.entity.vo.DynamicApiVo;
 import com.kuafuai.manage.entity.vo.SwitchStatusVo;
+import com.kuafuai.manage.service.DynamicApiTestService;
 import com.kuafuai.manage.service.ManageBusinessService;
 import com.kuafuai.system.entity.APIKey;
+import com.kuafuai.system.entity.ApiMarket;
 import com.kuafuai.system.entity.AppInfo;
 import com.kuafuai.system.entity.DynamicApiSetting;
 import com.kuafuai.system.service.AppInfoService;
@@ -65,6 +70,7 @@ public class ApplicationConfigsController {
     private DynamicApiSettingService dynamicApiSettingService;
 
     private final ManageBusinessService manageBusinessService;
+    private final DynamicApiTestService dynamicApiTestService;
 
     @Resource
     private ApplicationAPIKeysService applicationAPIKeysService;
@@ -80,6 +86,7 @@ public class ApplicationConfigsController {
 
         QueryWrapper<DynamicApiSetting> queryWrapper = new QueryWrapper<>();
         queryWrapper.eq("app_id", appId);
+        queryWrapper.orderByDesc("id");
 
         return ResultUtils.success(dynamicApiSettingService.page(page, queryWrapper));
     }
@@ -100,7 +107,7 @@ public class ApplicationConfigsController {
             throw new BusinessException("error.code.no_auth");
         }
 
-        if (StringUtils.isAnyEmpty(dynamicApiVo.getKeyName(), dynamicApiVo.getUrl(), dynamicApiVo.getDataRaw(), dynamicApiVo.getMethod())) {
+        if (StringUtils.isAnyEmpty(dynamicApiVo.getKeyName(), dynamicApiVo.getUrl(), dynamicApiVo.getMethod())) {
             return ResultUtils.error("error.code.params_error");
         }
 
@@ -108,26 +115,29 @@ public class ApplicationConfigsController {
         queryWrapper.eq(DynamicApiSetting::getKeyName, dynamicApiVo.getKeyName());
         queryWrapper.eq(DynamicApiSetting::getAppId, appId);
 
-        if (Objects.nonNull(dynamicApiSettingService.getOne(queryWrapper))) {
-            return ResultUtils.error("error.data.exist");
-        }
+        DynamicApiSetting existing = dynamicApiSettingService.getOne(queryWrapper);
 
         DynamicApiSetting json = DynamicApiSetting.builder()
                 .appId(appInfo.getAppId())
-                .id(null)
+                .id(existing != null ? existing.getId() : null)
+                // Preserve marketId for market-imported rows on edit
+                .marketId(existing != null ? existing.getMarketId() : null)
                 .bodyTemplate(dynamicApiVo.getBodyTemplate())
-                .bodyType("template")
+                .bodyType(StringUtils.isEmpty(dynamicApiVo.getBodyType()) ? "template" : dynamicApiVo.getBodyType())
                 .keyName(dynamicApiVo.getKeyName())
                 .description(dynamicApiVo.getDescription())
                 .url(dynamicApiVo.getUrl())
                 .method(dynamicApiVo.getMethod())
                 .protocol("http")
+                .token(dynamicApiVo.getToken())
+                .dataPath(dynamicApiVo.getDataPath())
+                .dataType(dynamicApiVo.getDataType())
                 .dataRaw(dynamicApiVo.getDataRaw())
                 .header(dynamicApiVo.getHeaderTemplate())
                 .varRaw(dynamicApiVo.getVars())
                 .build();
 
-        return ResultUtils.success(dynamicApiSettingService.save(json));
+        return ResultUtils.success(dynamicApiSettingService.saveOrUpdate(json));
     }
 
     @DeleteMapping("/dynamicapi/{id}/delete/{key}")
@@ -147,6 +157,36 @@ public class ApplicationConfigsController {
         queryWrapper.eq(DynamicApiSetting::getAppId, appId);
 
         return ResultUtils.success(dynamicApiSettingService.remove(queryWrapper));
+    }
+
+    /**
+     * Test a dynamic API right now — sends a real HTTP request through the
+     * backend using the stored template + user-supplied variables, and
+     * returns the full request/response cycle for a Postman-style debug panel.
+     */
+    @PostMapping("/dynamicapi/{id}/test/{keyName}")
+    public BaseResponse testDynamicApi(
+            @PathVariable("id") String appId,
+            @PathVariable("keyName") String keyName,
+            @RequestBody(required = false) DynamicApiTestVo testVo
+    ) {
+        DynamicApiTestVo vo = testVo != null ? testVo : new DynamicApiTestVo();
+        DynamicApiTestResultVO result = dynamicApiTestService.test(appId, keyName, vo);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * Test an inline (unsaved) API config. Used by the "Test then Save" flow
+     * in the custom API form: the user fills the form, hits Test, sees the
+     * response, iterates, then Saves once satisfied.
+     */
+    @PostMapping("/dynamicapi/{id}/test-inline")
+    public BaseResponse testDynamicApiInline(
+            @PathVariable("id") String appId,
+            @RequestBody DynamicApiTestVo testVo
+    ) {
+        DynamicApiTestResultVO result = dynamicApiTestService.testInline(appId, testVo);
+        return ResultUtils.success(result);
     }
 
 
@@ -231,7 +271,21 @@ public class ApplicationConfigsController {
         LambdaQueryWrapper<APIKey> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(APIKey::getAppId, appId);
         page = applicationAPIKeysService.page(page, queryWrapper);
-        return ResultUtils.success(page);
+
+        // Convert to masked VO — plaintext keyName never leaves the list endpoint.
+        IPage<APIKeyMaskedVO> masked = page.convert(k -> APIKeyMaskedVO.builder()
+                .id(k.getId())
+                .appId(k.getAppId())
+                .name(k.getName())
+                .keyName(APIKeyMaskedVO.mask(k.getKeyName()))
+                .description(k.getDescription())
+                .status(k.getStatus())
+                .createAt(k.getCreateAt())
+                .lastUsedAt(k.getLastUsedAt())
+                .expireAt(k.getExpireAt())
+                .build());
+
+        return ResultUtils.success(masked);
     }
 
 
@@ -251,9 +305,13 @@ public class ApplicationConfigsController {
             throw new BusinessException("error.code.params_error");
         }
 
+        if (switchStatusVo.getId() == null) {
+            throw new BusinessException("error.code.params_error");
+        }
+
         LambdaQueryWrapper<APIKey> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(APIKey::getAppId, appId);
-        queryWrapper.eq(APIKey::getKeyName, switchStatusVo.getKeyName());
+        queryWrapper.eq(APIKey::getId, switchStatusVo.getId());
 
 
         APIKey apiKey = applicationAPIKeysService.getOne(queryWrapper);
@@ -269,8 +327,8 @@ public class ApplicationConfigsController {
         return ResultUtils.success(applicationAPIKeysService.updateById(apiKey));
     }
 
-    @DeleteMapping("/apikeys/{id}/{keyName}")
-    public BaseResponse delete(@PathVariable("keyName") String keyName, @PathVariable("id") String appId) {
+    @DeleteMapping("/apikeys/{id}/{keyId}")
+    public BaseResponse delete(@PathVariable("keyId") Long keyId, @PathVariable("id") String appId) {
 
         AppInfo appInfo = appInfoService.getAppInfoByAppId(appId);
         if (Objects.isNull(appInfo)) {
@@ -283,7 +341,7 @@ public class ApplicationConfigsController {
 
         LambdaQueryWrapper<APIKey> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(APIKey::getAppId, appId);
-        queryWrapper.eq(APIKey::getKeyName, keyName);
+        queryWrapper.eq(APIKey::getId, keyId);
 
         return ResultUtils.success(applicationAPIKeysService.remove(queryWrapper));
     }
