@@ -15,6 +15,7 @@ import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.login.handle.GlobalAppIdFilter;
 import com.kuafuai.system.entity.AppInfo;
 import com.kuafuai.system.service.AppInfoService;
+import com.kuafuai.usage.service.FileUploadLogService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -23,6 +24,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.Resource;
 import java.io.File;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.HashMap;
@@ -55,6 +58,9 @@ public class CommonController {
     @Resource
     private DeployConfig deployConfig;
 
+    @Resource
+    private FileUploadLogService fileUploadLogService;
+
     @Autowired(required = false)
     @Qualifier(value = "dataRouterRedisTemplate")
     private RedisTemplate<String, Object> redisTemplate;
@@ -70,6 +76,7 @@ public class CommonController {
             if (messageConfig.isEnable()) {
                 sendMessage(fileName, messageConfig);
             }
+            recordUploadSafe(fileName, file.getSize(), file.getContentType(), file.getOriginalFilename());
             Map<String, String> data = Maps.newHashMap();
             data.put("url", fileName);
             data.put("fileName", fileName);
@@ -96,7 +103,40 @@ public class CommonController {
             return ResultUtils.error("error.code.params_error");
         }
         String resultUrl = storageService.upload(fileUrl, formatter, contentType);
+        // uploadByUrl 没有 MultipartFile, 靠 HEAD 拿源文件大小; 拿不到就记 0
+        recordUploadSafe(resultUrl, probeContentLength(fileUrl), contentType, null);
         return ResultUtils.success(resultUrl);
+    }
+
+    /**
+     * 记录一次文件上传. 任何异常都吞掉 —— 埋点绝不能影响主流程.
+     */
+    private void recordUploadSafe(String url, long size, String contentType, String originalName) {
+        try {
+            String appId = GlobalAppIdFilter.getAppId();
+            if (StringUtils.isEmpty(appId)) return;
+            fileUploadLogService.recordUpload(appId, url, size, contentType, originalName);
+        } catch (Exception ignore) {
+            // 埋点异常绝不影响上传
+        }
+    }
+
+    /**
+     * HEAD 一下源 URL 拿 Content-Length. 失败返回 0.
+     */
+    private long probeContentLength(String url) {
+        HttpURLConnection conn = null;
+        try {
+            conn = (HttpURLConnection) new URL(url).openConnection();
+            conn.setRequestMethod("HEAD");
+            conn.setConnectTimeout(3000);
+            conn.setReadTimeout(3000);
+            return Math.max(0L, conn.getContentLengthLong());
+        } catch (Exception ignore) {
+            return 0L;
+        } finally {
+            if (conn != null) conn.disconnect();
+        }
     }
 
     @PostMapping("/deploy")

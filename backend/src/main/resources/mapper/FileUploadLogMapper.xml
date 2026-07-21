@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kuafuai.usage.mapper.FileUploadLogMapper">
+
+    <select id="breakdown" resultType="com.kuafuai.usage.vo.StorageBreakdownVO">
+        SELECT
+            CASE
+                WHEN content_type LIKE 'image/%'  THEN 'image'
+                WHEN content_type LIKE 'video/%'  THEN 'video'
+                WHEN content_type LIKE 'audio/%'  THEN 'audio'
+                WHEN content_type = 'application/pdf'
+                  OR content_type LIKE 'application/msword%'
+                  OR content_type LIKE 'application/vnd.%'
+                  OR content_type LIKE 'text/%'   THEN 'doc'
+                ELSE 'other'
+            END AS kind,
+            COUNT(*) AS count,
+            COALESCE(SUM(file_size), 0) AS bytes
+        FROM file_upload_log
+        WHERE app_id = #{appId}
+        GROUP BY kind
+        ORDER BY bytes DESC
+    </select>
+</mapper>

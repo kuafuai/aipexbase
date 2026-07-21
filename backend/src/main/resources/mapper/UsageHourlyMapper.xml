@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kuafuai.usage.mapper.UsageHourlyMapper">
+
+    <insert id="batchInsert" parameterType="java.util.List">
+        INSERT INTO usage_hourly
+            (app_id, bucket_hour, endpoint_group, status_bucket, call_count, latency_sum_ms)
+        VALUES
+        <foreach collection="list" item="it" separator=",">
+            (#{it.appId}, #{it.bucketHour}, #{it.endpointGroup}, #{it.statusBucket},
+             #{it.callCount}, #{it.latencySumMs})
+        </foreach>
+    </insert>
+
+    <select id="sumCallCount" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(call_count), 0)
+        FROM usage_hourly
+        WHERE app_id = #{appId}
+          AND bucket_hour &gt;= #{from}
+          AND bucket_hour &lt; #{to}
+    </select>
+
+    <select id="sumErrCount" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(call_count), 0)
+        FROM usage_hourly
+        WHERE app_id = #{appId}
+          AND bucket_hour &gt;= #{from}
+          AND bucket_hour &lt; #{to}
+          AND status_bucket IN ('4xx', '5xx')
+    </select>
+
+    <select id="sumLatencyMs" resultType="java.lang.Long">
+        SELECT COALESCE(SUM(latency_sum_ms), 0)
+        FROM usage_hourly
+        WHERE app_id = #{appId}
+          AND bucket_hour &gt;= #{from}
+          AND bucket_hour &lt; #{to}
+    </select>
+
+    <select id="timeseriesByDay" resultType="com.kuafuai.usage.vo.TimeseriesPointVO">
+        SELECT
+            DATE_FORMAT(bucket_hour, '%Y-%m-%d') AS bucket,
+            COALESCE(SUM(call_count), 0)         AS callCount,
+            COALESCE(SUM(CASE WHEN status_bucket IN ('4xx','5xx') THEN call_count ELSE 0 END), 0) AS errCount
+        FROM usage_hourly
+        WHERE app_id = #{appId}
+          AND bucket_hour &gt;= #{from}
+          AND bucket_hour &lt; #{to}
+        GROUP BY DATE_FORMAT(bucket_hour, '%Y-%m-%d')
+        ORDER BY bucket ASC
+    </select>
+
+    <select id="timeseriesByHour" resultType="com.kuafuai.usage.vo.TimeseriesPointVO">
+        SELECT
+            DATE_FORMAT(bucket_hour, '%Y-%m-%d %H:00') AS bucket,
+            COALESCE(SUM(call_count), 0)               AS callCount,
+            COALESCE(SUM(CASE WHEN status_bucket IN ('4xx','5xx') THEN call_count ELSE 0 END), 0) AS errCount
+        FROM usage_hourly
+        WHERE app_id = #{appId}
+          AND bucket_hour &gt;= #{from}
+          AND bucket_hour &lt; #{to}
+        GROUP BY DATE_FORMAT(bucket_hour, '%Y-%m-%d %H:00')
+        ORDER BY bucket ASC
+    </select>
+
+    <select id="topEndpoints" resultType="com.kuafuai.usage.vo.EndpointCountVO">
+        SELECT
+            endpoint_group                     AS endpointGroup,
+            SUM(call_count)                    AS callCount,
+            SUM(CASE WHEN status_bucket IN ('4xx','5xx') THEN call_count ELSE 0 END) AS errCount
+        FROM usage_hourly
+        WHERE app_id = #{appId}
+          AND bucket_hour &gt;= #{from}
+          AND bucket_hour &lt; #{to}
+        GROUP BY endpoint_group
+        ORDER BY callCount DESC
+        LIMIT #{limit}
+    </select>
+</mapper>
