@@ -105,6 +105,7 @@ public class ManageApiTokenBusinessService {
                 .name(name)
                 .userId(userId)
                 .status(ManageApiToken.Status.ENABLED)
+                .expireTime(expireTime)
                 .remark(remark)
                 .build();
 
@@ -128,6 +129,7 @@ public class ManageApiTokenBusinessService {
                 .companyId(companyId)
                 .companyName(companyName)
                 .status(ManageApiToken.Status.ENABLED)
+                .expireTime(expireTime)
                 .remark(remark)
                 .build();
 

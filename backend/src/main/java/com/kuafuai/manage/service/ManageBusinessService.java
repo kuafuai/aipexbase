@@ -159,6 +159,13 @@ public class ManageBusinessService {
         users.setPassword(SecurityUtils.encryptPassword(users.getPassword()));
         boolean flag = usersService.save(users);
         if (flag) {
+            // 分配一个稳定的 code_flying_user_id 作为跨产品身份锚点.
+            // 前缀 "aipex_" 用来跟 codeflying 侧原生 ID 做命名空间区分.
+            // 之后 manage_api_token / 联邦查询 (getOrCreateUserByExternalId) 都靠这个值定位到本地用户.
+            if (StringUtils.isEmpty(users.getCodeFlyingUserId())) {
+                users.setCodeFlyingUserId("aipex_" + users.getId());
+                usersService.updateById(users);
+            }
             eventService.publishEvent(EventVo.builder().tableName(email).model(ManageConstants.EVENT_REGISTER).build());
         }
         return flag;
