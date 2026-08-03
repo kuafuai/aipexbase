@@ -15,7 +15,9 @@ public class GeneralTableNameHandler implements TableNameHandler {
     private static final List<String> exculdedTableNameList = Lists.newArrayList(
             "app_info", "app_requirement_sql", "app_sql_execution_log",
             "app_table_column_info", "app_table_info", "app_table_relation",
-            "dynamic_api_setting", "delay_task_app_info");
+            "dynamic_api_setting", "delay_task_app_info",
+            "points_record", "balance_package", "user_balance",
+            "app_error_log");
 
     @Override
     public String dynamicTableName(String sql, String tableName) {

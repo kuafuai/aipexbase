@@ -41,6 +41,7 @@ public class DynamicAuthFilter extends OncePerRequestFilter {
             "/generalOrder/callback/**",
             "/system/setting/**",
             "/error/report/**",
+            "/error/logs/**",
             "/api/access/agent/login-link"
     };
 
@@ -50,6 +51,7 @@ public class DynamicAuthFilter extends OncePerRequestFilter {
             "/login/redirect/**",
             "/generalOrder/callback/**",
             "/error/report/**",
+            "/error/logs/**",
             "/mcp/**"
 
     };
