@@ -272,4 +272,32 @@ CREATE TABLE `app_access_token`(
     UNIQUE KEY `uk_token` (`token`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
+DROP TABLE IF EXISTS `aipexbase`.`file_upload_log`;
+CREATE TABLE `file_upload_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `app_id` varchar(64) NOT NULL COMMENT '项目 appId',
+  `file_url` varchar(1024) NOT NULL COMMENT '完整访问 URL',
+  `file_size` bigint NOT NULL DEFAULT '0' COMMENT '字节',
+  `content_type` varchar(128) DEFAULT NULL,
+  `original_name` varchar(255) DEFAULT NULL,
+  `uploaded_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_url` (`file_url`(255)) COMMENT '同一 URL 重复上传不重复计费',
+  KEY `idx_app_uploaded` (`app_id`,`uploaded_at`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='文件上传日志, 每次 upload 一条, 用于存储用量统计';
 
+
+DROP TABLE IF EXISTS `aipexbase`.`usage_hourly`;
+CREATE TABLE `usage_hourly` (
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `app_id` varchar(64) NOT NULL COMMENT '项目 appId',
+  `bucket_hour` datetime NOT NULL COMMENT '整点时间桶, e.g. 2026-07-17 14:00:00',
+  `endpoint_group` varchar(64) NOT NULL COMMENT '归一化后的接口分组',
+  `status_bucket` varchar(8) NOT NULL COMMENT 'HTTP 状态段: 2xx / 3xx / 4xx / 5xx',
+  `call_count` bigint NOT NULL DEFAULT '0' COMMENT '本次 flush 累计调用次数',
+  `latency_sum_ms` bigint NOT NULL DEFAULT '0' COMMENT '本次 flush 累计耗时(毫秒)',
+  `created_at` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_app_hour` (`app_id`,`bucket_hour`),
+  KEY `idx_app_hour_group` (`app_id`,`bucket_hour`,`endpoint_group`)
+) ENGINE=InnoDB AUTO_INCREMENT=2715 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='API 调用量小时聚合 (纯 append), 由 UsageAggregator 定时 flush, 读端 SUM 聚合';
