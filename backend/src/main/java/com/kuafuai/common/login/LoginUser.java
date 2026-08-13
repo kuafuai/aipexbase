@@ -65,6 +65,18 @@ public class LoginUser implements UserDetails {
         this.bypassRls = true;
     }
 
+    public LoginUser(LoginUser other) {
+        this.userId = other.userId;
+        this.token = other.token;
+        this.loginTime = other.loginTime;
+        this.expireTime = other.expireTime;
+        this.relevanceId = other.relevanceId;
+        this.relevanceTable = other.relevanceTable;
+        this.tenantId = other.tenantId;
+        this.appId = other.appId;
+        this.bypassRls = other.bypassRls;
+    }
+
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {

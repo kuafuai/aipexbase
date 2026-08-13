@@ -16,7 +16,7 @@ import javax.annotation.Resource;
 import java.util.Map;
 import java.util.function.BiFunction;
 
-@Service
+//@Service
 public class MCPService {
 
     private static final Logger logger = LoggerFactory.getLogger(MCPService.class);

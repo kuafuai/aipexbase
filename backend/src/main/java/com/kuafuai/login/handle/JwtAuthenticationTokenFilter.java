@@ -4,6 +4,8 @@ package com.kuafuai.login.handle;
 import com.kuafuai.common.login.LoginUser;
 import com.kuafuai.common.login.SecurityUtils;
 import com.kuafuai.common.util.*;
+import com.kuafuai.login.config.RlsBypassProperties;
+import com.kuafuai.login.service.RlsBypassTokenVerifier;
 import com.kuafuai.login.service.TokenService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -55,12 +57,31 @@ public class JwtAuthenticationTokenFilter extends OncePerRequestFilter {
         if (StringUtils.isNotNull(loginUser) && StringUtils.isNull(SecurityUtils.getAuthentication())) {
             boolean flag = tokenService.verifyToken(loginUser, GlobalAppIdFilter.getAppId());
             if (flag) {
-                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(loginUser, null, loginUser.getAuthorities());
+                LoginUser effective = applyRlsBypass(loginUser, request);
+                UsernamePasswordAuthenticationToken authenticationToken = new UsernamePasswordAuthenticationToken(effective, null, effective.getAuthorities());
                 authenticationToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                 SecurityContextHolder.getContext().setAuthentication(authenticationToken);
             }
         }
         chain.doFilter(request, response);
+    }
+
+    private LoginUser applyRlsBypass(LoginUser loginUser, HttpServletRequest request) {
+        RlsBypassProperties props = SpringUtils.getBean(RlsBypassProperties.class);
+
+        String submitted = request.getHeader(props.getHeader());
+        if (StringUtils.isEmpty(submitted)) {
+            return loginUser;
+        }
+        RlsBypassTokenVerifier verifier = SpringUtils.getBean(RlsBypassTokenVerifier.class);
+        if (!verifier.verify(submitted)) {
+            log.warn("RLS bypass token rejected: userId={}, uri={}", loginUser.getUserId(), request.getRequestURI());
+            return loginUser;
+        }
+        log.warn("RLS bypass granted: userId={}, uri={}", loginUser.getUserId(), request.getRequestURI());
+        LoginUser overlay = new LoginUser(loginUser);
+        overlay.setBypassRls(true);
+        return overlay;
     }
 
     private boolean isExcludedUrl(String requestUri) {

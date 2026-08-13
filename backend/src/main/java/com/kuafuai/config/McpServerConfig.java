@@ -19,7 +19,7 @@ import javax.annotation.PreDestroy;
  * MCP服务器配置类
  * 负责配置和启动MCP服务器
  */
-@Configuration
+//@Configuration
 public class McpServerConfig {
 
     private static final Logger logger = LoggerFactory.getLogger(McpServerConfig.class);
