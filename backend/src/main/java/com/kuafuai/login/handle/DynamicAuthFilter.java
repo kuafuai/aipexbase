@@ -52,8 +52,8 @@ public class DynamicAuthFilter extends OncePerRequestFilter {
             "/generalOrder/callback/**",
             "/error/report/**",
             "/error/logs/**",
-            "/mcp/**"
-
+            "/mcp/**",
+            "/voice/**"
     };
 
     private final Type config_value_type = new TypeToken<Map<String, Object>>() {

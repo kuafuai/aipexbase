@@ -37,9 +37,26 @@ public class AccessTokenAuthFilter extends OncePerRequestFilter {
 
     private final AntPathMatcher pathMatcher = new AntPathMatcher();
 
+    /**
+     * 完全跳过本 filter 的路径。语音网关自己在 controller / handshake interceptor 里做
+     * kft_ 校验，且不校验 APP_ID 一致性——放进来会被这里以 allowedPaths 或 appId 不匹配
+     * 拒绝。
+     */
+    private static final String[] SKIP_URLS = {
+            "/voice/**"
+    };
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
+
+        String uri = request.getRequestURI();
+        for (String p : SKIP_URLS) {
+            if (pathMatcher.match(p, uri)) {
+                chain.doFilter(request, response);
+                return;
+            }
+        }
 
         String token = request.getHeader(HttpHeaders.AUTHORIZATION);
         if (StringUtils.isNotEmpty(token) && token.startsWith(BEARER_PREFIX)) {

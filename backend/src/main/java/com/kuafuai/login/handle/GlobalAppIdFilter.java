@@ -34,7 +34,8 @@ public class GlobalAppIdFilter extends OncePerRequestFilter {
             "/generalOrder/callback/**",
             "/error/report/**",
             "/mcp/**",
-            "/oauth2/callback/**"
+            "/oauth2/callback/**",
+            "/voice/**"
     };
 
     @Override

@@ -35,6 +35,29 @@ api:
       analysis_url: ${API_DOCUMENT_ANALYSIS_URL:http://124.71.176.202:6680/v1/chat-messages}
       analysis_api_key: ${API_DOCUMENT_ANALYSIS_API_KEY:app-8noHD9vy2OgCdUZ5A0MGlQ2p}
 
+# 语音网关（透传到 ByteDance 火山 ASR/TTS）
+# 客户端连 wss://<host>/voice/asr/** 或 /voice/tts/**，X-Api-Key 里传 aipexbase 签发的 kft_xxx；
+# 网关校验 token 后把 X-Api-Key 换成下面的 api-key 转发给火山。
+voice:
+  huoshan:
+    api-key: ${HUOSHAN_API_KEY:xx}
+    asr-base: ${HUOSHAN_ASR_BASE:wss://openspeech.bytedance.com/api/v3/sauc}
+    tts-base: ${HUOSHAN_TTS_BASE:wss://openspeech.bytedance.com/api/v3/tts}
+    allowed-asr-resources:
+      - volc.bigasr.sauc.duration
+      - volc.seedasr.sauc.duration
+    allowed-tts-resources:
+      - seed-tts-2.0
+      - seed-icl-2.0
+  # LLM 网关：POST /voice/llm/chat/completions
+  # 客户端在 Authorization: Bearer kft_xxx 里传 aipexbase 签发的 token；
+  # 网关校验后把 Authorization 换成下面的 api-key 转发到 base-url。
+  llm:
+    base-url: ${LLM_BASE_URL:https://api.deepseek.com}
+    api-key: ${LLM_API_KEY:xx}
+    # 空数组表示不限制模型。建议至少列白名单，防止 token 越权调贵模型。
+    allowed-models: []
+
 #mysql
 spring:
   profiles:
