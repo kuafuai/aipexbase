@@ -1,19 +1,17 @@
 package com.kuafuai.voice.gateway;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParseException;
+import com.google.gson.JsonParser;
 import com.kuafuai.accesstoken.entity.AppAccessToken;
 import com.kuafuai.accesstoken.service.AppAccessTokenService;
 import com.kuafuai.common.util.StringUtils;
 import com.kuafuai.voice.config.LlmProperties;
 import lombok.extern.slf4j.Slf4j;
-import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
-import okhttp3.Request;
-import okhttp3.Response;
-import okhttp3.ResponseBody;
+import okhttp3.*;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
-import org.springframework.util.AntPathMatcher;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -21,24 +19,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.io.InputStream;
-import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 
-/**
- * LLM 网关：把 OpenAI 兼容的 /chat/completions 请求转发到上游平台（DeepSeek 等）。
- *
- * <p>客户端把 aipexbase 签发的 {@code kft_xxx} 放在 {@code Authorization: Bearer kft_xxx}
- * 里发过来——同一位置本来放的是上游平台真实 key。网关校验通过后把 Authorization 头
- * 换成 {@link LlmProperties#getApiKey()} 转发。这样 body 侧的 {@code LlmClient.kt} 一行
- * 都不用改，只在偏好里把 llm_base_url 指向 aipexbase、把 llm_api_key 换成 kft_xxx 即可。
- *
- * <p>为什么直接写 {@link HttpServletResponse} 而不返回 {@code ResponseEntity}：SSE 场景
- * 下 {@code ResponseEntity<?>} 的通配符让 Spring 挑不出 StreamingResponseBody 的
- * ReturnValueHandler，落到普通 message converter 报 "No converter for lambda"。写
- * response.getOutputStream() 是流式和非流式两条链路共用一条实现，Spring 完全不参与
- * 内容协商。
- */
+
 @Slf4j
 @RestController
 @RequestMapping("/voice/llm")
@@ -47,7 +30,6 @@ public class LlmProxyController {
     private static final String BEARER_PREFIX = "Bearer ";
     private static final String TOKEN_PREFIX = "kft_";
     private static final MediaType JSON_MEDIA = MediaType.get("application/json; charset=utf-8");
-    private static final AntPathMatcher PATH = new AntPathMatcher();
 
     private final AppAccessTokenService accessTokenService;
     private final LlmProperties props;
@@ -65,6 +47,7 @@ public class LlmProxyController {
     public void chatCompletions(@org.springframework.web.bind.annotation.RequestBody String body,
                                 @RequestHeader HttpHeaders headers,
                                 HttpServletResponse response) throws IOException {
+        long startMs = System.currentTimeMillis();
         AppAccessToken token = authenticate(headers);
         if (token == null) {
             writeError(response, HttpStatus.UNAUTHORIZED, "invalid or missing kft_ token");
@@ -82,7 +65,7 @@ public class LlmProxyController {
                 .build();
 
         try (Response resp = http.newCall(upstream).execute()) {
-            relay(resp, token.getAppId(), response);
+            relay(resp, token.getAppId(), body.length(), startMs, response);
         } catch (IOException e) {
             log.warn("llm proxy upstream failed: appId={} err={}", token.getAppId(), e.toString());
             writeError(response, HttpStatus.BAD_GATEWAY, "upstream error: " + e.getMessage());
@@ -103,11 +86,10 @@ public class LlmProxyController {
     }
 
     /**
-     * 把上游响应原样搬到 servlet response 上。SSE 走边读边写，非流式也一样——差别只在
-     * flush 的频率，逻辑一条。上游错误响应也 forward，客户端能拿到 DeepSeek 的原始
-     * 错误信息（bad key、model not found、context overflow 都在 body 里）。
+     * 边转发边攒全文，结束后从全文里抽 usage。
+     * 非流式：usage 在顶层 JSON；流式：usage 在最后一个 data chunk 里。
      */
-    private void relay(Response resp, String appId, HttpServletResponse out) throws IOException {
+    private void relay(Response resp, String appId, int reqBytes, long startMs, HttpServletResponse out) throws IOException {
         ResponseBody rb = resp.body();
         int status = resp.code();
         String contentType = "application/octet-stream";
@@ -117,28 +99,90 @@ public class LlmProxyController {
 
         out.setStatus(status);
         out.setHeader(HttpHeaders.CONTENT_TYPE, contentType);
-        // SSE 需要，非流式加了无害——省一个 if。X-Accel-Buffering 是给 nginx 的
-        // 反向代理提示，客户端和 chat completions 的普通 JSON 都不需要缓冲。
         out.setHeader("Cache-Control", "no-cache");
         out.setHeader("X-Accel-Buffering", "no");
 
         if (rb == null) return;
 
-        long total = 0;
-        try (InputStream in = rb.byteStream(); OutputStream sink = out.getOutputStream()) {
+        java.io.ByteArrayOutputStream sink = new java.io.ByteArrayOutputStream(4096);
+        try (java.io.InputStream in = rb.byteStream(); java.io.OutputStream client = out.getOutputStream()) {
             byte[] buf = new byte[4096];
             int n;
             while ((n = in.read(buf)) != -1) {
+                client.write(buf, 0, n);
+                client.flush();
                 sink.write(buf, 0, n);
-                sink.flush();
-                total += n;
             }
         }
-        if (resp.isSuccessful()) {
-            log.info("llm proxy ok: appId={} status={} bytes={}", appId, status, total);
+
+        long durationMs = System.currentTimeMillis() - startMs;
+        String fullText = sink.toString("UTF-8");
+        TokenUsage usage = extractUsage(fullText, contentType);
+
+        log.info("VOICE_METERING channel=llm appId={} status={} durationMs={} reqBytes={} respBytes={} promptTok={} completionTok={} totalTok={}", appId, status, durationMs, reqBytes, sink.size(), usage.getPromptTokens(), usage.getCompletionTokens(), usage.getTotalTokens());
+    }
+
+    private static TokenUsage extractUsage(String body, String contentType) {
+        if (contentType != null && contentType.toLowerCase().contains("event-stream")) {
+            return extractSseUsage(body);
         } else {
-            log.warn("llm proxy upstream {} appId={} bytes={}", status, appId, total);
+            return extractJsonUsage(body);
         }
+    }
+
+    private static TokenUsage extractJsonUsage(String body) {
+        try {
+            JsonObject json = JsonParser.parseString(body).getAsJsonObject();
+            JsonObject usage = json.getAsJsonObject("usage");
+            if (usage == null) {
+                return TokenUsage.ZERO;
+            }
+
+            return new TokenUsage(safeInt(usage.get("prompt_tokens")), safeInt(usage.get("completion_tokens")), safeInt(usage.get("total_tokens")));
+        } catch (JsonParseException e) {
+            return TokenUsage.ZERO;
+        }
+    }
+
+    private static TokenUsage extractSseUsage(String body) {
+        String[] lines = body.split("\\r?\\n");
+        for (int i = lines.length - 1; i >= 0; i--) {
+            String line = lines[i].trim();
+
+            if (!line.startsWith("data:")) {
+                continue;
+            }
+
+            String data = line.substring(5).trim();
+
+            if ("[DONE]".equals(data)) {
+                continue;
+            }
+
+            int usagePos = data.indexOf("\"usage\"");
+            if (usagePos < 0) {
+                continue;
+            }
+
+            try {
+                JsonObject chunk = JsonParser.parseString(data).getAsJsonObject();
+                JsonObject usage = chunk.getAsJsonObject("usage");
+
+                if (usage == null) {
+                    continue;
+                }
+
+                return new TokenUsage(safeInt(usage.get("prompt_tokens")), safeInt(usage.get("completion_tokens")), safeInt(usage.get("total_tokens")));
+            } catch (JsonParseException e) {
+                log.warn("Failed to parse SSE usage chunk");
+            }
+        }
+        return TokenUsage.ZERO;
+    }
+
+
+    private static int safeInt(com.google.gson.JsonElement e) {
+        return (e == null || e.isJsonNull()) ? 0 : e.getAsInt();
     }
 
     private static void writeError(HttpServletResponse response, HttpStatus status, String msg) throws IOException {
