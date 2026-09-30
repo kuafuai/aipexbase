@@ -55,8 +55,7 @@ public class VoiceProxyHandler extends AbstractWebSocketHandler {
     public void afterConnectionEstablished(WebSocketSession session) {
         String appId = (String) session.getAttributes().get(AccessTokenHandshakeInterceptor.ATTR_APP_ID);
         String upstreamUrl = (String) session.getAttributes().get(AccessTokenHandshakeInterceptor.ATTR_UPSTREAM_URL);
-        HttpHeaders upstreamHeaders = (HttpHeaders) session.getAttributes()
-                .get(AccessTokenHandshakeInterceptor.ATTR_UPSTREAM_HEADERS);
+        HttpHeaders upstreamHeaders = (HttpHeaders) session.getAttributes().get(AccessTokenHandshakeInterceptor.ATTR_UPSTREAM_HEADERS);
 
         if (upstreamUrl == null || upstreamHeaders == null) {
             log.error("voice proxy: session {} missing handshake attributes", session.getId());
@@ -111,8 +110,7 @@ public class VoiceProxyHandler extends AbstractWebSocketHandler {
                 upstream.cancel();
             }
         }
-        log.info("voice proxy closed: session={} code={} reason={}",
-                session.getId(), status.getCode(), status.getReason());
+        log.info("voice proxy closed: session={} code={} reason={}", session.getId(), status.getCode(), status.getReason());
     }
 
     @Override
@@ -150,6 +148,16 @@ public class VoiceProxyHandler extends AbstractWebSocketHandler {
                 if (!client.isOpen()) return;
                 synchronized (client) {
                     client.sendMessage(new BinaryMessage(bytes.asByteBuffer()));
+                }
+                // 转发之后再解析，避免解析异常影响客户端拿结果。
+                // ASR 和 TTS 走同一入口，只 toByteArray() 一次、只判一次帧头。
+                VoiceUsage usage = HuoshanFrameParser.tryDecode(bytes.toByteArray());
+                if (usage != null) {
+                    if (VoiceUsage.TAG_ASR.equals(usage.getTag())) {
+                        log.info("VOICE_METERING channel=asr appId={} sessionId={} audioDurationMs={}", appId, client.getId(), usage.getAudioDurationMs());
+                    } else if (VoiceUsage.TAG_TTS.equals(usage.getTag())) {
+                        log.info("VOICE_METERING channel=tts appId={} sessionId={} textWords={}", appId, client.getId(), usage.getTextWords());
+                    }
                 }
             } catch (Throwable t) {
                 log.warn("voice proxy: forward to client failed, session={} err={}",
